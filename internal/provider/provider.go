@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/connection"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
 )
 
 const (
@@ -88,7 +88,7 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 		)
 	}
 
-	client := connection.NewCloudClient(endpoint, apiKey)
+	client := cloudsdk.NewCloudClient(endpoint, apiKey)
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }

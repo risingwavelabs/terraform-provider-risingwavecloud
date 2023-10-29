@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/connection"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
 )
 
 // Assert provider defined types fully satisfy framework interfaces.
@@ -27,7 +27,7 @@ func NewClusterResource() resource.Resource {
 
 // ExampleResource defines the resource implementation.
 type ClusterResource struct {
-	client connection.CloudClientInterface
+	client cloudsdk.CloudClientInterface
 }
 
 // ExampleResourceModel describes the resource data model.
@@ -134,7 +134,7 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 		return
 	}
 
-	client, ok := req.ProviderData.(connection.CloudClientInterface)
+	client, ok := req.ProviderData.(cloudsdk.CloudClientInterface)
 
 	if !ok {
 		resp.Diagnostics.AddError(

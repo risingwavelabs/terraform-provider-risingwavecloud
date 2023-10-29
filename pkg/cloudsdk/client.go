@@ -1,4 +1,4 @@
-package connection
+package cloudsdk
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/connection/httpx"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/httpx"
 )
 
 const (
@@ -191,7 +191,7 @@ func (c *CloudClient) DeleteCluster(ctx context.Context, name string) error {
 }
 
 func (c *CloudClient) UpdateClusterImage(ctx context.Context, name string, version string) error {
-
+	//
 	return errors.New("Unimplemented")
 }
 
