@@ -88,20 +88,20 @@ func (c *HTTPClient) startRequest(ctx context.Context, method string, path strin
 	}
 }
 
-func (c *HTTPClient) Get(ctx context.Context, path string) *RequestContext {
-	return c.startRequest(ctx, "GET", path)
+func (c *HTTPClient) Get(ctx context.Context, path string, args ...any) *RequestContext {
+	return c.startRequest(ctx, "GET", fmt.Sprintf(path, args...))
 }
 
-func (c *HTTPClient) Post(ctx context.Context, path string) *RequestContext {
-	return c.startRequest(ctx, "POST", path)
+func (c *HTTPClient) Post(ctx context.Context, path string, args ...any) *RequestContext {
+	return c.startRequest(ctx, "POST", fmt.Sprintf(path, args...))
 }
 
-func (c *HTTPClient) Put(ctx context.Context, path string) *RequestContext {
-	return c.startRequest(ctx, "PUT", path)
+func (c *HTTPClient) Put(ctx context.Context, path string, args ...any) *RequestContext {
+	return c.startRequest(ctx, "PUT", fmt.Sprintf(path, args...))
 }
 
-func (c *HTTPClient) Delete(ctx context.Context, path string) *RequestContext {
-	return c.startRequest(ctx, "DELETE", path)
+func (c *HTTPClient) Delete(ctx context.Context, path string, args ...any) *RequestContext {
+	return c.startRequest(ctx, "DELETE", fmt.Sprintf(path, args...))
 }
 
 func (rc *RequestContext) handleErr(err error) {

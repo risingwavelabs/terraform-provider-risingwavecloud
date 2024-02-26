@@ -15,9 +15,6 @@ import (
 )
 
 const (
-	ProviderSchemaAttrAPIKey   = "api_key"
-	ProviderSchemaAttrEndpoint = "endpoint"
-
 	defaultEndpoint = "https://canary-useast2-acc.risingwave.cloud/api/v1"
 )
 
@@ -49,13 +46,20 @@ func (p *RisingWaveCloudProvider) Schema(ctx context.Context, req provider.Schem
 				Required:            true,
 				Sensitive:           true,
 			},
+			"api_secret": schema.StringAttribute{
+				MarkdownDescription: "The API secret of the your RisingWave Cloud account.",
+				Optional:            false,
+				Required:            true,
+				Sensitive:           true,
+			},
 		},
 	}
 }
 
 type RisingWaveCloudProviderModel struct {
-	APIKey   types.String `tfsdk:"api_key"`
-	Endpoint types.String `tfsdk:"endpoint"`
+	APIKey    types.String `tfsdk:"api_key"`
+	APISecret types.String `tfsdk:"api_secret"`
+	Endpoint  types.String `tfsdk:"endpoint"`
 }
 
 func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
@@ -68,8 +72,9 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 	}
 
 	var (
-		apiKey   = data.Endpoint.ValueString()
-		endpoint = data.Endpoint.ValueString()
+		apiKey    = data.APIKey.ValueString()
+		apiSecret = data.APISecret.ValueString()
+		endpoint  = data.Endpoint.ValueString()
 	)
 	if len(endpoint) == 0 {
 		endpoint = defaultEndpoint
@@ -88,7 +93,30 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 		)
 	}
 
-	client := cloudsdk.NewCloudClient(endpoint, apiKey)
+	if len(apiSecret) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing API Secret",
+			"RisingWave Cloud API Secret is required to setup the provider. "+
+				"Please get your API Secret in https://cloud.risingwave.com/",
+		)
+	}
+
+	client, err := cloudsdk.NewAccountServiceClient(ctx, endpoint, apiKey, apiSecret)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unexpected error",
+			"Failed to build cloud SDK client: "+err.Error(),
+		)
+		return
+	}
+
+	if err := client.Ping(ctx); err != nil {
+		resp.Diagnostics.AddError(
+			"Invaid credentials",
+			"Either endpoint is not reachable or the API key is wrong",
+		)
+	}
+
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }

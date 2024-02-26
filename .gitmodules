@@ -1,0 +1,3 @@
+[submodule "risingwave-cloud-openapi"]
+	path = risingwave-cloud-openapi
+	url = git@github.com:risingwavelabs/risingwave-cloud-openapi.git

@@ -49,18 +49,8 @@ func TestStartRequest(t *testing.T) {
 	assert.Equal(t, "DELETE", rc.method)
 }
 
-type noopHTTPDelegate struct {
-	req *http.Request
-	res *http.Response
-}
-
-func (n *noopHTTPDelegate) Do(req *http.Request) (*http.Response, error) {
-	n.req = req
-	return n.res, nil
-}
-
 func TestHandleError(t *testing.T) {
-	c := NewHTTPClient("http://test.example", &noopHTTPDelegate{})
+	c := NewHTTPClient("http://test.example", &NoopHTTPDelegate{})
 	rc := c.Get(context.Background(), "/test")
 	testErr := errors.New("error for test")
 
@@ -70,7 +60,7 @@ func TestHandleError(t *testing.T) {
 }
 
 func TestHandleError_append_nil(t *testing.T) {
-	c := NewHTTPClient("http://test.example", &noopHTTPDelegate{})
+	c := NewHTTPClient("http://test.example", &NoopHTTPDelegate{})
 	rc := c.Get(context.Background(), "/test")
 
 	rc.handleErr(nil)
@@ -105,19 +95,19 @@ func TestWithQuery(t *testing.T) {
 		k    = "上升波"
 		v    = "value-/\\%$#?&=+"
 	)
-	d := &noopHTTPDelegate{}
+	d := &NoopHTTPDelegate{}
 	c := NewHTTPClient(base, d)
 	rc := c.startRequest(context.Background(), "GET", path).WithQuery(k, v)
 	assert.Equal(t, rc.query[k], v)
 
 	_, err := rc.Do()
 	require.NoError(t, err)
-	assert.Equal(t, v, d.req.URL.Query().Get(k))
+	assert.Equal(t, v, d.GetQuery(k))
 	assert.Equal(t, fmt.Sprintf("%s%s?%s=%s", base, path, neturl.QueryEscape(k), neturl.QueryEscape(v)), d.req.URL.String())
 }
 
 func TestWithJSON(t *testing.T) {
-	d := &noopHTTPDelegate{}
+	d := &NoopHTTPDelegate{}
 	c := NewHTTPClient("http://test.example", d)
 	jsonRaw := []byte(`{"test":"test"}`)
 	data := make(map[string]string)
@@ -127,8 +117,9 @@ func TestWithJSON(t *testing.T) {
 	_, err = rc.Do()
 	require.NoError(t, err)
 
-	bodyRaw, err := io.ReadAll(rc.body)
+	bodyRaw, err := d.GetRequestBody()
 	require.NoError(t, err)
+
 	assert.Equal(t, jsonRaw, bodyRaw)
 }
 
@@ -137,7 +128,7 @@ func TestWithHeader(t *testing.T) {
 		k = "test"
 		v = "test"
 	)
-	d := &noopHTTPDelegate{}
+	d := &NoopHTTPDelegate{}
 	c := NewHTTPClient("http://test.example", d)
 	rc := c.startRequest(context.Background(), "GET", "/test").WithHeader(k, v)
 	_, err := rc.Do()
@@ -183,7 +174,7 @@ func TestPoll(t *testing.T) {
 		interval = 50 * time.Millisecond
 		timeout  = 200 * time.Millisecond
 	)
-	d := &noopHTTPDelegate{}
+	d := &NoopHTTPDelegate{}
 	c := NewHTTPClient("http://test.example", d)
 	rc := c.startRequest(context.Background(), "GET", "/test")
 
@@ -225,7 +216,7 @@ func TestPoll(t *testing.T) {
 }
 
 func TestGlobalHeaders(t *testing.T) {
-	d := &noopHTTPDelegate{}
+	d := &NoopHTTPDelegate{}
 	c := NewHTTPClient("http://test.example", d)
 	var (
 		k = "test"

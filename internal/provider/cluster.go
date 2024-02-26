@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
+	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
 )
 
 // Assert provider defined types fully satisfy framework interfaces.
@@ -27,7 +28,7 @@ func NewClusterResource() resource.Resource {
 
 // ExampleResource defines the resource implementation.
 type ClusterResource struct {
-	client cloudsdk.CloudClientInterface
+	client cloudsdk.AccountServiceClientInterface
 }
 
 // ExampleResourceModel describes the resource data model.
@@ -134,7 +135,7 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 		return
 	}
 
-	client, ok := req.ProviderData.(cloudsdk.CloudClientInterface)
+	client, ok := req.ProviderData.(cloudsdk.AccountServiceClientInterface)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -147,10 +148,6 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 
 	r.client = client
 }
-
-// func unmarshalDataModel(resp *resource.CreateResponse) *ResourceV1Model {
-
-// }
 
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterResourceModel
@@ -169,6 +166,14 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create example, got error: %s", err))
 	//     return
 	// }
+	rc, err := r.client.GetRegionServiceClient(data.Platform.String(), data.Region.String())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get region service client: %s", err))
+		return
+	}
+	rc.CreateClusterAwait(ctx, apigen.TenantRequestRequestBody{
+		TenantName: data.Name.String(),
+	})
 
 	// For the purposes of this example code, hardcoding a response value to
 	// save into the Terraform state.
