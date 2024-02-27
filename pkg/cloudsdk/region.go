@@ -28,7 +28,7 @@ type RegionServiceClientInterface interface {
 	/* risingwavecloud_cluster resource */
 
 	// Create a RisingWave cluster and wait for it to be ready.
-	CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) error
+	CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error)
 
 	// Delete a RisingWave cluster by its name and wait for it to be ready.
 	DeleteClusterAwait(ctx context.Context, name string) error
@@ -38,9 +38,9 @@ type RegionServiceClientInterface interface {
 
 	// Update the resources of a RisinGWave cluster by its name.
 	UpdateClusterResourcesAwait(ctx context.Context, name string, req apigen_mgmt.PostTenantResourcesRequestBody) error
-}
 
-var _ RegionServiceClientInterface = &RegionServiceClient{}
+	GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error)
+}
 
 type RegionServiceClient struct {
 	mgmtClient *apigen_mgmt.ClientWithResponses
@@ -74,18 +74,26 @@ func (c *RegionServiceClient) GetClusterByName(ctx context.Context, name string)
 	return res.JSON200, nil
 }
 
-func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) error {
+func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
 	// create cluster
 	createRes, err := c.mgmtClient.PostTenantsWithResponse(ctx, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to create cluster")
+		return nil, errors.Wrap(err, "failed to create cluster")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(createRes, http.StatusAccepted, "failed to create cluster: %s", err.Error()); err != nil {
-		return err
+		return nil, err
 	}
 
 	// wait for the tenant to be ready
-	return c.WaitCluster(ctx, req.TenantName, apigen_mgmt.Running)
+	if err := c.WaitCluster(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
+		return nil, err
+	}
+
+	cluster, err := c.GetClusterByName(ctx, req.TenantName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cluster info")
+	}
+	return cluster, nil
 }
 
 func (c *RegionServiceClient) DeleteClusterAwait(ctx context.Context, name string) error {
@@ -147,4 +155,16 @@ func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, n
 
 	// wait for the tenant resource udpated
 	return c.WaitCluster(ctx, name, apigen_mgmt.Running)
+}
+
+func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error) {
+	res, err := c.mgmtClient.GetTiersWithResponse(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to retrieve information of all tiers")
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to retrieve information of all tiers"); err != nil {
+		return nil, err
+	}
+
+	return res.JSON200.Tiers, nil
 }

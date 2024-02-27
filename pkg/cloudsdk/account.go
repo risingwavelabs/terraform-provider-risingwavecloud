@@ -12,6 +12,10 @@ import (
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
 )
 
+var (
+	ErrInvalidCredential = errors.New("invalid credential")
+)
+
 type JSON = map[string]any
 
 type AccountServiceClientInterface interface {
@@ -20,8 +24,6 @@ type AccountServiceClientInterface interface {
 
 	GetRegionServiceClient(platform, region string) (RegionServiceClientInterface, error)
 }
-
-var _ AccountServiceClientInterface = &AccountServiceClient{}
 
 type AccountServiceClient struct {
 	Endpoint string
@@ -34,7 +36,7 @@ type AccountServiceClient struct {
 	regions map[string]map[string]apigen_acc.Region
 }
 
-func NewAccountServiceClient(ctx context.Context, endpoint, apiKey, apiSecret string) (*AccountServiceClient, error) {
+func NewAccountServiceClient(ctx context.Context, endpoint, apiKey, apiSecret string) (AccountServiceClientInterface, error) {
 	apiKeyPair := fmt.Sprintf("%s:%s", apiKey, apiSecret)
 	accClient, err := apigen_acc.NewClientWithResponses(endpoint, apigen_acc.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("X-API-KEY", apiKeyPair)
@@ -80,6 +82,9 @@ func (c *AccountServiceClient) Ping(ctx context.Context) error {
 	res, err := c.accClient.GetAuthPingWithResponse(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to ping endpoint")
+	}
+	if res.StatusCode() == http.StatusForbidden {
+		return ErrInvalidCredential
 	}
 	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to ping endpoint")
 }

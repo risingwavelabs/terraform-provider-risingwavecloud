@@ -13,3 +13,10 @@ func ExpectStatusCodeWithMessage(res SpecResponse, statusCode int, msg string, a
 	}
 	return nil
 }
+
+func ExpectStatusCodeWithError(res SpecResponse, statusCode int, err error) error {
+	if res.StatusCode() != statusCode {
+		return errors.Wrapf(err, "expected status code %d but got %d, message: ", statusCode, res.StatusCode())
+	}
+	return nil
+}

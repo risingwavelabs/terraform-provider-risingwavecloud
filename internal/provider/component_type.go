@@ -6,12 +6,38 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
+
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
+)
+
+const (
+	ComponentCompute   = "compute"
+	ComponentCompactor = "compactor"
+	ComponentFrontend  = "frontend"
+	ComponentMeta      = "meta"
+	ComponentEtcd      = "etcd"
+)
+
+var (
+	ComponentMenu = fmt.Sprintf("`%s`, `%s`, `%s`, `%s`, `%s`",
+		ComponentCompute,
+		ComponentCompactor,
+		ComponentFrontend,
+		ComponentMeta,
+		ComponentEtcd,
+	)
+)
+
+var (
+	DefaultTier = apigen_mgmt.Standard
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -21,16 +47,16 @@ func NewComponentTypeDataSource() datasource.DataSource {
 	return &ComponentTypeDataSource{}
 }
 
-// ExampleDataSource defines the data source implementation.
 type ComponentTypeDataSource struct {
-	client *http.Client
+	client cloudsdk.RegionServiceClientInterface
 }
 
-// ExampleDataSourceModel describes the data source data model.
 type ComponentTypeDataSourceModel struct {
+	Tier      types.String `tfsdk:"tier"`
+	Component types.String `tfsdk:"component"`
 	VCPU      types.Int64  `tfsdk:"vcpu"`
 	MemoryGiB types.Int64  `tfsdk:"memory_gib"`
-	Type      types.String `tfsdk:"type"`
+	ID        types.String `tfsdk:"id"`
 }
 
 func (d *ComponentTypeDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -41,6 +67,10 @@ func (d *ComponentTypeDataSource) Schema(ctx context.Context, req datasource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The type of the component of the RisingWave cluster",
 		Attributes: map[string]schema.Attribute{
+			"tier": schema.StringAttribute{
+				MarkdownDescription: "The tier of the component type, the default value is `Standard`",
+				Required:            true,
+			},
 			"vcpu": schema.StringAttribute{
 				MarkdownDescription: "The number of the virtual CPU cores",
 				Required:            true,
@@ -49,9 +79,11 @@ func (d *ComponentTypeDataSource) Schema(ctx context.Context, req datasource.Sch
 				MarkdownDescription: "Memory size in GiB",
 				Required:            true,
 			},
-			"type": schema.StringAttribute{
-				MarkdownDescription: "The type (family) of the component type. The field is reserved for future usage",
-				Optional:            true,
+			"component": schema.StringAttribute{
+				MarkdownDescription: fmt.Sprintf(
+					"The component in a RisingWave cluster. Valid values are: %s", ComponentMenu,
+				),
+				Required: true,
 			},
 		},
 	}
@@ -63,18 +95,54 @@ func (d *ComponentTypeDataSource) Configure(ctx context.Context, req datasource.
 		return
 	}
 
-	client, ok := req.ProviderData.(*http.Client)
+	client, ok := req.ProviderData.(cloudsdk.RegionServiceClientInterface)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected cloudsdk.RegionServiceClientInterface, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
 	d.client = client
+}
+
+func (d *ComponentTypeDataSource) getTier(ctx context.Context, targetTier apigen_mgmt.TierId) (*apigen_mgmt.Tier, error) {
+	tiers, err := d.client.GetTiers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tiers {
+		if t.Id == nil {
+			continue
+		}
+		if *t.Id == targetTier {
+			return &t, nil
+		}
+	}
+	return nil, errors.Errorf("tier %s not found", targetTier)
+}
+
+func (d *ComponentTypeDataSource) getAvailableComponentTypes(ctx context.Context, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
+	t, err := d.getTier(ctx, targetTier)
+	if err != nil {
+		return nil, err
+	}
+	switch component {
+	case ComponentCompute:
+		return t.AvailableComputeNodes, nil
+	case ComponentCompactor:
+		return t.AvailableCompactorNodes, nil
+	case ComponentFrontend:
+		return t.AvailableFrontendNodes, nil
+	case ComponentMeta:
+		return t.AvailableMetaNodes, nil
+	case ComponentEtcd:
+		return t.AvailableEtcdNodes, nil
+	}
+	return nil, errors.Errorf("component %s not found", component)
 }
 
 func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -89,15 +157,53 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	// If applicable, this is a great opportunity to initialize any necessary
 	// provider client data and make a call using it.
-	// httpResp, err := d.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
-	//     return
-	// }
+	var (
+		component = data.Component.ValueString()
+		tier      = data.Tier.ValueString()
+		vCPU      = data.VCPU.ValueInt64()
+		memoryGiB = data.MemoryGiB.ValueInt64()
+	)
 
-	// For the purposes of this example code, hardcoding a response value to
-	// save into the Terraform state.
-	data.Type = types.StringValue("")
+	if len(component) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing component",
+			fmt.Sprintf("Component is required to setup the provider. Valid values are: %s", ComponentMenu),
+		)
+		return
+	}
+
+	if len(tier) == 0 {
+		tier = string(DefaultTier)
+	}
+
+	availableComponentTypes, err := d.getAvailableComponentTypes(ctx, apigen_mgmt.TierId(tier), component)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get available component types",
+			err.Error(),
+		)
+		return
+	}
+
+	ok := false
+	for _, c := range availableComponentTypes {
+		if fmt.Sprintf("%d cores", vCPU) == c.Cpu && fmt.Sprintf("%d GB", memoryGiB) == c.Memory {
+			data.ID = types.StringValue(c.Id)
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Cannot found the corresponding component type",
+			fmt.Sprintf(
+				"The component type %s with CPU %d cores and memory %d GB is not available for the tier %s",
+				component, vCPU, memoryGiB, tier,
+			),
+		)
+		return
+	}
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log

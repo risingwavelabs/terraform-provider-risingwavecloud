@@ -19,7 +19,7 @@ var (
 	TestAPISecret = os.Getenv("RWC_API_SECRET")
 )
 
-func getTestAccountServiceClient(t *testing.T) *AccountServiceClient {
+func getTestAccountServiceClient(t *testing.T) AccountServiceClientInterface {
 	t.Helper()
 	client, err := NewAccountServiceClient(context.Background(), TestEndpoint, TestAPIKey, TestAPISecret)
 	require.NoError(t, err)

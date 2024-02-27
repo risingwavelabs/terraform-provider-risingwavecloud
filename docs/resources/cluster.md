@@ -18,84 +18,127 @@ A RisingWave Cluster
 ### Required
 
 - `name` (String) The name of the cluster.
-- `platform` (String) The cloud platform to host this cluster
-- `region` (String) The region to host this cluster
-- `resource_v1` (Attributes Map) The resource specification of the cluster (see [below for nested schema](#nestedatt--resource_v1))
+- `spec` (Attributes) The resource specification of the cluster (see [below for nested schema](#nestedatt--spec))
 
 ### Optional
 
+- `id` (Number) The id of the cluster.
 - `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registery of RisingWave Labs.The newest stable version will be used if this field is not present.
 
-<a id="nestedatt--resource_v1"></a>
-### Nested Schema for `resource_v1`
+<a id="nestedatt--spec"></a>
+### Nested Schema for `spec`
 
 Required:
 
-- `compactor` (Attributes Map) The resource specification of the component (see [below for nested schema](#nestedatt--resource_v1--compactor))
-- `compute` (Attributes Map) The resource specification of the component (see [below for nested schema](#nestedatt--resource_v1--compute))
-- `etcd` (Attributes Map) The resource specification of the component (see [below for nested schema](#nestedatt--resource_v1--etcd))
-- `frontend` (Attributes Map) The resource specification of the component (see [below for nested schema](#nestedatt--resource_v1--frontend))
-- `meta` (Attributes Map) The resource specification of the component (see [below for nested schema](#nestedatt--resource_v1--meta))
+- `compactor` (Attributes) (see [below for nested schema](#nestedatt--spec--compactor))
+- `compute` (Attributes) (see [below for nested schema](#nestedatt--spec--compute))
+- `frontend` (Attributes) (see [below for nested schema](#nestedatt--spec--frontend))
+- `meta` (Attributes) (see [below for nested schema](#nestedatt--spec--meta))
 
 Optional:
 
-- `compute_file_cache_size_gb` (Number) The disk size of the compute file cache. 0 means disabling the compute file cache
-- `etcd_disk_size_gb` (Number) The disk size of the etcd pod
+- `risingwave_config` (String) The toml format of the RisingWave configuration of the cluster
 
-<a id="nestedatt--resource_v1--compactor"></a>
-### Nested Schema for `resource_v1.compactor`
-
-Required:
-
-- `type` (String) The component type of the node
-
-Optional:
-
-- `replica` (Number) The number of nodes
-
-
-<a id="nestedatt--resource_v1--compute"></a>
-### Nested Schema for `resource_v1.compute`
+<a id="nestedatt--spec--compactor"></a>
+### Nested Schema for `spec.compactor`
 
 Required:
 
-- `type` (String) The component type of the node
+- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--compactor--resource))
+
+<a id="nestedatt--spec--compactor--resource"></a>
+### Nested Schema for `spec.compactor.resource`
+
+Required:
+
+- `id` (String) The component type ID of the node
 
 Optional:
 
 - `replica` (Number) The number of nodes
 
 
-<a id="nestedatt--resource_v1--etcd"></a>
-### Nested Schema for `resource_v1.etcd`
+
+<a id="nestedatt--spec--compute"></a>
+### Nested Schema for `spec.compute`
 
 Required:
 
-- `type` (String) The component type of the node
+- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--compute--resource))
+
+<a id="nestedatt--spec--compute--resource"></a>
+### Nested Schema for `spec.compute.resource`
+
+Required:
+
+- `id` (String) The component type ID of the node
 
 Optional:
 
 - `replica` (Number) The number of nodes
 
 
-<a id="nestedatt--resource_v1--frontend"></a>
-### Nested Schema for `resource_v1.frontend`
+
+<a id="nestedatt--spec--frontend"></a>
+### Nested Schema for `spec.frontend`
 
 Required:
 
-- `type` (String) The component type of the node
+- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--frontend--resource))
+
+<a id="nestedatt--spec--frontend--resource"></a>
+### Nested Schema for `spec.frontend.resource`
+
+Required:
+
+- `id` (String) The component type ID of the node
 
 Optional:
 
 - `replica` (Number) The number of nodes
 
 
-<a id="nestedatt--resource_v1--meta"></a>
-### Nested Schema for `resource_v1.meta`
+
+<a id="nestedatt--spec--meta"></a>
+### Nested Schema for `spec.meta`
 
 Required:
 
-- `type` (String) The component type of the node
+- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--resource))
+
+Optional:
+
+- `etcd_meta_store` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store))
+
+<a id="nestedatt--spec--meta--resource"></a>
+### Nested Schema for `spec.meta.resource`
+
+Required:
+
+- `id` (String) The component type ID of the node
+
+Optional:
+
+- `replica` (Number) The number of nodes
+
+
+<a id="nestedatt--spec--meta--etcd_meta_store"></a>
+### Nested Schema for `spec.meta.etcd_meta_store`
+
+Required:
+
+- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store--resource))
+
+Optional:
+
+- `etcd_config` (String) The environment variable list of the etcd configuration
+
+<a id="nestedatt--spec--meta--etcd_meta_store--resource"></a>
+### Nested Schema for `spec.meta.etcd_meta_store.etcd_config`
+
+Required:
+
+- `id` (String) The component type ID of the node
 
 Optional:
 
