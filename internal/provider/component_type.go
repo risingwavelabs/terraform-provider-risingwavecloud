@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -48,10 +46,12 @@ func NewComponentTypeDataSource() datasource.DataSource {
 }
 
 type ComponentTypeDataSource struct {
-	client cloudsdk.RegionServiceClientInterface
+	client cloudsdk.AccountServiceClientInterface
 }
 
 type ComponentTypeDataSourceModel struct {
+	Platform  types.String `tfsdk:"platform"`
+	Region    types.String `tfsdk:"region"`
 	Tier      types.String `tfsdk:"tier"`
 	Component types.String `tfsdk:"component"`
 	VCPU      types.Int64  `tfsdk:"vcpu"`
@@ -67,8 +67,14 @@ func (d *ComponentTypeDataSource) Schema(ctx context.Context, req datasource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The type of the component of the RisingWave cluster",
 		Attributes: map[string]schema.Attribute{
+			"platform": schema.StringAttribute{
+				Required: true,
+			},
+			"region": schema.StringAttribute{
+				Required: true,
+			},
 			"tier": schema.StringAttribute{
-				MarkdownDescription: "The tier of the component type, the default value is `Standard`",
+				MarkdownDescription: "This field is only used in tests. The tier of the component type, the default value is `Standard`",
 				Required:            true,
 			},
 			"vcpu": schema.StringAttribute{
@@ -95,54 +101,18 @@ func (d *ComponentTypeDataSource) Configure(ctx context.Context, req datasource.
 		return
 	}
 
-	client, ok := req.ProviderData.(cloudsdk.RegionServiceClientInterface)
+	client, ok := req.ProviderData.(cloudsdk.AccountServiceClientInterface)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected cloudsdk.RegionServiceClientInterface, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected cloudsdk.AccountServiceClientInterface, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
 	d.client = client
-}
-
-func (d *ComponentTypeDataSource) getTier(ctx context.Context, targetTier apigen_mgmt.TierId) (*apigen_mgmt.Tier, error) {
-	tiers, err := d.client.GetTiers(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, t := range tiers {
-		if t.Id == nil {
-			continue
-		}
-		if *t.Id == targetTier {
-			return &t, nil
-		}
-	}
-	return nil, errors.Errorf("tier %s not found", targetTier)
-}
-
-func (d *ComponentTypeDataSource) getAvailableComponentTypes(ctx context.Context, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
-	t, err := d.getTier(ctx, targetTier)
-	if err != nil {
-		return nil, err
-	}
-	switch component {
-	case ComponentCompute:
-		return t.AvailableComputeNodes, nil
-	case ComponentCompactor:
-		return t.AvailableCompactorNodes, nil
-	case ComponentFrontend:
-		return t.AvailableFrontendNodes, nil
-	case ComponentMeta:
-		return t.AvailableMetaNodes, nil
-	case ComponentEtcd:
-		return t.AvailableEtcdNodes, nil
-	}
-	return nil, errors.Errorf("component %s not found", component)
 }
 
 func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -158,11 +128,29 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 	// If applicable, this is a great opportunity to initialize any necessary
 	// provider client data and make a call using it.
 	var (
+		platform  = data.Platform.ValueString()
+		region    = data.Region.ValueString()
 		component = data.Component.ValueString()
 		tier      = data.Tier.ValueString()
 		vCPU      = data.VCPU.ValueInt64()
 		memoryGiB = data.MemoryGiB.ValueInt64()
 	)
+
+	if len(platform) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing platform",
+			"Platform is required to setup the provider.",
+		)
+		return
+	}
+
+	if len(region) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing region",
+			"Region is required to setup the provider.",
+		)
+		return
+	}
 
 	if len(component) == 0 {
 		resp.Diagnostics.AddError(
@@ -176,7 +164,16 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		tier = string(DefaultTier)
 	}
 
-	availableComponentTypes, err := d.getAvailableComponentTypes(ctx, apigen_mgmt.TierId(tier), component)
+	rs, err := d.client.GetRegionServiceClient(platform, region)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get region service client",
+			err.Error(),
+		)
+		return
+	}
+
+	availableComponentTypes, err := rs.GetAvailableComponentTypes(ctx, apigen_mgmt.TierId(tier), component)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to get available component types",

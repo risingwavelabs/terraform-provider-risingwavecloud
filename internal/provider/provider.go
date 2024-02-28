@@ -38,14 +38,6 @@ func (p *RisingWaveCloudProvider) Metadata(ctx context.Context, req provider.Met
 func (p *RisingWaveCloudProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"platform": schema.StringAttribute{
-				MarkdownDescription: "The platform of the managed clusters in RisingWave Cloud",
-				Required:            true,
-			},
-			"region": schema.StringAttribute{
-				MarkdownDescription: "The region of the managed clusters in RisingWave Cloud",
-				Required:            true,
-			},
 			"endpoint": schema.StringAttribute{
 				MarkdownDescription: "The endpoint of the RisingWave Cloud API server. This is only used for testing.",
 				Optional:            true,

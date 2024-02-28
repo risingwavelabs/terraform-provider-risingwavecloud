@@ -251,6 +251,9 @@ type ClientInterface interface {
 	// GetAuthPing request
 	GetAuthPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetJwks request
+	GetJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetPrivatelinks request
 	GetPrivatelinks(ctx context.Context, params *GetPrivatelinksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -260,6 +263,18 @@ type ClientInterface interface {
 
 func (c *Client) GetAuthPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthPingRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetJwksRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -304,6 +319,33 @@ func NewGetAuthPingRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/auth/ping")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetJwksRequest generates requests for GetJwks
+func NewGetJwksRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/jwks")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -459,6 +501,9 @@ type ClientWithResponsesInterface interface {
 	// GetAuthPingWithResponse request
 	GetAuthPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthPingResponse, error)
 
+	// GetJwksWithResponse request
+	GetJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetJwksResponse, error)
+
 	// GetPrivatelinksWithResponse request
 	GetPrivatelinksWithResponse(ctx context.Context, params *GetPrivatelinksParams, reqEditors ...RequestEditorFn) (*GetPrivatelinksResponse, error)
 
@@ -483,6 +528,28 @@ func (r GetAuthPingResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetAuthPingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetJwksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetJwksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetJwksResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -542,6 +609,15 @@ func (c *ClientWithResponses) GetAuthPingWithResponse(ctx context.Context, reqEd
 	return ParseGetAuthPingResponse(rsp)
 }
 
+// GetJwksWithResponse request returning *GetJwksResponse
+func (c *ClientWithResponses) GetJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetJwksResponse, error) {
+	rsp, err := c.GetJwks(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetJwksResponse(rsp)
+}
+
 // GetPrivatelinksWithResponse request returning *GetPrivatelinksResponse
 func (c *ClientWithResponses) GetPrivatelinksWithResponse(ctx context.Context, params *GetPrivatelinksParams, reqEditors ...RequestEditorFn) (*GetPrivatelinksResponse, error) {
 	rsp, err := c.GetPrivatelinks(ctx, params, reqEditors...)
@@ -587,6 +663,32 @@ func ParseGetAuthPingResponse(rsp *http.Response) (*GetAuthPingResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetJwksResponse parses an HTTP response from a GetJwksWithResponse call
+func ParseGetJwksResponse(rsp *http.Response) (*GetJwksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetJwksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 

@@ -169,6 +169,7 @@ type Size struct {
 // Tenant defines model for Tenant.
 type Tenant struct {
 	CreatedAt      time.Time          `json:"createdAt"`
+	EtcdConfig     string             `json:"etcd_config"`
 	HealthStatus   TenantHealthStatus `json:"health_status"`
 	Id             uint64             `json:"id"`
 	ImageTag       string             `json:"imageTag"`
@@ -201,9 +202,12 @@ type TenantRequestRequestBody struct {
 	EtcdConfig  *string                `json:"etcdConfig,omitempty"`
 	ImageTag    *string                `json:"imageTag,omitempty"`
 	Resources   *TenantResourceRequest `json:"resources,omitempty"`
-	Sku         *string                `json:"sku,omitempty"`
-	TenantName  string                 `json:"tenantName"`
-	Tier        *TierId                `json:"tier,omitempty"`
+
+	// RwConfig if config ID is not provided, use this config. currently used in tf plugin
+	RwConfig   *string `json:"rwConfig,omitempty"`
+	Sku        *string `json:"sku,omitempty"`
+	TenantName string  `json:"tenantName"`
+	Tier       *TierId `json:"tier,omitempty"`
 }
 
 // TenantResource defines model for TenantResource.

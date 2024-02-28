@@ -3,6 +3,7 @@ package cloudsdk
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -10,6 +11,14 @@ import (
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/wait"
 
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
+)
+
+const (
+	ComponentCompute   = "compute"
+	ComponentCompactor = "compactor"
+	ComponentFrontend  = "frontend"
+	ComponentMeta      = "meta"
+	ComponentEtcd      = "etcd"
 )
 
 var (
@@ -27,6 +36,10 @@ var (
 type RegionServiceClientInterface interface {
 	/* risingwavecloud_cluster resource */
 
+	GetClusterByID(ctx context.Context, id uint64) (*apigen_mgmt.Tenant, error)
+
+	GetClusterByName(ctx context.Context, name string) (*apigen_mgmt.Tenant, error)
+
 	// Create a RisingWave cluster and wait for it to be ready.
 	CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error)
 
@@ -40,13 +53,34 @@ type RegionServiceClientInterface interface {
 	UpdateClusterResourcesAwait(ctx context.Context, name string, req apigen_mgmt.PostTenantResourcesRequestBody) error
 
 	GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error)
+
+	GetAvailableComponentTypes(ctx context.Context, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error)
+
+	UpdateRisingWaveConfigAwait(ctx context.Context, clusterID uint64, rwConfig string) error
+
+	UpdateEtcdConfigAwait(ctx context.Context, clusterID uint64, etcdConfig string) error
 }
 
 type RegionServiceClient struct {
 	mgmtClient *apigen_mgmt.ClientWithResponses
 }
 
-func (c *RegionServiceClient) WaitCluster(ctx context.Context, name string, target apigen_mgmt.TenantStatus) error {
+func (c *RegionServiceClient) WaitClusterById(ctx context.Context, id uint64, target apigen_mgmt.TenantStatus) error {
+	var currentStatus apigen_mgmt.TenantStatus
+	if err := wait.Poll(ctx, func() (bool, error) {
+		cluster, err := c.GetClusterByID(ctx, id)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to get the cluster info")
+		}
+		currentStatus = cluster.Status
+		return currentStatus == target, nil
+	}, PollingTenantCreation); err != nil {
+		return errors.Wrapf(err, "failed to wait for the cluster, current status: %s, target status: %s", currentStatus, target)
+	}
+	return nil
+}
+
+func (c *RegionServiceClient) WaitClusterByName(ctx context.Context, name string, target apigen_mgmt.TenantStatus) error {
 	var currentStatus apigen_mgmt.TenantStatus
 	if err := wait.Poll(ctx, func() (bool, error) {
 		cluster, err := c.GetClusterByName(ctx, name)
@@ -74,6 +108,19 @@ func (c *RegionServiceClient) GetClusterByName(ctx context.Context, name string)
 	return res.JSON200, nil
 }
 
+func (c *RegionServiceClient) GetClusterByID(ctx context.Context, id uint64) (*apigen_mgmt.Tenant, error) {
+	res, err := c.mgmtClient.GetTenantWithResponse(ctx, &apigen_mgmt.GetTenantParams{
+		TenantId: &id,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cluster")
+	}
+	if apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to get cluster: %s", err.Error()); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
+}
+
 func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
 	// create cluster
 	createRes, err := c.mgmtClient.PostTenantsWithResponse(ctx, req)
@@ -85,7 +132,7 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	}
 
 	// wait for the tenant to be ready
-	if err := c.WaitCluster(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
+	if err := c.WaitClusterByName(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +184,7 @@ func (c *RegionServiceClient) UpdateClusterImageAwait(ctx context.Context, name 
 	}
 
 	// wait for the tenant to be ready
-	return c.WaitCluster(ctx, name, apigen_mgmt.Running)
+	return c.WaitClusterByName(ctx, name, apigen_mgmt.Running)
 }
 
 func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, name string, req apigen_mgmt.PostTenantResourcesRequestBody) error {
@@ -154,7 +201,7 @@ func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, n
 	}
 
 	// wait for the tenant resource udpated
-	return c.WaitCluster(ctx, name, apigen_mgmt.Running)
+	return c.WaitClusterByName(ctx, name, apigen_mgmt.Running)
 }
 
 func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error) {
@@ -167,4 +214,63 @@ func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier,
 	}
 
 	return res.JSON200.Tiers, nil
+}
+
+func (c *RegionServiceClient) GetAvailableComponentTypes(ctx context.Context, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
+	tiers, err := c.GetTiers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var tier *apigen_mgmt.Tier
+	for _, t := range tiers {
+		if t.Id == nil {
+			continue
+		}
+		if *t.Id == targetTier {
+			tier = &t
+			break
+		}
+	}
+	if tier == nil {
+		return nil, errors.Errorf("tier %s not found", targetTier)
+	}
+	switch component {
+	case ComponentCompute:
+		return tier.AvailableComputeNodes, nil
+	case ComponentCompactor:
+		return tier.AvailableCompactorNodes, nil
+	case ComponentFrontend:
+		return tier.AvailableFrontendNodes, nil
+	case ComponentMeta:
+		return tier.AvailableMetaNodes, nil
+	case ComponentEtcd:
+		return tier.AvailableEtcdNodes, nil
+	}
+	return nil, errors.Errorf("component %s not found", component)
+}
+
+func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, clusterID uint64, rwConfig string) error {
+	res, err := c.mgmtClient.PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx, clusterID, "text/plain", strings.NewReader(rwConfig))
+	if err != nil {
+		return errors.Wrap(err, "failed to update cluster config")
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, "failed to update cluster config"); err != nil {
+		return err
+	}
+
+	// wait for the tenant to be ready
+	return c.WaitClusterById(ctx, clusterID, apigen_mgmt.Running)
+}
+
+func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, clusterID uint64, etcdConfig string) error {
+	res, err := c.mgmtClient.PutTenantTenantIdConfigEtcdWithBodyWithResponse(ctx, clusterID, "text/plain", strings.NewReader(etcdConfig))
+	if err != nil {
+		return errors.Wrap(err, "failed to update cluster config")
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, "failed to update cluster config"); err != nil {
+		return err
+	}
+
+	// wait for the tenant to be ready
+	return c.WaitClusterById(ctx, clusterID, apigen_mgmt.Running)
 }
