@@ -13,6 +13,10 @@ import (
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
 )
 
+var (
+	ErrClusterNotFound = errors.New("cluster not found")
+)
+
 const (
 	ComponentCompute   = "compute"
 	ComponentCompactor = "compactor"
@@ -100,7 +104,10 @@ func (c *RegionServiceClient) GetClusterByName(ctx context.Context, name string)
 		TenantName: &name,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cluster")
+		return nil, errors.Wrap(err, "failed call API to to get cluster")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, ErrClusterNotFound
 	}
 	if apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to get cluster: %s", err.Error()); err != nil {
 		return nil, err
@@ -113,7 +120,10 @@ func (c *RegionServiceClient) GetClusterByID(ctx context.Context, id uint64) (*a
 		TenantId: &id,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cluster")
+		return nil, errors.Wrap(err, "failed call API to to get cluster")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, ErrClusterNotFound
 	}
 	if apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to get cluster: %s", err.Error()); err != nil {
 		return nil, err
@@ -125,7 +135,7 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	// create cluster
 	createRes, err := c.mgmtClient.PostTenantsWithResponse(ctx, req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cluster")
+		return nil, errors.Wrap(err, "failed call API to to create cluster")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(createRes, http.StatusAccepted, "failed to create cluster: %s", err.Error()); err != nil {
 		return nil, err
@@ -149,7 +159,10 @@ func (c *RegionServiceClient) DeleteClusterAwait(ctx context.Context, name strin
 		TenantName: &name,
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to create cluster")
+		return errors.Wrap(err, "failed call API to to delete cluster")
+	}
+	if deleteRes.StatusCode() == http.StatusNotFound {
+		return nil
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(deleteRes, http.StatusAccepted, "failed to create cluster: %s", err.Error()); err != nil {
 		return err
@@ -161,7 +174,7 @@ func (c *RegionServiceClient) DeleteClusterAwait(ctx context.Context, name strin
 			TenantName: &name,
 		})
 		if err != nil {
-			return false, errors.Wrap(err, "failed to get the latest tenant status")
+			return false, errors.Wrap(err, "failed to call API to get the latest tenant status")
 		}
 		return getRes.StatusCode() == http.StatusNotFound, nil
 	}, PollingTenantDeletion)
@@ -177,7 +190,7 @@ func (c *RegionServiceClient) UpdateClusterImageAwait(ctx context.Context, name 
 		Version: &version,
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to udpate cluster image")
+		return errors.Wrap(err, "failed to call API to udpate cluster image")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, "failed to update cluster image"); err != nil {
 		return err
@@ -194,7 +207,7 @@ func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, n
 	}
 	res, err := c.mgmtClient.PostTenantTenantIdResourceWithResponse(ctx, cluster.Id, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to udpate cluster resource")
+		return errors.Wrap(err, "failed to call API to udpate cluster resource")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, "failed to update cluster resource"); err != nil {
 		return err
@@ -207,7 +220,7 @@ func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, n
 func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error) {
 	res, err := c.mgmtClient.GetTiersWithResponse(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to retrieve information of all tiers")
+		return nil, errors.Wrap(err, "failed to call API to retrieve information of all tiers")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to retrieve information of all tiers"); err != nil {
 		return nil, err
@@ -252,7 +265,7 @@ func (c *RegionServiceClient) GetAvailableComponentTypes(ctx context.Context, ta
 func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, clusterID uint64, rwConfig string) error {
 	res, err := c.mgmtClient.PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx, clusterID, "text/plain", strings.NewReader(rwConfig))
 	if err != nil {
-		return errors.Wrap(err, "failed to update cluster config")
+		return errors.Wrap(err, "failed to call API to update cluster config")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, "failed to update cluster config"); err != nil {
 		return err
@@ -265,7 +278,7 @@ func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, c
 func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, clusterID uint64, etcdConfig string) error {
 	res, err := c.mgmtClient.PutTenantTenantIdConfigEtcdWithBodyWithResponse(ctx, clusterID, "text/plain", strings.NewReader(etcdConfig))
 	if err != nil {
-		return errors.Wrap(err, "failed to update cluster config")
+		return errors.Wrap(err, "failed to call API to update cluster config")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, "failed to update cluster config"); err != nil {
 		return err

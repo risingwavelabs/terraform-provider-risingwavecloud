@@ -428,6 +428,40 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	rs, err := r.client.GetRegionServiceClient(data.Platform.ValueString(), data.Region.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get region service client",
+			err.Error(),
+		)
+		return
+	}
+
+	_, err = rs.GetClusterByName(ctx, cluster.TenantName)
+	if err != nil {
+		if err != cloudsdk.ErrClusterNotFound {
+			resp.Diagnostics.AddError(
+				"Unable to check cluster existence",
+				err.Error(),
+			)
+			return
+		}
+	} else {
+		// Return errors that signify there is an existing resource.
+		// Terraform practitioners expect to be notified if an existing
+		// resource needs to be imported into Terraform rather than
+		// created. This prevents situations where multiple Terraform
+		// configurations unexpectedly manage the same underlying resource.
+		resp.Diagnostics.AddError(
+			"Cluster already exists",
+			fmt.Sprintf(
+				"Cluster with name %s already exists, please use `terraform import` command to manage existing clusters",
+				cluster.TenantName,
+			),
+		)
+		return
+	}
+
 	// If applicable, this is a great opportunity to initialize any necessary
 	// provider client data and make a call using it.
 	var tenantReq = apigen_mgmt.TenantRequestRequestBody{}
@@ -462,15 +496,6 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		ComputeFileCacheSizeGiB: cluster.Resources.ComputeFileCacheSizeGiB,
 		EnableComputeFileCache:  cluster.Resources.EnableComputeFileCache,
 		EtcdVolumeSizeGiB:       cluster.Resources.EtcdVolumeSizeGiB,
-	}
-
-	rs, err := r.client.GetRegionServiceClient(data.Platform.ValueString(), data.Region.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to get region service client",
-			err.Error(),
-		)
-		return
 	}
 
 	createdCluster, err := rs.CreateClusterAwait(ctx, tenantReq)
@@ -527,6 +552,13 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	cluster, err := rs.GetClusterByName(ctx, name)
 	if err != nil {
+		// Ignore returning errors that signify the resource is no longer existent,
+		// call the response state RemoveResource() method, and return early.
+		// The next Terraform plan will recreate the resource.
+		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Unable to read cluster",
 			err.Error(),
@@ -608,7 +640,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// update version
 	if previous.ImageTag != updated.ImageTag {
-		tflog.Info(ctx, fmt.Sprintf("updating image tag from %s to %s, cluster id: %d", previous.ImageTag, updated.ImageTag, data.ID))
+		tflog.Info(ctx, fmt.Sprintf("updating version from %s to %s, cluster id: %d", previous.ImageTag, updated.ImageTag, data.ID))
 		if err := rs.UpdateClusterImageAwait(ctx, updated.TenantName, updated.ImageTag); err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to update cluster version",
@@ -616,6 +648,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			)
 			return
 		}
+		tflog.Info(ctx, "cluster version updated")
 	}
 
 	// update rwconfig
@@ -628,6 +661,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			)
 			return
 		}
+		tflog.Info(ctx, "cluster risingwave configuration updated")
 	}
 
 	// update etcd config
@@ -640,6 +674,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			)
 			return
 		}
+		tflog.Info(ctx, "cluster etcd configuration updated")
 	}
 
 	// update cluster components
@@ -673,6 +708,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			)
 			return
 		}
+		tflog.Info(ctx, "cluster resources updated")
 	}
 
 	// Save updated data into Terraform state
