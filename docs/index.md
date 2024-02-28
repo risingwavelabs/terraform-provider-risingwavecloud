@@ -26,8 +26,6 @@ provider "risingwavecloud" {
 
 - `api_key` (String, Sensitive) The API key of the your RisingWave Cloud account.
 - `api_secret` (String, Sensitive) The API secret of the your RisingWave Cloud account.
-- `platform` (String) The platform of the managed clusters in RisingWave Cloud
-- `region` (String) The region of the managed clusters in RisingWave Cloud
 
 ### Optional
 

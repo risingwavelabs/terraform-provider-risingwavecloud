@@ -18,6 +18,8 @@ A RisingWave Cluster
 ### Required
 
 - `name` (String) The name of the cluster.
+- `platform` (String)
+- `region` (String)
 - `spec` (Attributes) The resource specification of the cluster (see [below for nested schema](#nestedatt--spec))
 
 ### Optional
