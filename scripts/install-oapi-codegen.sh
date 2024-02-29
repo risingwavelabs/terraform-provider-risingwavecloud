@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used in Makefile.
 
 echo "checking $VERSION for $DIR/oapi-codegen"
 

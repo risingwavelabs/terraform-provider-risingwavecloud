@@ -52,7 +52,6 @@ type ComponentTypeDataSource struct {
 type ComponentTypeDataSourceModel struct {
 	Platform  types.String `tfsdk:"platform"`
 	Region    types.String `tfsdk:"region"`
-	Tier      types.String `tfsdk:"tier"`
 	Component types.String `tfsdk:"component"`
 	VCPU      types.Int64  `tfsdk:"vcpu"`
 	MemoryGiB types.Int64  `tfsdk:"memory_gib"`
@@ -73,15 +72,11 @@ func (d *ComponentTypeDataSource) Schema(ctx context.Context, req datasource.Sch
 			"region": schema.StringAttribute{
 				Required: true,
 			},
-			"tier": schema.StringAttribute{
-				MarkdownDescription: "This field is only used in tests. The tier of the component type, the default value is `Standard`",
-				Required:            true,
-			},
-			"vcpu": schema.StringAttribute{
+			"vcpu": schema.Int64Attribute{
 				MarkdownDescription: "The number of the virtual CPU cores",
 				Required:            true,
 			},
-			"memory_gib": schema.StringAttribute{
+			"memory_gib": schema.Int64Attribute{
 				MarkdownDescription: "Memory size in GiB",
 				Required:            true,
 			},
@@ -90,6 +85,10 @@ func (d *ComponentTypeDataSource) Schema(ctx context.Context, req datasource.Sch
 					"The component in a RisingWave cluster. Valid values are: %s", ComponentMenu,
 				),
 				Required: true,
+			},
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The id of the RisingWave cluster. Valid values are",
+				Computed:            true,
 			},
 		},
 	}
@@ -131,9 +130,9 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		platform  = data.Platform.ValueString()
 		region    = data.Region.ValueString()
 		component = data.Component.ValueString()
-		tier      = data.Tier.ValueString()
 		vCPU      = data.VCPU.ValueInt64()
 		memoryGiB = data.MemoryGiB.ValueInt64()
+		tier      = DefaultTier
 	)
 
 	if len(platform) == 0 {
@@ -160,10 +159,6 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	if len(tier) == 0 {
-		tier = string(DefaultTier)
-	}
-
 	rs, err := d.client.GetRegionServiceClient(platform, region)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -182,9 +177,13 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
+	for _, c := range availableComponentTypes {
+		fmt.Println(component, c.Cpu, c.Memory, c.Id)
+	}
+
 	ok := false
 	for _, c := range availableComponentTypes {
-		if fmt.Sprintf("%d cores", vCPU) == c.Cpu && fmt.Sprintf("%d GB", memoryGiB) == c.Memory {
+		if fmt.Sprintf("%d", vCPU) == c.Cpu && fmt.Sprintf("%d GB", memoryGiB) == c.Memory {
 			data.ID = types.StringValue(c.Id)
 			ok = true
 			break

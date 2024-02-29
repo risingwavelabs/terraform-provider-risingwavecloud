@@ -4,29 +4,34 @@
 package provider
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccExampleDataSource(t *testing.T) {
+func TestComponentTypeDataSource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Read testing
 			{
-				Config: testAccExampleDataSourceConfig,
+				Config: testComponentTypeDataSourceConfig("compute"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.scaffolding_example.test", "id", "example-id"),
+					resource.TestCheckResourceAttr("data.risingwavecloud_component_type.test", "id", "p-2c8g"),
 				),
 			},
 		},
 	})
 }
 
-const testAccExampleDataSourceConfig = `
-data "scaffolding_example" "test" {
-  configurable_attribute = "example"
+func testComponentTypeDataSourceConfig(component string) string {
+	return fmt.Sprintf(`data "risingwavecloud_component_type" "test" {
+	platform   = "aws"
+	region     = "us-east-1"
+	vcpu       = 2
+	memory_gib = 8
+	component  = "%s"
+}`, component)
 }
-`

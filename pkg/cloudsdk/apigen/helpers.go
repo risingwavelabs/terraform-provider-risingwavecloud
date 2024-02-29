@@ -7,7 +7,7 @@ type SpecResponse interface {
 	StatusCode() int
 }
 
-func ExpectStatusCodeWithMessage(res SpecResponse, statusCode int, msg string, args ...string) error {
+func ExpectStatusCodeWithMessage(res SpecResponse, statusCode int) error {
 	if res.StatusCode() != statusCode {
 		return errors.Errorf("expected status code %d but got %d, message: ", statusCode, res.StatusCode())
 	}
@@ -16,7 +16,7 @@ func ExpectStatusCodeWithMessage(res SpecResponse, statusCode int, msg string, a
 
 func ExpectStatusCodeWithError(res SpecResponse, statusCode int, err error) error {
 	if res.StatusCode() != statusCode {
-		return errors.Wrapf(err, "expected status code %d but got %d, message: ", statusCode, res.StatusCode())
+		return errors.Wrapf(err, "expected status code %d but got %d, error: %s", statusCode, res.StatusCode(), err.Error())
 	}
 	return nil
 }

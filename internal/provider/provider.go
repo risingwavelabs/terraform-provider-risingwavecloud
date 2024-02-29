@@ -6,14 +6,18 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/fake"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/defaults"
 )
 
 const (
@@ -44,14 +48,12 @@ func (p *RisingWaveCloudProvider) Schema(ctx context.Context, req provider.Schem
 			},
 			"api_key": schema.StringAttribute{
 				MarkdownDescription: "The API key of the your RisingWave Cloud account.",
-				Optional:            false,
-				Required:            true,
+				Optional:            true,
 				Sensitive:           true,
 			},
 			"api_secret": schema.StringAttribute{
 				MarkdownDescription: "The API secret of the your RisingWave Cloud account.",
-				Optional:            false,
-				Required:            true,
+				Optional:            true,
 				Sensitive:           true,
 			},
 		},
@@ -59,8 +61,6 @@ func (p *RisingWaveCloudProvider) Schema(ctx context.Context, req provider.Schem
 }
 
 type RisingWaveCloudProviderModel struct {
-	Platform  types.String `tfsdk:"platform"`
-	Region    types.String `tfsdk:"region"`
 	APIKey    types.String `tfsdk:"api_key"`
 	APISecret types.String `tfsdk:"api_secret"`
 	Endpoint  types.String `tfsdk:"endpoint"`
@@ -76,11 +76,9 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 	}
 
 	var (
-		apiKey    = data.APIKey.ValueString()
-		apiSecret = data.APISecret.ValueString()
-		endpoint  = data.Endpoint.ValueString()
-		platform  = data.Platform.ValueString()
-		region    = data.Region.ValueString()
+		apiKey    = defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_KEY"))
+		apiSecret = defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_SECRET"))
+		endpoint  = defaults.String(data.Endpoint.ValueString(), os.Getenv("RWC_ENDPOINT"))
 	)
 	if len(endpoint) == 0 {
 		endpoint = DefaultEndpoint
@@ -95,6 +93,7 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 		resp.Diagnostics.AddError(
 			"Missing API Key",
 			"RisingWave Cloud API Key is required to setup the provider. "+
+				"This can be set either in the provider configuration or in the environment variable RWC_API_KEY. "+
 				"Please get your API Key in https://cloud.risingwave.com/",
 		)
 		return
@@ -104,57 +103,42 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 		resp.Diagnostics.AddError(
 			"Missing API Secret",
 			"RisingWave Cloud API Secret is required to setup the provider. "+
+				"This can be set either in the provider configuration or in the environment variable RWC_API_SECRET. "+
 				"Please get your API Secret in https://cloud.risingwave.com/",
 		)
 		return
 	}
 
-	if len(platform) == 0 {
-		resp.Diagnostics.AddError(
-			"Missing platform",
-			"Platform is required to setup the provider.",
-		)
-		return
-	}
+	tflog.Info(ctx, fmt.Sprintf("endpoint: %s", endpoint))
 
-	if len(region) == 0 {
-		resp.Diagnostics.AddError(
-			"Missing region",
-			"Region is required to setup the provider.",
-		)
-		return
-	}
+	var client cloudsdk.AccountServiceClientInterface
 
-	acc, err := cloudsdk.NewAccountServiceClient(ctx, endpoint, apiKey, apiSecret)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unexpected error",
-			"Failed to build cloud SDK client: "+err.Error(),
-		)
-		return
-	}
-	if err := acc.Ping(ctx); err != nil {
-		if errors.Is(err, cloudsdk.ErrInvalidCredential) {
+	if len(os.Getenv("RWC_MOCK")) == 0 {
+		acc, err := cloudsdk.NewAccountServiceClient(ctx, endpoint, apiKey, apiSecret)
+		if err != nil {
 			resp.Diagnostics.AddError(
-				"Invalid credentials",
-				"Please check your API key or API secret",
+				"Unexpected error",
+				"Failed to build cloud SDK client: "+err.Error(),
 			)
 			return
 		}
-		resp.Diagnostics.AddError(
-			"Failed to connect to the endpoint",
-			"Please check your network connection or the endpoint provided",
-		)
-		return
-	}
-
-	client, err := acc.GetRegionServiceClient(platform, region)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to initialize RisingWave Cloud client",
-			fmt.Sprintf("Failed to get region service, platform: %s, region: %s, error: %s", platform, region, err.Error()),
-		)
-		return
+		if err := acc.Ping(ctx); err != nil {
+			if errors.Is(err, cloudsdk.ErrInvalidCredential) {
+				resp.Diagnostics.AddError(
+					"Invalid credentials",
+					"Please check your API key or API secret",
+				)
+				return
+			}
+			resp.Diagnostics.AddError(
+				"Failed to connect to the endpoint",
+				"Please check your network connection or the endpoint provided",
+			)
+			return
+		}
+		client = acc
+	} else {
+		client = fake.NewFakeAccountServiceClient()
 	}
 
 	resp.DataSourceData = client

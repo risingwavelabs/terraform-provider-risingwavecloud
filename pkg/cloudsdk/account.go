@@ -51,8 +51,8 @@ func NewAccountServiceClient(ctx context.Context, endpoint, apiKey, apiSecret st
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get regions")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to get regions"); err != nil {
-		return nil, err
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+		return nil, errors.Wrapf(err, "message %s", string(res.Body))
 	}
 	if res.JSON200 == nil {
 		return nil, errors.New("unexpected error, region array is nil")
@@ -86,11 +86,17 @@ func (c *AccountServiceClient) Ping(ctx context.Context) error {
 	if res.StatusCode() == http.StatusForbidden {
 		return ErrInvalidCredential
 	}
-	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, "failed to ping endpoint")
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+		return errors.Wrapf(err, "message %s", string(res.Body))
+	}
+	return nil
 }
 
 func (c *AccountServiceClient) GetRegionServiceClient(platform, region string) (RegionServiceClientInterface, error) {
-	regionInfo := c.regions[platform][region]
+	regionInfo, ok := c.regions[platform][region]
+	if !ok {
+		return nil, errors.Errorf("region not found: %s %s", platform, region)
+	}
 	mgmtClient, err := apigen_mgmt.NewClientWithResponses(regionInfo.Url, apigen_mgmt.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("X-API-KEY", c.apiKeyPair)
 		return nil

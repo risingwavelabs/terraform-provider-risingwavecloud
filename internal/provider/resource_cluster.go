@@ -29,7 +29,7 @@ import (
 var (
 	DefaultEnableComputeFileCache = true
 	DefaultComputeFileCacheSizeGB = 20
-	DefaultEtcdVolumeSizeGB       = 20
+	DefaultEtcdVolumeSizeGB       = 10
 )
 
 // Assert provider defined types fully satisfy framework interfaces.
@@ -49,6 +49,12 @@ var resourceAttrTypes = map[string]attr.Type{
 	"replica": types.Int64Type,
 }
 
+var componentAttrTypes = map[string]attr.Type{
+	"resource": types.ObjectType{
+		AttrTypes: resourceAttrTypes,
+	},
+}
+
 type EtcdMetaStoreModel struct {
 	Resource   types.Object `tfsdk:"resource"`
 	EtcdConfig types.String `tfsdk:"etcd_config"`
@@ -65,19 +71,19 @@ type ComputeSpecModel struct {
 	Resource types.Object `tfsdk:"resource"`
 }
 
-var computeAttrTypes = resourceAttrTypes
+var computeAttrTypes = componentAttrTypes
 
 type CompactorSpecModel struct {
 	Resource types.Object `tfsdk:"resource"`
 }
 
-var compactorAttrTypes = resourceAttrTypes
+var compactorAttrTypes = componentAttrTypes
 
 type FrontendSpecModel struct {
 	Resource types.Object `tfsdk:"resource"`
 }
 
-var frontendAttrTypes = resourceAttrTypes
+var frontendAttrTypes = componentAttrTypes
 
 type MetaSpecModel struct {
 	Resource      types.Object `tfsdk:"resource"`
@@ -144,9 +150,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			},
 			"replica": schema.Int64Attribute{
 				MarkdownDescription: "The number of nodes",
-				Computed:            true,
 				Optional:            true,
 				Default:             int64default.StaticInt64(1),
+				Computed:            true,
 			},
 		},
 		MarkdownDescription: "The resource specification of the component",
@@ -164,7 +170,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			},
 			"id": schema.Int64Attribute{
 				MarkdownDescription: "The id of the cluster.",
-				Optional:            true,
+				Computed:            true,
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the cluster.",
@@ -205,8 +211,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 									"etcd_config": schema.StringAttribute{
 										MarkdownDescription: "The environment variable list of the etcd configuration",
 										Optional:            true,
-										Computed:            true,
 										Default:             stringdefault.StaticString(""),
+										Computed:            true,
 									},
 								},
 								Optional: true,
@@ -217,8 +223,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 					"risingwave_config": schema.StringAttribute{
 						MarkdownDescription: "The toml format of the RisingWave configuration of the cluster",
 						Optional:            true,
-						Computed:            true,
 						Default:             stringdefault.StaticString(""),
+						Computed:            true,
 					},
 				},
 				Required:            true,
@@ -344,22 +350,27 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 		etcdResource     ResourceModel
 	)
 
+	tflog.Trace(ctx, "parsing spec")
 	diags.Append(data.Spec.As(ctx, &spec, objectAsOptions)...)
 
+	tflog.Trace(ctx, "parsing compactorSpec")
 	diags.Append(spec.CompactorSpec.As(ctx, &compactorSpec, objectAsOptions)...)
 	diags.Append(compactorSpec.Resource.As(ctx, &compactorResource, objectAsOptions)...)
 
+	tflog.Trace(ctx, "parsing computeSpec")
 	diags.Append(spec.ComputeSpec.As(ctx, &computeSpec, objectAsOptions)...)
 	diags.Append(computeSpec.Resource.As(ctx, &computeResource, objectAsOptions)...)
 
+	tflog.Trace(ctx, "parsing frontendSpec")
 	diags.Append(spec.FrontendSpec.As(ctx, &frontendSpec, objectAsOptions)...)
 	diags.Append(frontendSpec.Resource.As(ctx, &frontendResource, objectAsOptions)...)
 
+	tflog.Trace(ctx, "parsing metaSpec")
 	diags.Append(spec.MetaSpec.As(ctx, &metaSpec, objectAsOptions)...)
-	diags.Append(metaSpec.Resource.As(ctx, &etcdResource, objectAsOptions)...)
+	diags.Append(metaSpec.Resource.As(ctx, &metaResource, objectAsOptions)...)
 
-	diags.Append(spec.MetaSpec.As(ctx, &metaSpec, objectAsOptions)...)
 	if !metaSpec.EtcdMetaStore.IsNull() {
+		tflog.Trace(ctx, "parsing etcdMetaStore")
 		useEtcdMetaStore = true
 		diags.Append(metaSpec.EtcdMetaStore.As(ctx, &etcdMetaStore, objectAsOptions)...)
 		diags.Append(etcdMetaStore.Resource.As(ctx, &etcdResource, objectAsOptions)...)
@@ -518,7 +529,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log
-	tflog.Trace(ctx, fmt.Sprintf("cluster created, id: %d", data.ID))
+	tflog.Info(ctx, fmt.Sprintf("cluster created, id: %d", data.ID))
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -577,6 +588,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
+	// get identifier
+	var (
+		platform = data.Platform.ValueString()
+		region   = data.Region.ValueString()
+		name     = data.Name.ValueString()
+	)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -585,7 +603,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	dataModelToCluster(ctx, &data, &updated)
 
-	rs, err := r.client.GetRegionServiceClient(data.Platform.ValueString(), data.Region.ValueString())
+	rs, err := r.client.GetRegionServiceClient(platform, region)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to get region service client",
@@ -594,7 +612,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	previous, err := rs.GetClusterByID(ctx, uint64(data.ID.ValueInt64()))
+	previous, err := rs.GetClusterByName(ctx, name)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to read cluster",
@@ -602,6 +620,9 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		)
 		return
 	}
+
+	// assign ID as the ID is obtained by computing.
+	data.ID = types.Int64Value(int64(previous.Id))
 
 	// immutable fields
 	if previous.Resources.EnableComputeFileCache != updated.Resources.EnableComputeFileCache {
@@ -628,7 +649,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			"Cluster name cannot be changed",
 		)
 	}
-	if reflect.DeepEqual(previous.Resources.Components.Etcd, updated.Resources.Components.Etcd) {
+	if !reflect.DeepEqual(previous.Resources.Components.Etcd, updated.Resources.Components.Etcd) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
 			"Etcd resource cannot be changed",
@@ -641,7 +662,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	// update version
 	if previous.ImageTag != updated.ImageTag {
 		tflog.Info(ctx, fmt.Sprintf("updating version from %s to %s, cluster id: %d", previous.ImageTag, updated.ImageTag, data.ID))
-		if err := rs.UpdateClusterImageAwait(ctx, updated.TenantName, updated.ImageTag); err != nil {
+		if err := rs.UpdateClusterImageAwait(ctx, name, updated.ImageTag); err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to update cluster version",
 				err.Error(),
@@ -654,7 +675,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	// update rwconfig
 	if previous.RwConfig != updated.RwConfig {
 		tflog.Info(ctx, fmt.Sprintf("updating risingwave configuration, cluster id: %d", data.ID))
-		if err := rs.UpdateRisingWaveConfigAwait(ctx, updated.Id, updated.RwConfig); err != nil {
+		if err := rs.UpdateRisingWaveConfigAwait(ctx, name, updated.RwConfig); err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to update cluster risingwave config",
 				err.Error(),
@@ -665,9 +686,8 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// update etcd config
-	if previous.EtcdConfig == updated.EtcdConfig {
-		tflog.Info(ctx, fmt.Sprintf("updating etcd configuration, cluster id: %d", data.ID))
-		if err := rs.UpdateEtcdConfigAwait(ctx, updated.Id, updated.EtcdConfig); err != nil {
+	if previous.EtcdConfig != updated.EtcdConfig {
+		if err := rs.UpdateEtcdConfigAwait(ctx, name, updated.EtcdConfig); err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to update cluster etcd config",
 				err.Error(),
