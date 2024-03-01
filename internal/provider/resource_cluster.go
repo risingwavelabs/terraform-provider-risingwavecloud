@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -74,7 +73,7 @@ type ComputeSpecModel struct {
 var computeAttrTypes = componentAttrTypes
 
 type CompactorSpecModel struct {
-	Resource types.Object `tfsdk:"resource"`
+	Resource types.Object `tfsdk:"resourc"`
 }
 
 var compactorAttrTypes = componentAttrTypes
@@ -582,6 +581,10 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+func resourceEqual(a, b *apigen_mgmt.ComponentResource) bool {
+	return a.ComponentTypeId == b.ComponentTypeId && a.Replica == b.Replica
+}
+
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data ClusterModel
 
@@ -649,7 +652,8 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			"Cluster name cannot be changed",
 		)
 	}
-	if !reflect.DeepEqual(previous.Resources.Components.Etcd, updated.Resources.Components.Etcd) {
+
+	if !resourceEqual(&previous.Resources.Components.Etcd, &updated.Resources.Components.Etcd) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
 			"Etcd resource cannot be changed",
@@ -698,10 +702,10 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// update cluster components
-	if !(reflect.DeepEqual(previous.Resources.Components.Compute, updated.Resources.Components.Compute) &&
-		reflect.DeepEqual(previous.Resources.Components.Compactor, updated.Resources.Components.Compactor) &&
-		reflect.DeepEqual(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend) &&
-		reflect.DeepEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta)) {
+	if !(resourceEqual(previous.Resources.Components.Compute, updated.Resources.Components.Compute) &&
+		resourceEqual(previous.Resources.Components.Compactor, updated.Resources.Components.Compactor) &&
+		resourceEqual(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend) &&
+		resourceEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta)) {
 
 		tflog.Info(ctx, fmt.Sprintf("updating resources, cluster id: %d", data.ID))
 		if err := rs.UpdateClusterResourcesAwait(ctx, updated.TenantName, apigen_mgmt.PostTenantResourcesRequestBody{
