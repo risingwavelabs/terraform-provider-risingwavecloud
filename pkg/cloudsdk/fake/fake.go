@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
@@ -11,21 +12,35 @@ import (
 )
 
 type GlobalState struct {
-	regionStates map[string]map[string]*RegionState
+	regionStates map[string]*RegionState
 }
 
-func (g *GlobalState) GetRegionState(platform, region string) *RegionState {
-	if _, ok := g.regionStates[platform]; !ok {
-		g.regionStates[platform] = map[string]*RegionState{}
+func (g *GlobalState) GetRegionState(region string) *RegionState {
+	if _, ok := g.regionStates[region]; !ok {
+		g.regionStates[region] = &RegionState{}
 	}
-	if _, ok := g.regionStates[platform][region]; !ok {
-		g.regionStates[platform][region] = &RegionState{}
+	return g.regionStates[region]
+}
+
+func (g *GlobalState) GetClusterByNsID(nsID uuid.UUID) (apigen_mgmt.Tenant, error) {
+	for _, r := range g.regionStates {
+		cluster, err := r.GetClusterByNsID(nsID)
+		if err == nil {
+			return cluster, nil
+		}
 	}
-	return g.regionStates[platform][region]
+	return apigen_mgmt.Tenant{}, cloudsdk.ErrClusterNotFound
+}
+
+func (g *GlobalState) DeleteClusterByNsID(nsID uuid.UUID) error {
+	for _, r := range g.regionStates {
+		r.DeleteCluster(nsID)
+	}
+	return nil
 }
 
 var state = GlobalState{
-	regionStates: map[string]map[string]*RegionState{},
+	regionStates: map[string]*RegionState{},
 }
 
 type RegionState struct {
@@ -40,11 +55,11 @@ func (r *RegionState) GetClusters() []apigen_mgmt.Tenant {
 	return r.clusters
 }
 
-func (r *RegionState) GetClusterByName(name string) (apigen_mgmt.Tenant, error) {
+func (r *RegionState) GetClusterByNsID(nsID uuid.UUID) (apigen_mgmt.Tenant, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, c := range r.clusters {
-		if c.TenantName == name {
+		if c.NsId == nsID {
 			return c, nil
 		}
 	}
@@ -57,61 +72,184 @@ func (s *RegionState) AddCluster(cluster apigen_mgmt.Tenant) {
 	s.clusters = append(s.clusters, cluster)
 }
 
-func (s *RegionState) DeleteCluster(name string) {
+func (s *RegionState) DeleteCluster(nsID uuid.UUID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, c := range s.clusters {
-		if c.TenantName == name {
+		if c.NsId == nsID {
 			s.clusters = append(s.clusters[:i], s.clusters[i+1:]...)
 			return
 		}
 	}
 }
 
-func (s *RegionState) ReplaceCluster(name string, cluster apigen_mgmt.Tenant) {
+func (s *RegionState) ReplaceCluster(nsID uuid.UUID, cluster apigen_mgmt.Tenant) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, c := range s.clusters {
-		if c.TenantName == name {
+		if c.NsId == nsID {
 			s.clusters[i] = cluster
 			return
 		}
 	}
 }
 
-func NewFakeAccountServiceClient() *FakeAccountServiceClient {
-	return &FakeAccountServiceClient{}
+func NewCloudClient() *FakeCloudClient {
+	return &FakeCloudClient{}
 }
 
-type FakeAccountServiceClient struct {
+type FakeCloudClient struct {
 }
 
-func (acc *FakeAccountServiceClient) Ping(context.Context) error {
+func (acc *FakeCloudClient) Ping(context.Context) error {
 	return nil
 }
 
-func (acc *FakeAccountServiceClient) GetRegionServiceClient(platform, region string) (cloudsdk.RegionServiceClientInterface, error) {
-	return &FakeRegionServiceClient{
-		region:   region,
-		platform: platform,
-	}, nil
-}
-
-type FakeRegionServiceClient struct {
-	region   string
-	platform string
-}
-
-func (f *FakeRegionServiceClient) GetRegionState() *RegionState {
-	return state.GetRegionState(f.platform, f.region)
-}
-
-func (f *FakeRegionServiceClient) GetClusterByName(ctx context.Context, name string) (*apigen_mgmt.Tenant, error) {
-	c, err := f.GetRegionState().GetClusterByName(name)
+func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error) {
+	cluster, err := state.GetClusterByNsID(nsID)
 	if err != nil {
 		return nil, err
 	}
-	return &c, nil
+	return &cluster, nil
+}
+
+func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string, tenantName string) (bool, error) {
+	r := state.GetRegionState(region)
+	for _, c := range r.GetClusters() {
+		if c.TenantName == tenantName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
+	r := state.GetRegionState(region)
+	cluster := apigen_mgmt.Tenant{
+		Id:         uint64(len(r.GetClusters()) + 1),
+		TenantName: req.TenantName,
+		ImageTag:   *req.ImageTag,
+		Region:     region,
+		RwConfig:   *req.RwConfig,
+		EtcdConfig: *req.EtcdConfig,
+		Resources:  reqResouceToClusterResource(req.Resources),
+	}
+	r.AddCluster(cluster)
+	return &cluster, nil
+}
+
+func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
+	nodes := []apigen_mgmt.AvailableComponentType{
+		{
+			Id:      "p-1c4g",
+			Cpu:     "1",
+			Memory:  "4 GB",
+			Maximum: 3,
+		},
+		{
+			Id:      "p-2c8g",
+			Cpu:     "2",
+			Memory:  "8 GB",
+			Maximum: 3,
+		},
+	}
+	return []apigen_mgmt.Tier{
+		{
+			Id:                              ptr.Ptr(apigen_mgmt.Standard),
+			AvailableMetaNodes:              nodes,
+			AvailableComputeNodes:           nodes,
+			AvailableCompactorNodes:         nodes,
+			AvailableEtcdNodes:              nodes,
+			AvailableFrontendNodes:          nodes,
+			AllowEnableComputeNodeFileCache: true,
+			MaximumEtcdSizeGiB:              20,
+		},
+	}, nil
+}
+
+func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
+	tiers, err := acc.GetTiers(ctx, region)
+	if err != nil {
+		return nil, err
+	}
+	var tier *apigen_mgmt.Tier
+	for _, t := range tiers {
+		if t.Id == nil {
+			continue
+		}
+		if *t.Id == targetTier {
+			tier = &t
+			break
+		}
+	}
+	if tier == nil {
+		return nil, errors.Errorf("tier %s not found", targetTier)
+	}
+	switch component {
+	case cloudsdk.ComponentCompute:
+		return tier.AvailableComputeNodes, nil
+	case cloudsdk.ComponentCompactor:
+		return tier.AvailableCompactorNodes, nil
+	case cloudsdk.ComponentFrontend:
+		return tier.AvailableFrontendNodes, nil
+	case cloudsdk.ComponentMeta:
+		return tier.AvailableMetaNodes, nil
+	case cloudsdk.ComponentEtcd:
+		return tier.AvailableEtcdNodes, nil
+	}
+	return nil, errors.Errorf("component %s not found", component)
+}
+
+func (acc *FakeCloudClient) DeleteClusterByNsIDAwait(ctx context.Context, nsID uuid.UUID) error {
+	state.DeleteClusterByNsID(nsID)
+	return nil
+}
+
+func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uuid.UUID, version string) error {
+	cluster, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return err
+	}
+	cluster.ImageTag = version
+	r := state.GetRegionState(cluster.Region)
+	r.ReplaceCluster(nsID, cluster)
+	return nil
+}
+
+func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmt.PostTenantResourcesRequestBody) error {
+	cluster, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return err
+	}
+	cluster.Resources.Components.Compactor = componentReqToComponent(req.Compactor)
+	cluster.Resources.Components.Compute = componentReqToComponent(req.Compute)
+	cluster.Resources.Components.Frontend = componentReqToComponent(req.Frontend)
+	cluster.Resources.Components.Meta = componentReqToComponent(req.Meta)
+	r := state.GetRegionState(cluster.Region)
+	r.ReplaceCluster(nsID, cluster)
+	return nil
+}
+
+func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, rwConfig string) error {
+	cluster, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return err
+	}
+	cluster.RwConfig = rwConfig
+	r := state.GetRegionState(cluster.Region)
+	r.ReplaceCluster(nsID, cluster)
+	return nil
+}
+
+func (acc *FakeCloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error {
+	cluster, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return err
+	}
+	cluster.EtcdConfig = etcdConfig
+	r := state.GetRegionState(cluster.Region)
+	r.ReplaceCluster(nsID, cluster)
+	return nil
 }
 
 func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest) apigen_mgmt.TenantResource {
@@ -145,137 +283,9 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 
 }
 
-// Create a RisingWave cluster and wait for it to be ready.
-func (f *FakeRegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
-	cluster := apigen_mgmt.Tenant{
-		Id:         uint64(len(f.GetRegionState().GetClusters()) + 1),
-		TenantName: req.TenantName,
-		ImageTag:   *req.ImageTag,
-		Region:     f.region,
-		RwConfig:   *req.RwConfig,
-		EtcdConfig: *req.EtcdConfig,
-		Resources:  reqResouceToClusterResource(req.Resources),
-	}
-	f.GetRegionState().AddCluster(cluster)
-	return &cluster, nil
-}
-
-// Delete a RisingWave cluster by its name and wait for it to be ready.
-func (f *FakeRegionServiceClient) DeleteClusterAwait(ctx context.Context, name string) error {
-	f.GetRegionState().DeleteCluster(name)
-	return nil
-}
-
-// Update the version of a RisingWave cluster by its name.
-func (f *FakeRegionServiceClient) UpdateClusterImageAwait(ctx context.Context, name string, version string) error {
-	cluster, err := f.GetClusterByName(ctx, name)
-	if err != nil {
-		return err
-	}
-	cluster.ImageTag = version
-	f.GetRegionState().ReplaceCluster(name, *cluster)
-	return nil
-}
-
 func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_mgmt.ComponentResource {
 	return &apigen_mgmt.ComponentResource{
 		ComponentTypeId: req.ComponentTypeId,
 		Replica:         req.Replica,
 	}
-}
-
-// Update the resources of a RisinGWave cluster by its name.
-func (f *FakeRegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, name string, req apigen_mgmt.PostTenantResourcesRequestBody) error {
-	cluster, err := f.GetClusterByName(ctx, name)
-	if err != nil {
-		return err
-	}
-	cluster.Resources.Components.Compactor = componentReqToComponent(req.Compactor)
-	cluster.Resources.Components.Compute = componentReqToComponent(req.Compute)
-	cluster.Resources.Components.Frontend = componentReqToComponent(req.Frontend)
-	cluster.Resources.Components.Meta = componentReqToComponent(req.Meta)
-	f.GetRegionState().ReplaceCluster(name, *cluster)
-	return nil
-}
-
-func (f *FakeRegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error) {
-	nodes := []apigen_mgmt.AvailableComponentType{
-		{
-			Id:      "p-1c4g",
-			Cpu:     "1",
-			Memory:  "4 GB",
-			Maximum: 3,
-		},
-		{
-			Id:      "p-2c8g",
-			Cpu:     "2",
-			Memory:  "8 GB",
-			Maximum: 3,
-		},
-	}
-	return []apigen_mgmt.Tier{
-		{
-			Id:                              ptr.Ptr(apigen_mgmt.Standard),
-			AvailableMetaNodes:              nodes,
-			AvailableComputeNodes:           nodes,
-			AvailableCompactorNodes:         nodes,
-			AvailableEtcdNodes:              nodes,
-			AvailableFrontendNodes:          nodes,
-			AllowEnableComputeNodeFileCache: true,
-			MaximumEtcdSizeGiB:              20,
-		},
-	}, nil
-}
-
-func (f *FakeRegionServiceClient) GetAvailableComponentTypes(ctx context.Context, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
-	tiers, err := f.GetTiers(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var tier *apigen_mgmt.Tier
-	for _, t := range tiers {
-		if t.Id == nil {
-			continue
-		}
-		if *t.Id == targetTier {
-			tier = &t
-			break
-		}
-	}
-	if tier == nil {
-		return nil, errors.Errorf("tier %s not found", targetTier)
-	}
-	switch component {
-	case cloudsdk.ComponentCompute:
-		return tier.AvailableComputeNodes, nil
-	case cloudsdk.ComponentCompactor:
-		return tier.AvailableCompactorNodes, nil
-	case cloudsdk.ComponentFrontend:
-		return tier.AvailableFrontendNodes, nil
-	case cloudsdk.ComponentMeta:
-		return tier.AvailableMetaNodes, nil
-	case cloudsdk.ComponentEtcd:
-		return tier.AvailableEtcdNodes, nil
-	}
-	return nil, errors.Errorf("component %s not found", component)
-}
-
-func (f *FakeRegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, name string, rwConfig string) error {
-	cluster, err := f.GetClusterByName(ctx, name)
-	if err != nil {
-		return err
-	}
-	cluster.RwConfig = rwConfig
-	f.GetRegionState().ReplaceCluster(cluster.TenantName, *cluster)
-	return nil
-}
-
-func (f *FakeRegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, name string, etcdConfig string) error {
-	cluster, err := f.GetClusterByName(ctx, name)
-	if err != nil {
-		return err
-	}
-	cluster.EtcdConfig = etcdConfig
-	f.GetRegionState().ReplaceCluster(cluster.TenantName, *cluster)
-	return nil
 }

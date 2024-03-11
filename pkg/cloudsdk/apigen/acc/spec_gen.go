@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -25,6 +26,19 @@ const (
 const (
 	ServiceAccount ControlClaimsClaimsType = "ServiceAccount"
 	User           ControlClaimsClaimsType = "User"
+)
+
+// Defines values for TierId.
+const (
+	Benchmark      TierId = "Benchmark"
+	Developer      TierId = "Developer"
+	DeveloperBasic TierId = "Developer-Basic"
+	DeveloperFree  TierId = "Developer-Free"
+	DeveloperPlus  TierId = "Developer-Plus"
+	Free           TierId = "Free"
+	Invited        TierId = "Invited"
+	Standard       TierId = "Standard"
+	Test           TierId = "Test"
 )
 
 // ControlClaims defines model for ControlClaims.
@@ -94,6 +108,34 @@ type Size struct {
 	Size uint64 `json:"size"`
 }
 
+// Tenant defines model for Tenant.
+type Tenant struct {
+	CreatedAt     time.Time          `json:"createdAt"`
+	DeactivatedAt *time.Time         `json:"deactivatedAt,omitempty"`
+	Id            uint64             `json:"id"`
+	NsId          openapi_types.UUID `json:"nsId"`
+	OrgId         openapi_types.UUID `json:"orgId"`
+	Region        string             `json:"region"`
+	TenantName    string             `json:"tenantName"`
+	TierId        TierId             `json:"tierId"`
+	UpdatedAt     time.Time          `json:"updatedAt"`
+	UserId        uint64             `json:"userId"`
+}
+
+// TenantProperties defines model for TenantProperties.
+type TenantProperties struct {
+	Id         uint64             `json:"id"`
+	NsId       openapi_types.UUID `json:"nsId"`
+	OrgId      openapi_types.UUID `json:"orgId"`
+	Region     string             `json:"region"`
+	TenantName string             `json:"tenantName"`
+	TierId     TierId             `json:"tierId"`
+	UserId     uint64             `json:"userId"`
+}
+
+// TierId defines model for TierId.
+type TierId string
+
 // UserControlClaims defines model for UserControlClaims.
 type UserControlClaims struct {
 	Email          string             `json:"email"`
@@ -104,6 +146,11 @@ type UserControlClaims struct {
 
 // DefaultResponse defines model for DefaultResponse.
 type DefaultResponse struct {
+	Msg string `json:"msg"`
+}
+
+// NotFoundResponse defines model for NotFoundResponse.
+type NotFoundResponse struct {
 	Msg string `json:"msg"`
 }
 
@@ -251,30 +298,18 @@ type ClientInterface interface {
 	// GetAuthPing request
 	GetAuthPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetJwks request
-	GetJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetPrivatelinks request
 	GetPrivatelinks(ctx context.Context, params *GetPrivatelinksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRegions request
 	GetRegions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantNsID request
+	GetTenantNsID(ctx context.Context, nsID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetAuthPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthPingRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetJwksRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -309,6 +344,18 @@ func (c *Client) GetRegions(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetTenantNsID(ctx context.Context, nsID openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantNsIDRequest(c.Server, nsID)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewGetAuthPingRequest generates requests for GetAuthPing
 func NewGetAuthPingRequest(server string) (*http.Request, error) {
 	var err error
@@ -319,33 +366,6 @@ func NewGetAuthPingRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/auth/ping")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetJwksRequest generates requests for GetJwks
-func NewGetJwksRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/jwks")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -455,6 +475,40 @@ func NewGetRegionsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetTenantNsIDRequest generates requests for GetTenantNsID
+func NewGetTenantNsIDRequest(server string, nsID openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsID", runtime.ParamLocationPath, nsID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenant/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -501,14 +555,14 @@ type ClientWithResponsesInterface interface {
 	// GetAuthPingWithResponse request
 	GetAuthPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthPingResponse, error)
 
-	// GetJwksWithResponse request
-	GetJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetJwksResponse, error)
-
 	// GetPrivatelinksWithResponse request
 	GetPrivatelinksWithResponse(ctx context.Context, params *GetPrivatelinksParams, reqEditors ...RequestEditorFn) (*GetPrivatelinksResponse, error)
 
 	// GetRegionsWithResponse request
 	GetRegionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRegionsResponse, error)
+
+	// GetTenantNsIDWithResponse request
+	GetTenantNsIDWithResponse(ctx context.Context, nsID openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantNsIDResponse, error)
 }
 
 type GetAuthPingResponse struct {
@@ -528,28 +582,6 @@ func (r GetAuthPingResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetAuthPingResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetJwksResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetJwksResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetJwksResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -600,6 +632,29 @@ func (r GetRegionsResponse) StatusCode() int {
 	return 0
 }
 
+type GetTenantNsIDResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Tenant
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantNsIDResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantNsIDResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GetAuthPingWithResponse request returning *GetAuthPingResponse
 func (c *ClientWithResponses) GetAuthPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthPingResponse, error) {
 	rsp, err := c.GetAuthPing(ctx, reqEditors...)
@@ -607,15 +662,6 @@ func (c *ClientWithResponses) GetAuthPingWithResponse(ctx context.Context, reqEd
 		return nil, err
 	}
 	return ParseGetAuthPingResponse(rsp)
-}
-
-// GetJwksWithResponse request returning *GetJwksResponse
-func (c *ClientWithResponses) GetJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetJwksResponse, error) {
-	rsp, err := c.GetJwks(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetJwksResponse(rsp)
 }
 
 // GetPrivatelinksWithResponse request returning *GetPrivatelinksResponse
@@ -634,6 +680,15 @@ func (c *ClientWithResponses) GetRegionsWithResponse(ctx context.Context, reqEdi
 		return nil, err
 	}
 	return ParseGetRegionsResponse(rsp)
+}
+
+// GetTenantNsIDWithResponse request returning *GetTenantNsIDResponse
+func (c *ClientWithResponses) GetTenantNsIDWithResponse(ctx context.Context, nsID openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantNsIDResponse, error) {
+	rsp, err := c.GetTenantNsID(ctx, nsID, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantNsIDResponse(rsp)
 }
 
 // ParseGetAuthPingResponse parses an HTTP response from a GetAuthPingWithResponse call
@@ -663,32 +718,6 @@ func ParseGetAuthPingResponse(rsp *http.Response) (*GetAuthPingResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetJwksResponse parses an HTTP response from a GetJwksWithResponse call
-func ParseGetJwksResponse(rsp *http.Response) (*GetJwksResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetJwksResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
 
 	}
 
@@ -741,6 +770,39 @@ func ParseGetRegionsResponse(rsp *http.Response) (*GetRegionsResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantNsIDResponse parses an HTTP response from a GetTenantNsIDWithResponse call
+func ParseGetTenantNsIDResponse(rsp *http.Response) (*GetTenantNsIDResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantNsIDResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tenant
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

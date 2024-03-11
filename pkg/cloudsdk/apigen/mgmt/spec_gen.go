@@ -64,12 +64,15 @@ const (
 
 // Defines values for TierId.
 const (
-	Benchmark TierId = "Benchmark"
-	Developer TierId = "Developer"
-	Free      TierId = "Free"
-	Invited   TierId = "Invited"
-	Standard  TierId = "Standard"
-	Test      TierId = "Test"
+	Benchmark      TierId = "Benchmark"
+	Developer      TierId = "Developer"
+	DeveloperBasic TierId = "Developer-Basic"
+	DeveloperFree  TierId = "Developer-Free"
+	DeveloperPlus  TierId = "Developer-Plus"
+	Free           TierId = "Free"
+	Invited        TierId = "Invited"
+	Standard       TierId = "Standard"
+	Test           TierId = "Test"
 )
 
 // AvailableComponentType defines model for AvailableComponentType.

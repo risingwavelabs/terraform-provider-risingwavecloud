@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/fake"
@@ -83,10 +82,12 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 	if len(endpoint) == 0 {
 		endpoint = DefaultEndpoint
 	} else { // user specifies their own endpoint
-		resp.Diagnostics.AddWarning(
-			"API endpoint is provided",
-			fmt.Sprintf("Endpoint is only for internal testing. Current endpoint: %s", endpoint),
-		)
+		if len(os.Getenv("TF_ACC")) == 0 {
+			resp.Diagnostics.AddWarning(
+				"API endpoint is provided",
+				fmt.Sprintf("Endpoint is only for internal testing. Current endpoint: %s", endpoint),
+			)
+		}
 	}
 
 	if len(apiKey) == 0 {
@@ -109,12 +110,10 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 		return
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("endpoint: %s", endpoint))
-
-	var client cloudsdk.AccountServiceClientInterface
+	var client cloudsdk.CloudClientInterface
 
 	if len(os.Getenv("RWC_MOCK")) == 0 {
-		acc, err := cloudsdk.NewAccountServiceClient(ctx, endpoint, apiKey, apiSecret)
+		acc, err := cloudsdk.NewCloudClient(ctx, endpoint, apiKey, apiSecret)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Unexpected error",
@@ -132,13 +131,13 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 			}
 			resp.Diagnostics.AddError(
 				"Failed to connect to the endpoint",
-				"Please check your network connection or the endpoint provided",
+				fmt.Sprintf("Please check your network connection or the endpoint provided, current endpoint: %s", endpoint),
 			)
 			return
 		}
 		client = acc
 	} else {
-		client = fake.NewFakeAccountServiceClient()
+		client = fake.NewCloudClient()
 	}
 
 	resp.DataSourceData = client
