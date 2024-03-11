@@ -168,10 +168,6 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	for _, c := range availableComponentTypes {
-		fmt.Println(component, c.Cpu, c.Memory, c.Id)
-	}
-
 	ok := false
 	for _, c := range availableComponentTypes {
 		if fmt.Sprintf("%d", vCPU) == c.Cpu && fmt.Sprintf("%d GB", memoryGiB) == c.Memory {

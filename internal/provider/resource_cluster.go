@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/ptr"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/wait"
 )
 
@@ -123,12 +123,11 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 }
 
 type ClusterModel struct {
-	Platform types.String `tfsdk:"platform"`
-	Region   types.String `tfsdk:"region"`
-	NsID     types.String `tfsdk:"nsid"`
-	Name     types.String `tfsdk:"name"`
-	Version  types.String `tfsdk:"version"`
-	Spec     types.Object `tfsdk:"spec"`
+	NsID    types.String `tfsdk:"nsid"`
+	Region  types.String `tfsdk:"region"`
+	Name    types.String `tfsdk:"name"`
+	Version types.String `tfsdk:"version"`
+	Spec    types.Object `tfsdk:"spec"`
 }
 
 type ResourceModel struct {
@@ -161,15 +160,12 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "A RisingWave Cluster",
 		Attributes: map[string]schema.Attribute{
-			"region": schema.StringAttribute{
-				Required: true,
-			},
-			"platform": schema.StringAttribute{
-				Required: true,
-			},
 			"nsid": schema.StringAttribute{
 				MarkdownDescription: "The namespace id of the cluster.",
 				Computed:            true,
+			},
+			"region": schema.StringAttribute{
+				Required: true,
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the cluster.",
@@ -440,9 +436,10 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	var (
-		cluster = apigen_mgmt.Tenant{}
-		region  = data.Region.String()
+		region = data.Region.String()
 	)
+
+	var cluster apigen_mgmt.Tenant
 
 	if len(region) == 0 {
 		resp.Diagnostics.AddError(
@@ -453,6 +450,9 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	dataModelToCluster(ctx, &data, &cluster)
+
+	raw, _ := json.Marshal(data)
+	fmt.Println(string(raw))
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -480,10 +480,10 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	// If applicable, this is a great opportunity to initialize any necessary
 	// provider client data and make a call using it.
 	var tenantReq = apigen_mgmt.TenantRequestRequestBody{}
-	tenantReq.TenantName = data.Name.ValueString()
-	tenantReq.ImageTag = ptr.Ptr(data.Version.ValueString())
+	tenantReq.TenantName = cluster.TenantName
+	tenantReq.ImageTag = &cluster.ImageTag
 	tenantReq.Tier = &DefaultTier
-	tenantReq.RwConfig = ptr.Ptr(cluster.RwConfig)
+	tenantReq.RwConfig = &cluster.RwConfig
 	tenantReq.EtcdConfig = &cluster.EtcdConfig
 	tenantReq.Resources = &apigen_mgmt.TenantResourceRequest{
 		Components: apigen_mgmt.TenantResourceRequestComponents{
@@ -697,7 +697,6 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// update etcd config
-	fmt.Println(previous.EtcdConfig, updated.EtcdConfig, "etcd config")
 	if previous.EtcdConfig != updated.EtcdConfig {
 		tflog.Info(ctx, fmt.Sprintf("updating etcd configuration, cluster: %s", previous.TenantName))
 		if err := r.client.UpdateEtcdConfigByNsIDAwait(ctx, nsID, updated.EtcdConfig); err != nil {

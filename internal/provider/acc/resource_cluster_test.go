@@ -55,7 +55,6 @@ func TestClusterResource(t *testing.T) {
 func testClusterResourceConfig(version string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
-	platform = "aws"
 	region   = "us-east-1"
 	name     = "tf-test"
 	version  = "%s"
