@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/fake"
 )
 
 func TestClusterResource(t *testing.T) {
@@ -19,7 +20,7 @@ func TestClusterResource(t *testing.T) {
 			{
 				Config: testClusterResourceConfig("v1.5.0"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
+					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "nsid"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 				),
 			},
@@ -27,20 +28,22 @@ func TestClusterResource(t *testing.T) {
 			{
 				Config:            testClusterResourceConfig("v1.5.0"),
 				ResourceName:      "risingwavecloud_cluster.test",
-				ImportStateId:     "aws.us-east-1.tf-test",
+				ImportStateId:     fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", "tf-test").String(),
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
 			// Update and Read: version
 			{
-				Config: testClusterResourceConfig("v1.6.0"),
+				Config:        testClusterResourceConfig("v1.6.0"),
+				ImportStateId: fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", "tf-test").String(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.6.0"),
 				),
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
 			{
-				Config: testClusterResourceUpdateConfig("v1.6.0"),
+				Config:        testClusterResourceUpdateConfig("v1.6.0"),
+				ImportStateId: fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", "tf-test").String(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.resource.replica", "2"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.risingwave_config", "[server]\nheartbeat_interval_ms = 997\n"),

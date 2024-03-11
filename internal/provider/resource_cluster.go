@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -379,15 +378,18 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 		return diags
 	}
 
-	nsId, err := uuid.Parse(data.NsID.String())
-	if err != nil {
-		diags.AddError(
-			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.String()),
-		)
-		return diags
+	if !(data.NsID.IsUnknown() || data.NsID.IsNull()) {
+		nsId, err := uuid.Parse(data.NsID.ValueString())
+		if err != nil {
+			diags.AddError(
+				"Failed to parse nsid",
+				fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
+			)
+			return diags
+		}
+		cluster.NsId = nsId
 	}
-	cluster.NsId = nsId
+
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
 	cluster.Tier = apigen_mgmt.TierId(DefaultTier)
@@ -428,15 +430,13 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterModel
 
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	var (
-		region = data.Region.String()
+		region = data.Region.ValueString()
 	)
 
 	var cluster apigen_mgmt.Tenant
@@ -449,10 +449,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	dataModelToCluster(ctx, &data, &cluster)
-
-	raw, _ := json.Marshal(data)
-	fmt.Println(string(raw))
+	resp.Diagnostics.Append(dataModelToCluster(ctx, &data, &cluster)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -550,11 +547,11 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// minimal identifiers for import state
-	nsID, err := uuid.Parse(data.NsID.String())
+	nsID, err := uuid.Parse(data.NsID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.String()),
+			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
 		)
 		return
 	}
@@ -591,11 +588,11 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
 	// minimal identifiers for import state
-	nsID, err := uuid.Parse(data.NsID.String())
+	nsID, err := uuid.Parse(data.NsID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.String()),
+			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
 		)
 		return
 	}
@@ -606,7 +603,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	var updated = apigen_mgmt.Tenant{}
 
-	dataModelToCluster(ctx, &data, &updated)
+	resp.Diagnostics.Append(dataModelToCluster(ctx, &data, &updated)...)
 
 	previous, err := r.client.GetClusterByNsID(ctx, nsID)
 	if err != nil {
@@ -772,11 +769,11 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 
 	// minimal identifiers for import state
-	nsID, err := uuid.Parse(data.NsID.String())
+	nsID, err := uuid.Parse(data.NsID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.String()),
+			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
 		)
 		return
 	}
@@ -805,7 +802,6 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
 			fmt.Sprintf("Failed to parse id: %s", nsID),
 		)
 		return
-
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("nsid"), nsID.String())...)
 }
