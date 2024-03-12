@@ -172,7 +172,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			},
 			"version": schema.StringAttribute{
 				MarkdownDescription: "The RisingWave cluster version." +
-					"It is used to fetch the image from the official image registery of RisingWave Labs." +
+					"It is used to fetch the image from the official image registry of RisingWave Labs." +
 					"The newest stable version will be used if this field is not present.",
 				Optional: true,
 			},
@@ -393,7 +393,7 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
-	cluster.Tier = apigen_mgmt.TierId(DefaultTier)
+	cluster.Tier = DefaultTier
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()

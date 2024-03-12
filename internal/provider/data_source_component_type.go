@@ -159,7 +159,7 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	availableComponentTypes, err := d.client.GetAvailableComponentTypes(ctx, region, apigen_mgmt.TierId(tier), component)
+	availableComponentTypes, err := d.client.GetAvailableComponentTypes(ctx, region, tier, component)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to get available component types",
