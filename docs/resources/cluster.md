@@ -23,7 +23,7 @@ A RisingWave Cluster
 
 ### Optional
 
-- `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registery of RisingWave Labs.The newest stable version will be used if this field is not present.
+- `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registry of RisingWave Labs.The newest stable version will be used if this field is not present.
 
 ### Read-Only
 
