@@ -1,7 +1,6 @@
 resource "risingwavecloud_cluster" "example" {
   name     = "dev"
   version  = "v1.3.0"
-  platform = "aws"
   region   = "us-east-2"
   resourcev1 = {
     compute = {
