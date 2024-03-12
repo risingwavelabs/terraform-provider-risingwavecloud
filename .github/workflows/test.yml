@@ -96,5 +96,8 @@ jobs:
       - env:
           TF_ACC: "1"
           TF_LOG: "INFO"
+          RWC_ENDPOINT: ${{ secrets.RWC_ENDPOINT }}
+          RWC_API_KEY: ${{ secrets.RWC_API_KEY }}
+          RWC_API_SECRET: ${{ secrets.RWC_API_SECRET }}
         run: go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acc
         timeout-minutes: 20
