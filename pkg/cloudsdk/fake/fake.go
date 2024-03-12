@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -12,6 +14,24 @@ import (
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/ptr"
 )
+
+func debugFuncCaller() {
+	for _, stack := range []int{1, 2} {
+		stmt := "faker stack trace: "
+		pc, file, line, ok := runtime.Caller(stack)
+		if ok {
+			if fn := runtime.FuncForPC(pc); fn != nil {
+				tmp := strings.Split(fn.Name(), "/")
+				stmt += tmp[len(tmp)-1]
+			} else {
+				stmt += "<unknown function>"
+			}
+			stmt += fmt.Sprintf(", %s:%d", file, line)
+		}
+		log.Default().Println(stmt)
+	}
+	log.Default().Println()
+}
 
 type GlobalState struct {
 	regionStates map[string]*RegionState
@@ -48,14 +68,13 @@ func (g *GlobalState) GetNsIDByRegionAndName(region, name string) uuid.UUID {
 			return c.NsId
 		}
 	}
-	fmt.Println(g)
+	fmt.Println(r.clusters)
 	return uuid.UUID{}
 }
 
 var state GlobalState
 
 func init() {
-	fmt.Println("init faker")
 	state = GlobalState{
 		regionStates: map[string]*RegionState{},
 	}
@@ -128,7 +147,8 @@ func (acc *FakeCloudClient) Ping(context.Context) error {
 }
 
 func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error) {
-	log.Default().Printf("get cluster by ID: %s", nsID.String())
+	debugFuncCaller()
+
 	cluster, err := state.GetClusterByNsID(nsID)
 	if err != nil {
 		return nil, err
@@ -137,7 +157,8 @@ func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID
 }
 
 func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string, tenantName string) (bool, error) {
-	log.Default().Println("is tenant name exist", region, tenantName)
+	debugFuncCaller()
+
 	r := state.GetRegionState(region)
 	for _, c := range r.GetClusters() {
 		if c.TenantName == tenantName {
@@ -148,7 +169,8 @@ func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string
 }
 
 func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
-	log.Default().Println("create cluster await")
+	debugFuncCaller()
+
 	r := state.GetRegionState(region)
 	cluster := apigen_mgmt.Tenant{
 		Id:         uint64(len(r.GetClusters()) + 1),
@@ -165,7 +187,8 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 }
 
 func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
-	log.Default().Println("get tiers")
+	debugFuncCaller()
+
 	nodes := []apigen_mgmt.AvailableComponentType{
 		{
 			Id:      "p-1c4g",
@@ -195,7 +218,8 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 }
 
 func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
-	log.Default().Printf("get available component types")
+	debugFuncCaller()
+
 	tiers, err := acc.GetTiers(ctx, region)
 	if err != nil {
 		return nil, err
@@ -229,13 +253,15 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 }
 
 func (acc *FakeCloudClient) DeleteClusterByNsIDAwait(ctx context.Context, nsID uuid.UUID) error {
-	log.Default().Printf("delete cluster by ID: %s", nsID.String())
+	debugFuncCaller()
+
 	state.DeleteClusterByNsID(nsID)
 	return nil
 }
 
 func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uuid.UUID, version string) error {
-	log.Default().Printf("update cluster image by ID: %s", nsID.String())
+	debugFuncCaller()
+
 	cluster, err := state.GetClusterByNsID(nsID)
 	if err != nil {
 		return err
@@ -247,7 +273,8 @@ func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, n
 }
 
 func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmt.PostTenantResourcesRequestBody) error {
-	log.Default().Printf("update cluster resources by ID: %s", nsID.String())
+	debugFuncCaller()
+
 	cluster, err := state.GetClusterByNsID(nsID)
 	if err != nil {
 		return err
@@ -262,7 +289,8 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 }
 
 func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, rwConfig string) error {
-	log.Default().Printf("update risingwave config by ID: %s", nsID.String())
+	debugFuncCaller()
+
 	cluster, err := state.GetClusterByNsID(nsID)
 	if err != nil {
 		return err
@@ -274,7 +302,8 @@ func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Contex
 }
 
 func (acc *FakeCloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error {
-	log.Default().Printf("update etcd config by ID: %s", nsID.String())
+	debugFuncCaller()
+
 	cluster, err := state.GetClusterByNsID(nsID)
 	if err != nil {
 		return err

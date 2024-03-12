@@ -122,7 +122,7 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 }
 
 type ClusterModel struct {
-	NsID    types.String `tfsdk:"nsid"`
+	ID      types.String `tfsdk:"id"`
 	Region  types.String `tfsdk:"region"`
 	Name    types.String `tfsdk:"name"`
 	Version types.String `tfsdk:"version"`
@@ -159,8 +159,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "A RisingWave Cluster",
 		Attributes: map[string]schema.Attribute{
-			"nsid": schema.StringAttribute{
-				MarkdownDescription: "The namespace id of the cluster.",
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The NsID (namespace id) of the cluster.",
 				Computed:            true,
 			},
 			"region": schema.StringAttribute{
@@ -251,7 +251,8 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 	data.Name = types.StringValue(cluster.TenantName)
 	data.Version = types.StringValue(cluster.ImageTag)
-	data.NsID = types.StringValue(cluster.NsId.String())
+	data.ID = types.StringValue(cluster.NsId.String())
+	data.Region = types.StringValue(cluster.Region)
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
 		map[string]attr.Value{
@@ -378,12 +379,12 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 		return diags
 	}
 
-	if !(data.NsID.IsUnknown() || data.NsID.IsNull()) {
-		nsId, err := uuid.Parse(data.NsID.ValueString())
+	if !data.ID.IsUnknown() && !data.ID.IsNull() {
+		nsId, err := uuid.Parse(data.ID.ValueString())
 		if err != nil {
 			diags.AddError(
-				"Failed to parse nsid",
-				fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
+				"Failed to parse nsid when mapping data to cluster model",
+				fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
 			)
 			return diags
 		}
@@ -547,11 +548,11 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// minimal identifiers for import state
-	nsID, err := uuid.Parse(data.NsID.ValueString())
+	nsID, err := uuid.Parse(data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
+			"Failed to parse nsid when reading cluster resource",
+			fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
 		)
 		return
 	}
@@ -582,22 +583,29 @@ func resourceEqual(a, b *apigen_mgmt.ComponentResource) bool {
 }
 
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data ClusterModel
+	var (
+		data  ClusterModel
+		state ClusterModel
+	)
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
-	// minimal identifiers for import state
-	nsID, err := uuid.Parse(data.NsID.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
-		)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// minimal identifiers for import state
+	nsID, err := uuid.Parse(state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to parse nsid when updating cluster resource",
+			fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
+		)
 		return
 	}
 
@@ -615,7 +623,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// assign ID as the ID is obtained by computing.
-	data.NsID = types.StringValue(previous.NsId.String())
+	data.ID = types.StringValue(previous.NsId.String())
 
 	// immutable fields
 	if previous.Resources.EnableComputeFileCache != updated.Resources.EnableComputeFileCache {
@@ -640,6 +648,12 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
 			"Cluster name cannot be changed",
+		)
+	}
+	if previous.Region != updated.Region {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			"Region name cannot be changed",
 		)
 	}
 
@@ -769,11 +783,11 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 
 	// minimal identifiers for import state
-	nsID, err := uuid.Parse(data.NsID.ValueString())
+	nsID, err := uuid.Parse(data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to parse nsid",
-			fmt.Sprintf("Cannot parse cluster NsID %s", data.NsID.ValueString()),
+			"Failed to parse nsid when deleting cluster resource",
+			fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
 		)
 		return
 	}
@@ -799,9 +813,9 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unexpected Import Identifier",
-			fmt.Sprintf("Failed to parse id: %s", nsID),
+			fmt.Sprintf("Failed to parse id: %s", req.ID),
 		)
 		return
 	}
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("nsid"), nsID.String())...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), nsID.String())...)
 }
