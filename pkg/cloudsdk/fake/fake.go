@@ -229,7 +229,7 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 			continue
 		}
 		if *t.Id == targetTier {
-			tier = &t
+			tier = ptr.Ptr(t)
 			break
 		}
 	}
@@ -254,8 +254,7 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 func (acc *FakeCloudClient) DeleteClusterByNsIDAwait(ctx context.Context, nsID uuid.UUID) error {
 	debugFuncCaller()
 
-	state.DeleteClusterByNsID(nsID)
-	return nil
+	return state.DeleteClusterByNsID(nsID)
 }
 
 func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uuid.UUID, version string) error {
