@@ -18,14 +18,16 @@ A RisingWave Cluster
 ### Required
 
 - `name` (String) The name of the cluster.
-- `platform` (String)
 - `region` (String)
 - `spec` (Attributes) The resource specification of the cluster (see [below for nested schema](#nestedatt--spec))
 
 ### Optional
 
-- `id` (Number) The id of the cluster.
 - `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registery of RisingWave Labs.The newest stable version will be used if this field is not present.
+
+### Read-Only
+
+- `id` (String) The NsID (namespace id) of the cluster.
 
 <a id="nestedatt--spec"></a>
 ### Nested Schema for `spec`

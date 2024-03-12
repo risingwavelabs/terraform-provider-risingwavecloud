@@ -18,8 +18,11 @@ The type of the component of the RisingWave cluster
 ### Required
 
 - `component` (String) The component in a RisingWave cluster. Valid values are: `compute`, `compactor`, `frontend`, `meta`, `etcd`
-- `memory_gib` (String) Memory size in GiB
+- `memory_gib` (Number) Memory size in GiB
 - `platform` (String)
 - `region` (String)
-- `tier` (String) This field is only used in tests. The tier of the component type, the default value is `Standard`
-- `vcpu` (String) The number of the virtual CPU cores
+- `vcpu` (Number) The number of the virtual CPU cores
+
+### Read-Only
+
+- `id` (String) The id of the RisingWave cluster. Valid values are

@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/ptr"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/wait"
 )
 
@@ -40,7 +39,7 @@ func NewClusterResource() resource.Resource {
 }
 
 type ClusterResource struct {
-	client cloudsdk.AccountServiceClientInterface
+	client cloudsdk.CloudClientInterface
 }
 
 var resourceAttrTypes = map[string]attr.Type{
@@ -73,7 +72,7 @@ type ComputeSpecModel struct {
 var computeAttrTypes = componentAttrTypes
 
 type CompactorSpecModel struct {
-	Resource types.Object `tfsdk:"resourc"`
+	Resource types.Object `tfsdk:"resource"`
 }
 
 var compactorAttrTypes = componentAttrTypes
@@ -123,12 +122,11 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 }
 
 type ClusterModel struct {
-	Platform types.String `tfsdk:"platform"`
-	Region   types.String `tfsdk:"region"`
-	ID       types.Int64  `tfsdk:"id"`
-	Name     types.String `tfsdk:"name"`
-	Version  types.String `tfsdk:"version"`
-	Spec     types.Object `tfsdk:"spec"`
+	ID      types.String `tfsdk:"id"`
+	Region  types.String `tfsdk:"region"`
+	Name    types.String `tfsdk:"name"`
+	Version types.String `tfsdk:"version"`
+	Spec    types.Object `tfsdk:"spec"`
 }
 
 type ResourceModel struct {
@@ -161,15 +159,12 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "A RisingWave Cluster",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The NsID (namespace id) of the cluster.",
+				Computed:            true,
+			},
 			"region": schema.StringAttribute{
 				Required: true,
-			},
-			"platform": schema.StringAttribute{
-				Required: true,
-			},
-			"id": schema.Int64Attribute{
-				MarkdownDescription: "The id of the cluster.",
-				Computed:            true,
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the cluster.",
@@ -239,7 +234,7 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 		return
 	}
 
-	client, ok := req.ProviderData.(cloudsdk.AccountServiceClientInterface)
+	client, ok := req.ProviderData.(cloudsdk.CloudClientInterface)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -256,7 +251,8 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 	data.Name = types.StringValue(cluster.TenantName)
 	data.Version = types.StringValue(cluster.ImageTag)
-	data.ID = types.Int64Value(int64(cluster.Id))
+	data.ID = types.StringValue(cluster.NsId.String())
+	data.Region = types.StringValue(cluster.Region)
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
 		map[string]attr.Value{
@@ -317,7 +313,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 									"replica": types.Int64Value(int64(cluster.Resources.Components.Etcd.Replica)),
 								},
 							),
-							"etcd_config": types.StringValue(cluster.RwConfig),
+							"etcd_config": types.StringValue(cluster.EtcdConfig),
 						},
 					),
 				},
@@ -383,11 +379,23 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 		return diags
 	}
 
-	cluster.Id = uint64(data.ID.ValueInt64())
+	if !data.ID.IsUnknown() && !data.ID.IsNull() {
+		nsId, err := uuid.Parse(data.ID.ValueString())
+		if err != nil {
+			diags.AddError(
+				"Failed to parse nsid when mapping data to cluster model",
+				fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
+			)
+			return diags
+		}
+		cluster.NsId = nsId
+	}
+
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
 	cluster.Tier = apigen_mgmt.TierId(DefaultTier)
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
+	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
 	cluster.Resources = apigen_mgmt.TenantResource{
 		Components: apigen_mgmt.TenantResourceComponents{
@@ -423,47 +431,42 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterModel
 
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var cluster = apigen_mgmt.Tenant{}
+	var (
+		region = data.Region.ValueString()
+	)
 
-	dataModelToCluster(ctx, &data, &cluster)
+	var cluster apigen_mgmt.Tenant
 
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	rs, err := r.client.GetRegionServiceClient(data.Platform.ValueString(), data.Region.ValueString())
-	if err != nil {
+	if len(region) == 0 {
 		resp.Diagnostics.AddError(
-			"Failed to get region service client",
-			err.Error(),
+			"Invalid region",
+			"Region is required",
 		)
 		return
 	}
 
-	_, err = rs.GetClusterByName(ctx, cluster.TenantName)
+	resp.Diagnostics.Append(dataModelToCluster(ctx, &data, &cluster)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	exist, err := r.client.IsTenantNameExist(ctx, region, cluster.TenantName)
 	if err != nil {
-		if err != cloudsdk.ErrClusterNotFound {
-			resp.Diagnostics.AddError(
-				"Unable to check cluster existence",
-				err.Error(),
-			)
-			return
-		}
-	} else {
-		// Return errors that signify there is an existing resource.
-		// Terraform practitioners expect to be notified if an existing
-		// resource needs to be imported into Terraform rather than
-		// created. This prevents situations where multiple Terraform
-		// configurations unexpectedly manage the same underlying resource.
 		resp.Diagnostics.AddError(
-			"Cluster already exists",
+			"Unable to check cluster existence",
+			err.Error(),
+		)
+		return
+	}
+	if exist {
+		resp.Diagnostics.AddError(
+			"Cluster name already exists",
 			fmt.Sprintf(
 				"Cluster with name %s already exists, please use `terraform import` command to manage existing clusters",
 				cluster.TenantName,
@@ -475,10 +478,10 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	// If applicable, this is a great opportunity to initialize any necessary
 	// provider client data and make a call using it.
 	var tenantReq = apigen_mgmt.TenantRequestRequestBody{}
-	tenantReq.TenantName = data.Name.ValueString()
-	tenantReq.ImageTag = ptr.Ptr(data.Version.ValueString())
+	tenantReq.TenantName = cluster.TenantName
+	tenantReq.ImageTag = &cluster.ImageTag
 	tenantReq.Tier = &DefaultTier
-	tenantReq.RwConfig = ptr.Ptr(cluster.RwConfig)
+	tenantReq.RwConfig = &cluster.RwConfig
 	tenantReq.EtcdConfig = &cluster.EtcdConfig
 	tenantReq.Resources = &apigen_mgmt.TenantResourceRequest{
 		Components: apigen_mgmt.TenantResourceRequestComponents{
@@ -508,7 +511,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		EtcdVolumeSizeGiB:       cluster.Resources.EtcdVolumeSizeGiB,
 	}
 
-	createdCluster, err := rs.CreateClusterAwait(ctx, tenantReq)
+	createdCluster, err := r.client.CreateClusterAwait(ctx, region, tenantReq)
 	if err != nil {
 		if errors.Is(err, wait.ErrWaitTimeout) {
 			resp.Diagnostics.AddError(
@@ -528,7 +531,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log
-	tflog.Info(ctx, fmt.Sprintf("cluster created, id: %d", data.ID))
+	tflog.Info(ctx, fmt.Sprintf("cluster created, UUID: %s", createdCluster.NsId))
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -545,22 +548,16 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// minimal identifiers for import state
-	var (
-		platform = data.Platform.ValueString()
-		region   = data.Region.ValueString()
-		name     = data.Name.ValueString()
-	)
-
-	rs, err := r.client.GetRegionServiceClient(platform, region)
+	nsID, err := uuid.Parse(data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to get region service client",
-			err.Error(),
+			"Failed to parse nsid when reading cluster resource",
+			fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
 		)
 		return
 	}
 
-	cluster, err := rs.GetClusterByName(ctx, name)
+	cluster, err := r.client.GetClusterByNsID(ctx, nsID)
 	if err != nil {
 		// Ignore returning errors that signify the resource is no longer existent,
 		// call the response state RemoveResource() method, and return early.
@@ -586,36 +583,37 @@ func resourceEqual(a, b *apigen_mgmt.ComponentResource) bool {
 }
 
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data ClusterModel
+	var (
+		data  ClusterModel
+		state ClusterModel
+	)
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
-	// get identifier
-	var (
-		platform = data.Platform.ValueString()
-		region   = data.Region.ValueString()
-		name     = data.Name.ValueString()
-	)
-
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// minimal identifiers for import state
+	nsID, err := uuid.Parse(state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to parse nsid when updating cluster resource",
+			fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
+		)
 		return
 	}
 
 	var updated = apigen_mgmt.Tenant{}
 
-	dataModelToCluster(ctx, &data, &updated)
+	resp.Diagnostics.Append(dataModelToCluster(ctx, &data, &updated)...)
 
-	rs, err := r.client.GetRegionServiceClient(platform, region)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to get region service client",
-			err.Error(),
-		)
-		return
-	}
-
-	previous, err := rs.GetClusterByName(ctx, name)
+	previous, err := r.client.GetClusterByNsID(ctx, nsID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to read cluster",
@@ -625,7 +623,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// assign ID as the ID is obtained by computing.
-	data.ID = types.Int64Value(int64(previous.Id))
+	data.ID = types.StringValue(previous.NsId.String())
 
 	// immutable fields
 	if previous.Resources.EnableComputeFileCache != updated.Resources.EnableComputeFileCache {
@@ -652,6 +650,12 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			"Cluster name cannot be changed",
 		)
 	}
+	if previous.Region != updated.Region {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			"Region name cannot be changed",
+		)
+	}
 
 	if !resourceEqual(&previous.Resources.Components.Etcd, &updated.Resources.Components.Etcd) {
 		resp.Diagnostics.AddError(
@@ -665,8 +669,15 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// update version
 	if previous.ImageTag != updated.ImageTag {
-		tflog.Info(ctx, fmt.Sprintf("updating version from %s to %s, cluster id: %d", previous.ImageTag, updated.ImageTag, data.ID))
-		if err := rs.UpdateClusterImageAwait(ctx, name, updated.ImageTag); err != nil {
+		tflog.Info(ctx, fmt.Sprintf("updating version from %s to %s, cluster: %s", previous.ImageTag, updated.ImageTag, previous.TenantName))
+		if err := r.client.UpdateClusterImageByNsIDAwait(ctx, nsID, updated.ImageTag); err != nil {
+			if errors.Is(err, wait.ErrWaitTimeout) {
+				resp.Diagnostics.AddError(
+					"Timeout while waiting",
+					fmt.Sprintf("The cluster did not reach the desired state before the timeout: %s", err.Error()),
+				)
+				return
+			}
 			resp.Diagnostics.AddError(
 				"Unable to update cluster version",
 				err.Error(),
@@ -678,8 +689,15 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// update rwconfig
 	if previous.RwConfig != updated.RwConfig {
-		tflog.Info(ctx, fmt.Sprintf("updating risingwave configuration, cluster id: %d", data.ID))
-		if err := rs.UpdateRisingWaveConfigAwait(ctx, name, updated.RwConfig); err != nil {
+		tflog.Info(ctx, fmt.Sprintf("updating risingwave configuration, cluster: %s", previous.TenantName))
+		if err := r.client.UpdateRisingWaveConfigByNsIDAwait(ctx, nsID, updated.RwConfig); err != nil {
+			if errors.Is(err, wait.ErrWaitTimeout) {
+				resp.Diagnostics.AddError(
+					"Timeout while waiting",
+					fmt.Sprintf("The cluster did not reach the desired state before the timeout: %s", err.Error()),
+				)
+				return
+			}
 			resp.Diagnostics.AddError(
 				"Unable to update cluster risingwave config",
 				err.Error(),
@@ -691,7 +709,15 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// update etcd config
 	if previous.EtcdConfig != updated.EtcdConfig {
-		if err := rs.UpdateEtcdConfigAwait(ctx, name, updated.EtcdConfig); err != nil {
+		tflog.Info(ctx, fmt.Sprintf("updating etcd configuration, cluster: %s", previous.TenantName))
+		if err := r.client.UpdateEtcdConfigByNsIDAwait(ctx, nsID, updated.EtcdConfig); err != nil {
+			if errors.Is(err, wait.ErrWaitTimeout) {
+				resp.Diagnostics.AddError(
+					"Timeout while waiting",
+					fmt.Sprintf("The cluster did not reach the desired state before the timeout: %s", err.Error()),
+				)
+				return
+			}
 			resp.Diagnostics.AddError(
 				"Unable to update cluster etcd config",
 				err.Error(),
@@ -707,8 +733,8 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		resourceEqual(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend) &&
 		resourceEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta)) {
 
-		tflog.Info(ctx, fmt.Sprintf("updating resources, cluster id: %d", data.ID))
-		if err := rs.UpdateClusterResourcesAwait(ctx, updated.TenantName, apigen_mgmt.PostTenantResourcesRequestBody{
+		tflog.Info(ctx, fmt.Sprintf("updating resources, cluster: %s", previous.TenantName))
+		if err := r.client.UpdateClusterResourcesByNsIDAwait(ctx, nsID, apigen_mgmt.PostTenantResourcesRequestBody{
 			Compute: &apigen_mgmt.ComponentResourceRequest{
 				ComponentTypeId: updated.Resources.Components.Compute.ComponentTypeId,
 				Replica:         updated.Resources.Components.Compute.Replica,
@@ -726,6 +752,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 				Replica:         updated.Resources.Components.Meta.Replica,
 			},
 		}); err != nil {
+			if errors.Is(err, wait.ErrWaitTimeout) {
+				resp.Diagnostics.AddError(
+					"Timeout while waiting",
+					fmt.Sprintf("The cluster did not reach the desired state before the timeout: %s", err.Error()),
+				)
+				return
+			}
 			resp.Diagnostics.AddError(
 				"Unable to update cluster resources",
 				err.Error(),
@@ -749,16 +782,17 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	rs, err := r.client.GetRegionServiceClient(data.Platform.ValueString(), data.Region.ValueString())
+	// minimal identifiers for import state
+	nsID, err := uuid.Parse(data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to get region service client",
-			err.Error(),
+			"Failed to parse nsid when deleting cluster resource",
+			fmt.Sprintf("Cannot parse cluster NsID: %s", data.ID.String()),
 		)
 		return
 	}
 
-	if err := rs.DeleteClusterAwait(ctx, data.Name.ValueString()); err != nil {
+	if err := r.client.DeleteClusterByNsIDAwait(ctx, nsID); err != nil {
 		if errors.Is(err, wait.ErrWaitTimeout) {
 			resp.Diagnostics.AddError(
 				"Timeout while waiting",
@@ -775,18 +809,13 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 }
 
 func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	idParts := strings.Split(req.ID, ".")
-	if len(idParts) != 3 || idParts[0] == "" || idParts[1] == "" || idParts[2] == "" {
+	nsID, err := uuid.Parse(req.ID)
+	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unexpected Import Identifier",
-			fmt.Sprintf(
-				"Expected import identifier with format: <platform>.<region>.<cluster_name>, for example: aws.us-east-2.mycluster. Got: %q",
-				req.ID,
-			),
+			fmt.Sprintf("Failed to parse id: %s", req.ID),
 		)
 		return
 	}
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("platform"), idParts[0])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("region"), idParts[1])...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), idParts[2])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), nsID.String())...)
 }

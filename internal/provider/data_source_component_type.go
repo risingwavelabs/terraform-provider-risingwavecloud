@@ -46,7 +46,7 @@ func NewComponentTypeDataSource() datasource.DataSource {
 }
 
 type ComponentTypeDataSource struct {
-	client cloudsdk.AccountServiceClientInterface
+	client cloudsdk.CloudClientInterface
 }
 
 type ComponentTypeDataSourceModel struct {
@@ -100,7 +100,7 @@ func (d *ComponentTypeDataSource) Configure(ctx context.Context, req datasource.
 		return
 	}
 
-	client, ok := req.ProviderData.(cloudsdk.AccountServiceClientInterface)
+	client, ok := req.ProviderData.(cloudsdk.CloudClientInterface)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -159,26 +159,13 @@ func (d *ComponentTypeDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	rs, err := d.client.GetRegionServiceClient(platform, region)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to get region service client",
-			err.Error(),
-		)
-		return
-	}
-
-	availableComponentTypes, err := rs.GetAvailableComponentTypes(ctx, apigen_mgmt.TierId(tier), component)
+	availableComponentTypes, err := d.client.GetAvailableComponentTypes(ctx, region, apigen_mgmt.TierId(tier), component)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to get available component types",
 			err.Error(),
 		)
 		return
-	}
-
-	for _, c := range availableComponentTypes {
-		fmt.Println(component, c.Cpu, c.Memory, c.Id)
 	}
 
 	ok := false
