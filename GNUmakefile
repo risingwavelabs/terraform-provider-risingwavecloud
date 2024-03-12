@@ -26,10 +26,15 @@ gen-spec: install-oapi-codegen prune-spec
 	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/mgmt/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v1/mgmt.yaml
 	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/acc/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v1/acc.yaml
 
+codegen: gen-mock gen-spec
+
 # Run acceptance tests
 .PHONY: testacc
 testacc:
-	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
+	TF_ACC=1 TF_LOG=INFO go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acc
+
+mockacc:
+	RWC_MOCK=1 TF_ACC=1 TF_LOG=INFO go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acc
 
 ut:
 	COLOR=ALWAYS go test -race -covermode=atomic -coverprofile=coverage.out -tags ut ./...

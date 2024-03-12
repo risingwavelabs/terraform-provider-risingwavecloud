@@ -51,7 +51,7 @@ func TestClusterResource(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.resource.replica", "2"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.risingwave_config", "[server]\nheartbeat_interval_ms = 997\n"),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.meta.etcd_meta_store.etcd_config", "ETCD_MAX_REQUEST_BYTES: '100000000'\n"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.meta.etcd_meta_store.etcd_config", "ETCD_MAX_REQUEST_BYTES: \"100000000\"\n"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -138,7 +138,7 @@ resource "risingwavecloud_cluster" "test" {
 					replica = 1
 				}
 				etcd_config = <<-EOT
-				ETCD_MAX_REQUEST_BYTES: '100000000'
+				ETCD_MAX_REQUEST_BYTES: "100000000"
 				EOT
 			}
 		}
