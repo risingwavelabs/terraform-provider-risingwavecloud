@@ -68,7 +68,6 @@ func (g *GlobalState) GetNsIDByRegionAndName(region, name string) uuid.UUID {
 			return c.NsId
 		}
 	}
-	fmt.Println(r.clusters)
 	return uuid.UUID{}
 }
 
