@@ -110,7 +110,7 @@ resource "risingwavecloud_cluster" "test" {
 		}
 	}
 }
-`, version, name)
+`, name, version)
 }
 
 // update: compactor replica 1 -> 2, etcd_config, risingwave_config
@@ -160,5 +160,5 @@ resource "risingwavecloud_cluster" "test" {
 		EOT
 	}
 }
-`, version, name)
+`, name, version)
 }
