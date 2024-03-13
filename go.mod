@@ -3,7 +3,7 @@ module github.com/risingwavelabs/terraform-provider-risingwavecloud
 go 1.21
 
 require (
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/hashicorp/terraform-plugin-docs v0.16.0
 	github.com/hashicorp/terraform-plugin-framework v1.6.1
 	github.com/hashicorp/terraform-plugin-go v0.22.0
