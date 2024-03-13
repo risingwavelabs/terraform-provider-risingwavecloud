@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen"
-	apigen_acc "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/acc"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen"
+	apigen_acc "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/acc"
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 )
 
 var (

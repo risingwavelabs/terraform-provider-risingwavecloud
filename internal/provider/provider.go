@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
@@ -14,9 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/pkg/errors"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/fake"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/defaults"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/defaults"
 )
 
 const (

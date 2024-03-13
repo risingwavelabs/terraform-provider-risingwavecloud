@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/ptr"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/wait"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/wait"
 
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 )
 
 var (
