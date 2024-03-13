@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/fake"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
 	"github.com/stretchr/testify/require"
 )
 
