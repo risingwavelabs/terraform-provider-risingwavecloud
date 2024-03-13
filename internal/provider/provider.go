@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -72,9 +73,9 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 	}
 
 	var (
-		apiKey    = defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_KEY"))
-		apiSecret = defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_SECRET"))
-		endpoint  = defaults.String(data.Endpoint.ValueString(), os.Getenv("RWC_ENDPOINT"))
+		apiKey    = strings.Trim(defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_KEY")), " \n\t\r")
+		apiSecret = strings.Trim(defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_SECRET")), " \n\t\r")
+		endpoint  = strings.Trim(defaults.String(data.Endpoint.ValueString(), os.Getenv("RWC_ENDPOINT")), " \n\t\r")
 	)
 	if len(endpoint) == 0 {
 		endpoint = DefaultEndpoint
