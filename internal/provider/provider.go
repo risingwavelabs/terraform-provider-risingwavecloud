@@ -128,7 +128,7 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 			}
 			resp.Diagnostics.AddError(
 				"Failed to connect to the endpoint",
-				fmt.Sprintf("Please check your network connection or the endpoint provided, current endpoint: %s", endpoint),
+				fmt.Sprintf("Error %s, current endpoint: %s.", err.Error(), endpoint),
 			)
 			return
 		}

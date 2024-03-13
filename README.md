@@ -8,7 +8,7 @@ This is the official repository of the terraform provider for [RisingWave Cloud]
 
 ## Get Started
 
-- [Example Usage](./docs/index.md)
+- [Documentation](https://registry.terraform.io/providers/risingwavelabs/risingwavecloud/latest/docs)
 - [DEVELOPING.md](./DEVELOPING.md)
 
 ## License
