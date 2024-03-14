@@ -10,9 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/ptr"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 )
 
 func debugFuncCaller() {

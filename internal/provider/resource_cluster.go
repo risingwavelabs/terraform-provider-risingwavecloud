@@ -17,9 +17,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/cloudsdk/apigen/mgmt"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/pkg/utils/wait"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/wait"
 )
 
 var (
