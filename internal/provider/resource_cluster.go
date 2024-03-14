@@ -2,8 +2,9 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -39,66 +40,56 @@ type ClusterResource struct {
 	client cloudsdk.CloudClientInterface
 }
 
-var resourceGroupListAttrType = types.ListType{
-	ElemType: types.ObjectType{
-		AttrTypes: resourceGroupElemAttrType,
-	},
-}
-
-var resourceGroupElemAttrType = map[string]attr.Type{
+var defaultNodeGroup = map[string]attr.Type{
 	"cpu":     types.StringType,
 	"memory":  types.StringType,
 	"replica": types.Int64Type,
 }
 
-var resourcesAttrTypes = map[string]attr.Type{
-	"groups": resourceGroupListAttrType,
-}
-
 var componentAttrTypes = map[string]attr.Type{
-	"resources": types.ObjectType{
-		AttrTypes: resourcesAttrTypes,
+	"default_node_group": types.ObjectType{
+		AttrTypes: defaultNodeGroup,
 	},
 }
 
 type EtcdMetaStoreModel struct {
-	Resource   types.Object `tfsdk:"resource"`
-	EtcdConfig types.String `tfsdk:"etcd_config"`
+	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
+	EtcdConfig       types.String `tfsdk:"etcd_config"`
 }
 
 var etcdMetaStoreAttrTypes = map[string]attr.Type{
-	"nodes_spec": types.ObjectType{
-		AttrTypes: resourceGroupElemAttrType,
+	"default_node_group": types.ObjectType{
+		AttrTypes: defaultNodeGroup,
 	},
 	"etcd_config": types.StringType,
 }
 
 type ComputeSpecModel struct {
-	Resources types.Object `tfsdk:"resources"`
+	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
 }
 
 var computeAttrTypes = componentAttrTypes
 
 type CompactorSpecModel struct {
-	Resources types.Object `tfsdk:"resources"`
+	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
 }
 
 var compactorAttrTypes = componentAttrTypes
 
 type FrontendSpecModel struct {
-	Resources types.Object `tfsdk:"resources"`
+	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
 }
 
 var frontendAttrTypes = componentAttrTypes
 
 type MetaSpecModel struct {
-	Resources     types.Object `tfsdk:"resources"`
-	EtcdMetaStore types.Object `tfsdk:"etcd_meta_store"`
+	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
+	EtcdMetaStore    types.Object `tfsdk:"etcd_meta_store"`
 }
 
 var metaAttrTypes = map[string]attr.Type{
-	"resources": types.ObjectType{
-		AttrTypes: resourcesAttrTypes,
+	"default_node_group": types.ObjectType{
+		AttrTypes: defaultNodeGroup,
 	},
 	"etcd_meta_store": types.ObjectType{
 		AttrTypes: etcdMetaStoreAttrTypes,
@@ -137,7 +128,7 @@ type ClusterModel struct {
 	Spec    types.Object `tfsdk:"spec"`
 }
 
-type ResourceGroupModel struct {
+type NodeGroupModel struct {
 	CPU     types.String `tfsdk:"cpu"`
 	Memory  types.String `tfsdk:"memory"`
 	Replica types.Int64  `tfsdk:"replica"`
@@ -148,7 +139,7 @@ func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataReq
 }
 
 func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resourceGroupElemAttribute := schema.SingleNestedAttribute{
+	defauleNodeGroupAttribute := schema.SingleNestedAttribute{
 		Attributes: map[string]schema.Attribute{
 			"cpu": schema.StringAttribute{
 				MarkdownDescription: "The CPU of the node",
@@ -167,10 +158,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 		},
 		MarkdownDescription: "The resource specification of the component",
 		Required:            true,
-	}
-
-	resourceGroupsAttribute := schema.ListAttribute{
-		ElementType: types.ObjectType{},
 	}
 
 	resp.Schema = schema.Schema{
@@ -197,28 +184,28 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Attributes: map[string]schema.Attribute{
 					"compute": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
-							"resource": resourceAttribute,
+							"default_node_group": defauleNodeGroupAttribute,
 						},
 						Required: true,
 					},
 					"compactor": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
-							"resource": resourceAttribute,
+							"default_node_group": defauleNodeGroupAttribute,
 						},
 						Required: true,
 					},
 					"frontend": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
-							"resource": resourceAttribute,
+							"default_node_group": defauleNodeGroupAttribute,
 						},
 						Required: true,
 					},
 					"meta": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
-							"resource": resourceAttribute,
+							"default_node_group": defauleNodeGroupAttribute,
 							"etcd_meta_store": schema.SingleNestedAttribute{
 								Attributes: map[string]schema.Attribute{
-									"resource": resourceAttribute,
+									"default_node_group": defauleNodeGroupAttribute,
 									"etcd_config": schema.StringAttribute{
 										MarkdownDescription: "The environment variable list of the etcd configuration",
 										Optional:            true,
@@ -265,11 +252,75 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 	r.client = client
 }
 
+func (r *ClusterResource) nodeGroupModelToComponentResource(
+	ctx context.Context, diags diag.Diagnostics, nodeGroup *NodeGroupModel, region string, tier apigen_mgmt.TierId, component string,
+) *apigen_mgmt.ComponentResource {
+
+	var (
+		reqCPU     = nodeGroup.CPU.ValueString()
+		reqMem     = nodeGroup.Memory.ValueString()
+		reqReplica = nodeGroup.Replica.ValueInt64()
+	)
+
+	availableTypes, err := r.client.GetAvailableComponentTypes(ctx, region, tier, component)
+	if err != nil {
+		diags.AddError(
+			"Failed to get available component types",
+			err.Error(),
+		)
+		return nil
+	}
+
+	var candidates []apigen_mgmt.AvailableComponentType
+	for _, availableType := range availableTypes {
+		if availableType.Cpu == reqCPU && availableType.Memory == reqMem {
+			candidates = append(candidates, availableType)
+		}
+	}
+
+	if len(candidates) == 0 {
+		var availableCfg []string
+		for _, availableType := range availableTypes {
+			availableCfg = append(availableCfg, fmt.Sprintf("(%s, %s)", availableType.Cpu, availableType.Memory))
+		}
+		errStr := "configuration (%s, %s) is not allowed for %s component in %s tier, available configurations are: %v"
+		diags.AddError(
+			"Invalid configuration",
+			fmt.Sprintf(errStr, reqCPU, reqMem, component, tier, availableCfg),
+		)
+		return nil
+	}
+
+	maximumReplica := 0
+	chosenType := apigen_mgmt.AvailableComponentType{}
+	for _, candidate := range candidates {
+		if candidate.Maximum > maximumReplica {
+			maximumReplica = candidate.Maximum
+			chosenType = candidate
+		}
+	}
+	if reqReplica > int64(maximumReplica) {
+		diags.AddError(
+			"Invalid replica",
+			fmt.Sprintf("requested replica is greater than maximum replica %d", maximumReplica),
+		)
+		return nil
+	}
+
+	return &apigen_mgmt.ComponentResource{
+		ComponentTypeId: chosenType.Id,
+		Replica:         int(reqReplica),
+		Cpu:             chosenType.Cpu,
+		Memory:          chosenType.Memory,
+	}
+}
+
 func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 	data.Name = types.StringValue(cluster.TenantName)
 	data.Version = types.StringValue(cluster.ImageTag)
 	data.ID = types.StringValue(cluster.NsId.String())
 	data.Region = types.StringValue(cluster.Region)
+
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
 		map[string]attr.Value{
@@ -277,14 +328,12 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 			"compute": types.ObjectValueMust(
 				computeAttrTypes,
 				map[string]attr.Value{
-					"resources": types.ListValueMust(
-						resourceGroupListAttrType,
-						[]attr.Value{
-							types.ObjectValueMust(resourceGroupElemAttrType, map[string]attr.Value{
-								"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
-								"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
-								"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
-							}),
+					"default_node_group": types.ObjectValueMust(
+						defaultNodeGroup,
+						map[string]attr.Value{
+							"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
+							"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
+							"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
 						},
 					),
 				},
@@ -292,14 +341,12 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 			"compactor": types.ObjectValueMust(
 				compactorAttrTypes,
 				map[string]attr.Value{
-					"resources": types.ListValueMust(
-						resourceGroupListAttrType,
-						[]attr.Value{
-							types.ObjectValueMust(resourceGroupElemAttrType, map[string]attr.Value{
-								"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
-								"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
-								"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
-							}),
+					"default_node_group": types.ObjectValueMust(
+						defaultNodeGroup,
+						map[string]attr.Value{
+							"cpu":     types.StringValue(cluster.Resources.Components.Compactor.Cpu),
+							"memory":  types.StringValue(cluster.Resources.Components.Compactor.Memory),
+							"replica": types.Int64Value(int64(cluster.Resources.Components.Compactor.Replica)),
 						},
 					),
 				},
@@ -307,14 +354,12 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 			"frontend": types.ObjectValueMust(
 				frontendAttrTypes,
 				map[string]attr.Value{
-					"resources": types.ListValueMust(
-						resourceGroupListAttrType,
-						[]attr.Value{
-							types.ObjectValueMust(resourceGroupElemAttrType, map[string]attr.Value{
-								"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
-								"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
-								"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
-							}),
+					"default_node_group": types.ObjectValueMust(
+						defaultNodeGroup,
+						map[string]attr.Value{
+							"cpu":     types.StringValue(cluster.Resources.Components.Frontend.Cpu),
+							"memory":  types.StringValue(cluster.Resources.Components.Frontend.Memory),
+							"replica": types.Int64Value(int64(cluster.Resources.Components.Frontend.Replica)),
 						},
 					),
 				},
@@ -322,21 +367,19 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 			"meta": types.ObjectValueMust(
 				metaAttrTypes,
 				map[string]attr.Value{
-					"resources": types.ListValueMust(
-						resourceGroupListAttrType,
-						[]attr.Value{
-							types.ObjectValueMust(resourceGroupElemAttrType, map[string]attr.Value{
-								"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
-								"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
-								"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
-							}),
+					"default_node_group": types.ObjectValueMust(
+						defaultNodeGroup,
+						map[string]attr.Value{
+							"cpu":     types.StringValue(cluster.Resources.Components.Meta.Cpu),
+							"memory":  types.StringValue(cluster.Resources.Components.Meta.Memory),
+							"replica": types.Int64Value(int64(cluster.Resources.Components.Meta.Replica)),
 						},
 					),
 					"etcd_meta_store": types.ObjectValueMust(
 						etcdMetaStoreAttrTypes,
 						map[string]attr.Value{
-							"nodes_spec": types.ObjectValueMust(
-								resourceGroupElemAttrType,
+							"default_node_group": types.ObjectValueMust(
+								defaultNodeGroup,
 								map[string]attr.Value{
 									"cpu":     types.StringValue(cluster.Resources.Components.Etcd.Cpu),
 									"memory":  types.StringValue(cluster.Resources.Components.Etcd.Memory),
@@ -352,7 +395,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 	)
 }
 
-func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen_mgmt.Tenant) diag.Diagnostics {
+func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen_mgmt.Tenant) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	objectAsOptions := basetypes.ObjectAsOptions{
 		UnhandledUnknownAsEmpty: true,
@@ -360,19 +403,19 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 	}
 
 	var (
-		spec              ClusterSpecModel
-		compactorSpec     CompactorSpecModel
-		compactorResource ResourceModel
-		computeSpec       ComputeSpecModel
-		computeResource   ResourceModel
-		frontendSpec      FrontendSpecModel
-		frontendResource  ResourceModel
-		metaSpec          MetaSpecModel
-		metaResource      ResourceModel
+		spec                      ClusterSpecModel
+		compactorSpec             CompactorSpecModel
+		compactorDefaultNodeGroup NodeGroupModel
+		computeSpec               ComputeSpecModel
+		computeDefaultNodeGroup   NodeGroupModel
+		frontendSpec              FrontendSpecModel
+		frontendDefaultNodeGroup  NodeGroupModel
+		metaSpec                  MetaSpecModel
+		metaDefaultNodeGroup      NodeGroupModel
 
-		useEtcdMetaStore bool
-		etcdMetaStore    EtcdMetaStoreModel
-		etcdResource     ResourceModel
+		useEtcdMetaStore     bool
+		etcdMetaStore        EtcdMetaStoreModel
+		etcdDefaultNodeGroup NodeGroupModel
 	)
 
 	tflog.Trace(ctx, "parsing spec")
@@ -380,25 +423,25 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 
 	tflog.Trace(ctx, "parsing compactorSpec")
 	diags.Append(spec.CompactorSpec.As(ctx, &compactorSpec, objectAsOptions)...)
-	diags.Append(compactorSpec.Resources.As(ctx, &compactorResource, objectAsOptions)...)
+	diags.Append(compactorSpec.DefaultNodeGroup.As(ctx, &compactorDefaultNodeGroup, objectAsOptions)...)
 
 	tflog.Trace(ctx, "parsing computeSpec")
 	diags.Append(spec.ComputeSpec.As(ctx, &computeSpec, objectAsOptions)...)
-	diags.Append(computeSpec.Resource.As(ctx, &computeResource, objectAsOptions)...)
+	diags.Append(computeSpec.DefaultNodeGroup.As(ctx, &computeDefaultNodeGroup, objectAsOptions)...)
 
 	tflog.Trace(ctx, "parsing frontendSpec")
 	diags.Append(spec.FrontendSpec.As(ctx, &frontendSpec, objectAsOptions)...)
-	diags.Append(frontendSpec.Resource.As(ctx, &frontendResource, objectAsOptions)...)
+	diags.Append(frontendSpec.DefaultNodeGroup.As(ctx, &frontendDefaultNodeGroup, objectAsOptions)...)
 
 	tflog.Trace(ctx, "parsing metaSpec")
 	diags.Append(spec.MetaSpec.As(ctx, &metaSpec, objectAsOptions)...)
-	diags.Append(metaSpec.Resource.As(ctx, &metaResource, objectAsOptions)...)
+	diags.Append(metaSpec.DefaultNodeGroup.As(ctx, &metaDefaultNodeGroup, objectAsOptions)...)
 
 	if !metaSpec.EtcdMetaStore.IsNull() {
 		tflog.Trace(ctx, "parsing etcdMetaStore")
 		useEtcdMetaStore = true
 		diags.Append(metaSpec.EtcdMetaStore.As(ctx, &etcdMetaStore, objectAsOptions)...)
-		diags.Append(etcdMetaStore.Resource.As(ctx, &etcdResource, objectAsOptions)...)
+		diags.Append(etcdMetaStore.DefaultNodeGroup.As(ctx, &etcdDefaultNodeGroup, objectAsOptions)...)
 	}
 
 	if !useEtcdMetaStore {
@@ -427,28 +470,24 @@ func dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
+
+	computeResource := r.nodeGroupModelToComponentResource(ctx, diags, &computeDefaultNodeGroup, cluster.Region, cluster.Tier, "compute")
+	compactorResource := r.nodeGroupModelToComponentResource(ctx, diags, &compactorDefaultNodeGroup, cluster.Region, cluster.Tier, "compactor")
+	frontendResource := r.nodeGroupModelToComponentResource(ctx, diags, &frontendDefaultNodeGroup, cluster.Region, cluster.Tier, "frontend")
+	metaResource := r.nodeGroupModelToComponentResource(ctx, diags, &metaDefaultNodeGroup, cluster.Region, cluster.Tier, "meta")
+	etcdResuorce := r.nodeGroupModelToComponentResource(ctx, diags, &etcdDefaultNodeGroup, cluster.Region, cluster.Tier, "etcd")
+
+	if diags.HasError() {
+		return diags
+	}
+
 	cluster.Resources = apigen_mgmt.TenantResource{
 		Components: apigen_mgmt.TenantResourceComponents{
-			Compactor: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: compactorResource.Id.ValueString(),
-				Replica:         int(compactorResource.Replica.ValueInt64()),
-			},
-			Compute: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: computeResource.Id.ValueString(),
-				Replica:         int(computeResource.Replica.ValueInt64()),
-			},
-			Frontend: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: frontendResource.Id.ValueString(),
-				Replica:         int(frontendResource.Replica.ValueInt64()),
-			},
-			Meta: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: metaResource.Id.ValueString(),
-				Replica:         int(metaResource.Replica.ValueInt64()),
-			},
-			Etcd: apigen_mgmt.ComponentResource{
-				ComponentTypeId: etcdResource.Id.ValueString(),
-				Replica:         int(etcdResource.Replica.ValueInt64()),
-			},
+			Compactor: compactorResource,
+			Compute:   computeResource,
+			Frontend:  frontendResource,
+			Meta:      metaResource,
+			Etcd:      *etcdResuorce,
 		},
 		ComputeFileCacheSizeGiB: DefaultComputeFileCacheSizeGB,
 		EnableComputeFileCache:  DefaultEnableComputeFileCache,
@@ -480,7 +519,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(dataModelToCluster(ctx, &data, &cluster)...)
+	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &cluster)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -609,7 +648,9 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 func resourceEqual(a, b *apigen_mgmt.ComponentResource) bool {
-	return a.ComponentTypeId == b.ComponentTypeId && a.Replica == b.Replica
+	return a.Cpu == b.Cpu &&
+		a.Memory == b.Memory &&
+		a.Replica == b.Replica
 }
 
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -641,7 +682,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	var updated = apigen_mgmt.Tenant{}
 
-	resp.Diagnostics.Append(dataModelToCluster(ctx, &data, &updated)...)
+	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &updated)...)
 
 	previous, err := r.client.GetClusterByNsID(ctx, nsID)
 	if err != nil {
@@ -690,7 +731,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !resourceEqual(&previous.Resources.Components.Etcd, &updated.Resources.Components.Etcd) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
-			"Etcd resource cannot be changed",
+			fmt.Sprintf("Etcd resource cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),
 		)
 	}
 	if resp.Diagnostics.HasError() {

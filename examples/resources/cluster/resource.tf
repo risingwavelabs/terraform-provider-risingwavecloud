@@ -4,23 +4,28 @@ resource "risingwavecloud_cluster" "example" {
   region  = "us-east-2"
   resourcev1 = {
     compute = {
-      type    = "p-1c2g"
+      cpu     = "1"
+      memory  = "4 GB"
       replica = 1
     }
     compactor = {
-      type    = "p-2c4g"
+      cpu     = "1"
+      memory  = "4 GB"
       replica = 3
     },
     frontend = {
-      type    = "p-1c1g"
+      cpu     = "1"
+      memory  = "4 GB"
       replica = 1
     },
     meta = {
-      type    = "p-1c1g"
+      cpu     = "1"
+      memory  = "4 GB"
       replica = 1
     },
     etcd = {
-      type    = "p-1c1g"
+      cpu     = "1"
+      memory  = "4 GB"
       replica = 3
     }
   }

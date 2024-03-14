@@ -185,31 +185,30 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 	return &cluster, nil
 }
 
-func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
-	debugFuncCaller()
+var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
+	{
+		Id:      "p-1c4g",
+		Cpu:     "1",
+		Memory:  "4 GB",
+		Maximum: 3,
+	},
+	{
+		Id:      "p-2c8g",
+		Cpu:     "2",
+		Memory:  "8 GB",
+		Maximum: 3,
+	},
+}
 
-	nodes := []apigen_mgmt.AvailableComponentType{
-		{
-			Id:      "p-1c4g",
-			Cpu:     "1",
-			Memory:  "4 GB",
-			Maximum: 3,
-		},
-		{
-			Id:      "p-2c8g",
-			Cpu:     "2",
-			Memory:  "8 GB",
-			Maximum: 3,
-		},
-	}
+func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
 	return []apigen_mgmt.Tier{
 		{
 			Id:                              ptr.Ptr(apigen_mgmt.Standard),
-			AvailableMetaNodes:              nodes,
-			AvailableComputeNodes:           nodes,
-			AvailableCompactorNodes:         nodes,
-			AvailableEtcdNodes:              nodes,
-			AvailableFrontendNodes:          nodes,
+			AvailableMetaNodes:              availableComponentTypes,
+			AvailableComputeNodes:           availableComponentTypes,
+			AvailableCompactorNodes:         availableComponentTypes,
+			AvailableEtcdNodes:              availableComponentTypes,
+			AvailableFrontendNodes:          availableComponentTypes,
 			AllowEnableComputeNodeFileCache: true,
 			MaximumEtcdSizeGiB:              20,
 		},
@@ -217,8 +216,6 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 }
 
 func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
-	debugFuncCaller()
-
 	tiers, err := acc.GetTiers(ctx, region)
 	if err != nil {
 		return nil, err
@@ -315,26 +312,11 @@ func (acc *FakeCloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsI
 func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest) apigen_mgmt.TenantResource {
 	return apigen_mgmt.TenantResource{
 		Components: apigen_mgmt.TenantResourceComponents{
-			Compute: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: reqResource.Components.Compute.ComponentTypeId,
-				Replica:         reqResource.Components.Compute.Replica,
-			},
-			Compactor: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: reqResource.Components.Compactor.ComponentTypeId,
-				Replica:         reqResource.Components.Compactor.Replica,
-			},
-			Frontend: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: reqResource.Components.Frontend.ComponentTypeId,
-				Replica:         reqResource.Components.Frontend.Replica,
-			},
-			Meta: &apigen_mgmt.ComponentResource{
-				ComponentTypeId: reqResource.Components.Meta.ComponentTypeId,
-				Replica:         reqResource.Components.Meta.Replica,
-			},
-			Etcd: apigen_mgmt.ComponentResource{
-				ComponentTypeId: reqResource.Components.Etcd.ComponentTypeId,
-				Replica:         reqResource.Components.Etcd.Replica,
-			},
+			Compute:   componentReqToComponent(reqResource.Components.Compute),
+			Compactor: componentReqToComponent(reqResource.Components.Compactor),
+			Frontend:  componentReqToComponent(reqResource.Components.Frontend),
+			Meta:      componentReqToComponent(reqResource.Components.Meta),
+			Etcd:      *componentReqToComponent(&reqResource.Components.Etcd),
 		},
 		EnableComputeFileCache:  reqResource.EnableComputeFileCache,
 		EtcdVolumeSizeGiB:       reqResource.EtcdVolumeSizeGiB,
@@ -344,8 +326,15 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 }
 
 func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_mgmt.ComponentResource {
-	return &apigen_mgmt.ComponentResource{
-		ComponentTypeId: req.ComponentTypeId,
-		Replica:         req.Replica,
+	for _, c := range availableComponentTypes {
+		if c.Id == req.ComponentTypeId {
+			return &apigen_mgmt.ComponentResource{
+				ComponentTypeId: req.ComponentTypeId,
+				Replica:         req.Replica,
+				Cpu:             c.Cpu,
+				Memory:          c.Memory,
+			}
+		}
 	}
+	return nil
 }
