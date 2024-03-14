@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	DefaultTier                   = apigen_mgmt.Standard
 	DefaultEnableComputeFileCache = true
 	DefaultComputeFileCacheSizeGB = 20
 	DefaultEtcdVolumeSizeGB       = 10
