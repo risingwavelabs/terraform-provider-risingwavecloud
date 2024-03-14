@@ -8,6 +8,7 @@ description: |-
 
 # risingwavecloud Provider
 
+**This project is under heavy development. Please join our [Slack](https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA) to get the latest information.**
 
 
 ## Example Usage
