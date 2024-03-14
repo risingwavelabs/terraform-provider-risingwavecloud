@@ -56,6 +56,15 @@ Then commit the changes to `go.mod` and `go.sum`.
 
 3. Run acceptance tests:
 
+    First, you need to setup the environment variables for the acceptance tests. You can use the following command to set the environment variables:
+    ```
+    export RWC_ENDPOINT=<The account service URL>
+    export RWC_API_KEY=<Your API Key>
+    export RWC_API_SECRET=<Your API secret>
+    ```
+
+    Then run the acceptance tests:
+
     ```shell
     make testacc
     ```
