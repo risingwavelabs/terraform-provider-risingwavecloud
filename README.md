@@ -4,7 +4,7 @@
 
 ---
 
-This is the official repository of the terraform provider for [RisingWave Cloud](https://cloud.risingwave.com/). It is used to manage resources in RisingWave Cloud in a declarative way. More information about Terrafom can be found [here](https://www.terraform.io/).
+This is the official repository of the Terraform provider for [RisingWave Cloud](https://cloud.risingwave.com/). It is used to manage resources in RisingWave Cloud in a declarative way. More information about Terrafom can be found [here](https://www.terraform.io/).
 
 ## Get Started
 
