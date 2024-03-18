@@ -1,27 +1,42 @@
-resource "risingwavecloud_cluster" "example" {
-  name    = "dev"
-  version = "v1.3.0"
-  region  = "us-east-2"
-  resourcev1 = {
+resource "risingwavecloud_cluster" "my_cluster" {
+  region  = "us-east-1"
+  name    = "my_cluster"
+  version = "v1.8.0"
+  spec = {
     compute = {
-      type    = "p-1c2g"
-      replica = 1
+      default_node_group = {
+        cpu     = "2"
+        memory  = "8 GB"
+        replica = 1
+      }
     }
     compactor = {
-      type    = "p-2c4g"
-      replica = 3
-    },
+      default_node_group = {
+        cpu     = "1"
+        memory  = "4 GB"
+        replica = 1
+      }
+    }
     frontend = {
-      type    = "p-1c1g"
-      replica = 1
-    },
+      default_node_group = {
+        cpu     = "1"
+        memory  = "4 GB"
+        replica = 1
+      }
+    }
     meta = {
-      type    = "p-1c1g"
-      replica = 1
-    },
-    etcd = {
-      type    = "p-1c1g"
-      replica = 3
+      default_node_group = {
+        cpu     = "1"
+        memory  = "4 GB"
+        replica = 1
+      }
+      etcd_meta_store = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+      }
     }
   }
 }

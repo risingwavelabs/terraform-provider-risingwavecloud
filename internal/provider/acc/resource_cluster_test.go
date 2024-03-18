@@ -61,7 +61,7 @@ func TestClusterResource(t *testing.T) {
 			{
 				Config: testClusterResourceUpdateConfig("v1.6.0", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.resource.replica", "2"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.default_node_group.replica", "2"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.risingwave_config", "[server]\nheartbeat_interval_ms = 997\n"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.meta.etcd_meta_store.etcd_config", "ETCD_MAX_REQUEST_BYTES: \"100000000\"\n"),
 				),
@@ -79,31 +79,36 @@ resource "risingwavecloud_cluster" "test" {
 	version  = "%s"
 	spec     = {
 		compute = {
-			resource = {
-				id      = "p-2c8g"
+			default_node_group = {
+				cpu     = "2"
+				memory  = "8 GB"
 				replica = 1
 			}
 		}
 		compactor = {
-			resource = {
-				id      = "p-1c4g"
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
 				replica = 1
 			}
 		}
 		frontend = {
-			resource = {
-				id      = "p-1c4g"
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
 				replica = 1
 			}
 		}
 		meta = {
-			resource = {
-				id      = "p-1c4g"
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
 				replica = 1
 			}
 			etcd_meta_store = {
-				resource = {
-					id      = "p-1c4g"
+				default_node_group = {
+					cpu     = "1"
+					memory  = "4 GB"
 					replica = 1
 				}
 			}
@@ -122,31 +127,36 @@ resource "risingwavecloud_cluster" "test" {
 	version  = "%s"
 	spec     = {
 		compute = {
-			resource = {
-				id      = "p-2c8g"
+			default_node_group = {
+				cpu     = "2"
+				memory  = "8 GB"
 				replica = 1
 			}
 		}
 		compactor = {
-			resource = {
-				id      = "p-1c4g"
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
 				replica = 2
 			}
 		}
 		frontend = {
-			resource = {
-				id      = "p-1c4g"
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
 				replica = 1
 			}
 		}
 		meta = {
-			resource = {
-				id      = "p-1c4g"
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
 				replica = 1
 			}
 			etcd_meta_store = {
-				resource = {
-					id      = "p-1c4g"
+				default_node_group = {
+					cpu     = "1"
+					memory  = "4 GB"
 					replica = 1
 				}
 				etcd_config = <<-EOT

@@ -48,14 +48,15 @@ Optional:
 
 Required:
 
-- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--compactor--resource))
+- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--compactor--default_node_group))
 
-<a id="nestedatt--spec--compactor--resource"></a>
-### Nested Schema for `spec.compactor.resource`
+<a id="nestedatt--spec--compactor--default_node_group"></a>
+### Nested Schema for `spec.compactor.default_node_group`
 
 Required:
 
-- `id` (String) The component type ID of the node
+- `cpu` (String) The CPU of the node
+- `memory` (String) The memory size in of the node
 
 Optional:
 
@@ -68,14 +69,15 @@ Optional:
 
 Required:
 
-- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--compute--resource))
+- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--compute--default_node_group))
 
-<a id="nestedatt--spec--compute--resource"></a>
-### Nested Schema for `spec.compute.resource`
+<a id="nestedatt--spec--compute--default_node_group"></a>
+### Nested Schema for `spec.compute.default_node_group`
 
 Required:
 
-- `id` (String) The component type ID of the node
+- `cpu` (String) The CPU of the node
+- `memory` (String) The memory size in of the node
 
 Optional:
 
@@ -88,14 +90,15 @@ Optional:
 
 Required:
 
-- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--frontend--resource))
+- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--frontend--default_node_group))
 
-<a id="nestedatt--spec--frontend--resource"></a>
-### Nested Schema for `spec.frontend.resource`
+<a id="nestedatt--spec--frontend--default_node_group"></a>
+### Nested Schema for `spec.frontend.default_node_group`
 
 Required:
 
-- `id` (String) The component type ID of the node
+- `cpu` (String) The CPU of the node
+- `memory` (String) The memory size in of the node
 
 Optional:
 
@@ -108,18 +111,19 @@ Optional:
 
 Required:
 
-- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--resource))
+- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--default_node_group))
 
 Optional:
 
 - `etcd_meta_store` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store))
 
-<a id="nestedatt--spec--meta--resource"></a>
-### Nested Schema for `spec.meta.resource`
+<a id="nestedatt--spec--meta--default_node_group"></a>
+### Nested Schema for `spec.meta.default_node_group`
 
 Required:
 
-- `id` (String) The component type ID of the node
+- `cpu` (String) The CPU of the node
+- `memory` (String) The memory size in of the node
 
 Optional:
 
@@ -131,18 +135,19 @@ Optional:
 
 Required:
 
-- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store--resource))
+- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store--default_node_group))
 
 Optional:
 
 - `etcd_config` (String) The environment variable list of the etcd configuration
 
-<a id="nestedatt--spec--meta--etcd_meta_store--resource"></a>
+<a id="nestedatt--spec--meta--etcd_meta_store--default_node_group"></a>
 ### Nested Schema for `spec.meta.etcd_meta_store.etcd_config`
 
 Required:
 
-- `id` (String) The component type ID of the node
+- `cpu` (String) The CPU of the node
+- `memory` (String) The memory size in of the node
 
 Optional:
 

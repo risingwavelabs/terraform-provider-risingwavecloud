@@ -149,9 +149,7 @@ func (p *RisingWaveCloudProvider) Resources(ctx context.Context) []func() resour
 }
 
 func (p *RisingWaveCloudProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
-		NewComponentTypeDataSource,
-	}
+	return []func() datasource.DataSource{}
 }
 
 func New(version string) func() provider.Provider {
