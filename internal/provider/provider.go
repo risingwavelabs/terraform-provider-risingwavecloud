@@ -145,6 +145,7 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 func (p *RisingWaveCloudProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewClusterResource,
+		NewClusterUserResource,
 	}
 }
 

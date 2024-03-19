@@ -2,6 +2,7 @@ package cloudsdk
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,8 @@ import (
 )
 
 var (
-	ErrClusterNotFound = errors.New("cluster not found")
+	ErrClusterNotFound     = errors.New("cluster not found")
+	ErrClusterUserNotFound = errors.New("cluster user not found")
 )
 
 const (
@@ -58,6 +60,14 @@ type RegionServiceClientInterface interface {
 	UpdateRisingWaveConfigAwait(ctx context.Context, id uint64, rwConfig string) error
 
 	UpdateEtcdConfigAwait(ctx context.Context, id uint64, etcdConfig string) error
+
+	GetClusterUsers(ctx context.Context, id uint64) ([]apigen_mgmt.DBUser, error)
+
+	CreateCluserUser(ctx context.Context, params apigen_mgmt.CreateDBUserRequestBody) (*apigen_mgmt.DBUser, error)
+
+	UpdateClusterUserPassword(ctx context.Context, id uint64, username, password string) error
+
+	DeleteClusterUser(ctx context.Context, id uint64, username string) error
 }
 
 type RegionServiceClient struct {
@@ -67,7 +77,7 @@ type RegionServiceClient struct {
 func (c *RegionServiceClient) IsTenantNameExist(ctx context.Context, tenantName string) (bool, error) {
 	_, err := c.getClusterByName(ctx, tenantName)
 	if err != nil {
-		if err == ErrClusterNotFound {
+		if errors.Is(err, ErrClusterNotFound) {
 			return false, nil
 		}
 		return false, errors.Wrap(err, "failed to get cluster info")
@@ -115,7 +125,7 @@ func (c *RegionServiceClient) getClusterByName(ctx context.Context, name string)
 		return nil, errors.Wrap(err, "failed call API to to get cluster")
 	}
 	if res.StatusCode() == http.StatusNotFound {
-		return nil, ErrClusterNotFound
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", name)
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
 		return nil, err
@@ -131,7 +141,7 @@ func (c *RegionServiceClient) GetClusterByID(ctx context.Context, id uint64) (*a
 		return nil, errors.Wrap(err, "failed call API to to get cluster")
 	}
 	if res.StatusCode() == http.StatusNotFound {
-		return nil, ErrClusterNotFound
+		return nil, errors.Wrapf(ErrClusterNotFound, fmt.Sprintf("cluster %d not found", id))
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
 		return nil, errors.Wrapf(err, "message %s", string(res.Body))
@@ -302,4 +312,64 @@ func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, id uint
 
 	// wait for the tenant to be ready
 	return c.waitClusterRunning(ctx, id)
+}
+
+func (c *RegionServiceClient) GetClusterUsers(ctx context.Context, id uint64) ([]apigen_mgmt.DBUser, error) {
+	res, err := c.mgmtClient.GetTenantDbusersWithResponse(ctx, &apigen_mgmt.GetTenantDbusersParams{
+		TenantId: id,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get cluster user")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %d not found", id)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+		return nil, err
+	}
+	var rtn []apigen_mgmt.DBUser
+	if res.JSON200.Dbusers != nil {
+		rtn = *res.JSON200.Dbusers
+	}
+	return rtn, nil
+}
+
+func (c *RegionServiceClient) CreateCluserUser(ctx context.Context, params apigen_mgmt.CreateDBUserRequestBody) (*apigen_mgmt.DBUser, error) {
+	res, err := c.mgmtClient.PostTenantDbusersWithResponse(ctx, params)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to create cluster user")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %d not found", params.TenantId)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
+}
+
+func (c *RegionServiceClient) UpdateClusterUserPassword(ctx context.Context, id uint64, username, password string) error {
+	res, err := c.mgmtClient.PutTenantDbusersWithResponse(ctx, apigen_mgmt.UpdateDBUserRequestBody{
+		TenantId: id,
+		Username: username,
+		Password: password,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to call API to update cluster user password")
+	}
+	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK)
+}
+
+func (c *RegionServiceClient) DeleteClusterUser(ctx context.Context, id uint64, username string) error {
+	res, err := c.mgmtClient.DeleteTenantDbusersWithResponse(ctx, &apigen_mgmt.DeleteTenantDbusersParams{
+		TenantId: id,
+		Username: username,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to call API to delete cluster user")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil
+	}
+	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK)
 }

@@ -21,7 +21,7 @@ lint-fix: install-golangci-lint
 OAPI_CODEGEN_VERSION=v2.0.0
 MOCKGEN_VERSION=v1.6.0
 OAPI_CODEGEN_BIN=$(PROJECT_DIR)/bin/oapi-codegen
-APIGEN_DIR=$(PROJECT_DIR)/pkg/cloudsdk/apigen
+APIGEN_DIR=$(PROJECT_DIR)/internal/cloudsdk/apigen
 
 install-oapi-codegen:
 	DIR=$(PROJECT_DIR)/bin VERSION=${OAPI_CODEGEN_VERSION} ./scripts/install-oapi-codegen.sh
@@ -45,7 +45,7 @@ gen-mock: install-mockgen
 	@echo "no mock packages needed"
 
 clean-gen-mock:
-	@rm -f pkg/helmx/mock_gen.go
+	@echo "no mock packages"
 
 
 ############################################################

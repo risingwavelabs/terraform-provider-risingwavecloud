@@ -30,6 +30,7 @@ const (
 
 // Defines values for TierId.
 const (
+	BYOC           TierId = "BYOC"
 	Benchmark      TierId = "Benchmark"
 	Developer      TierId = "Developer"
 	DeveloperBasic TierId = "Developer-Basic"

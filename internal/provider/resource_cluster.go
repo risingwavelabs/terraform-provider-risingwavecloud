@@ -254,7 +254,7 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 }
 
 func (r *ClusterResource) nodeGroupModelToComponentResource(
-	ctx context.Context, diags diag.Diagnostics, nodeGroup *NodeGroupModel, region string, tier apigen_mgmt.TierId, component string,
+	ctx context.Context, diags *diag.Diagnostics, nodeGroup *NodeGroupModel, region string, tier apigen_mgmt.TierId, component string,
 ) *apigen_mgmt.ComponentResource {
 
 	var (
@@ -472,11 +472,11 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
 
-	computeResource := r.nodeGroupModelToComponentResource(ctx, diags, &computeDefaultNodeGroup, cluster.Region, cluster.Tier, "compute")
-	compactorResource := r.nodeGroupModelToComponentResource(ctx, diags, &compactorDefaultNodeGroup, cluster.Region, cluster.Tier, "compactor")
-	frontendResource := r.nodeGroupModelToComponentResource(ctx, diags, &frontendDefaultNodeGroup, cluster.Region, cluster.Tier, "frontend")
-	metaResource := r.nodeGroupModelToComponentResource(ctx, diags, &metaDefaultNodeGroup, cluster.Region, cluster.Tier, "meta")
-	etcdResuorce := r.nodeGroupModelToComponentResource(ctx, diags, &etcdDefaultNodeGroup, cluster.Region, cluster.Tier, "etcd")
+	computeResource := r.nodeGroupModelToComponentResource(ctx, &diags, &computeDefaultNodeGroup, cluster.Region, cluster.Tier, "compute")
+	compactorResource := r.nodeGroupModelToComponentResource(ctx, &diags, &compactorDefaultNodeGroup, cluster.Region, cluster.Tier, "compactor")
+	frontendResource := r.nodeGroupModelToComponentResource(ctx, &diags, &frontendDefaultNodeGroup, cluster.Region, cluster.Tier, "frontend")
+	metaResource := r.nodeGroupModelToComponentResource(ctx, &diags, &metaDefaultNodeGroup, cluster.Region, cluster.Tier, "meta")
+	etcdResuorce := r.nodeGroupModelToComponentResource(ctx, &diags, &etcdDefaultNodeGroup, cluster.Region, cluster.Tier, "etcd")
 
 	if diags.HasError() {
 		return diags
@@ -886,6 +886,13 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
 		resp.Diagnostics.AddError(
 			"Unexpected Import Identifier",
 			fmt.Sprintf("Failed to parse id: %s", req.ID),
+		)
+		return
+	}
+	if _, err := r.client.GetClusterByNsID(ctx, nsID); err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to read cluster",
+			err.Error(),
 		)
 		return
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen"
 	apigen_acc "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/acc"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 )
 
 var (
@@ -22,6 +23,8 @@ type JSON = map[string]any
 type CloudClientInterface interface {
 	// Check the connection of the endpoint and validate the API key provided.
 	Ping(context.Context) error
+
+	/* Cluster */
 
 	GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error)
 
@@ -42,6 +45,16 @@ type CloudClientInterface interface {
 	UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, rwConfig string) error
 
 	UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error
+
+	/* Cluster User */
+
+	GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error)
+
+	CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error)
+
+	UpdateClusterUserPassword(ctx context.Context, clusterNsID uuid.UUID, username, password string) error
+
+	DeleteClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) error
 }
 
 type CloudClient struct {
@@ -121,7 +134,7 @@ func (c *CloudClient) getClusterInfo(ctx context.Context, nsID uuid.UUID) (*apig
 		return nil, errors.Wrap(err, "failed to call API to get cluster info")
 	}
 	if res.StatusCode() == http.StatusNotFound {
-		return nil, ErrClusterNotFound
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s", nsID.String())
 	}
 	return res.JSON200, nil
 }
@@ -240,4 +253,61 @@ func (c *CloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid
 	}
 
 	return rs.UpdateEtcdConfigAwait(ctx, info.Id, etcdConfig)
+}
+
+func (c *CloudClient) GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	users, err := rs.GetClusterUsers(ctx, info.Id)
+	if err != nil {
+		if errors.Is(err, ErrClusterNotFound) {
+			return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s", clusterNsID.String())
+		}
+		return nil, err
+	}
+	for _, user := range users {
+		if user.Username == username {
+			return ptr.Ptr(user), nil
+		}
+	}
+	return nil, errors.Errorf("user %s not found in cluster %s", username, clusterNsID.String())
+}
+
+func (c *CloudClient) CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	u, err := rs.CreateCluserUser(ctx, apigen_mgmt.CreateDBUserRequestBody{
+		TenantId:  info.Id,
+		Username:  username,
+		Password:  password,
+		Createdb:  createDB,
+		Superuser: superUser,
+	})
+	if err != nil {
+		if errors.Is(err, ErrClusterNotFound) {
+			return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s", clusterNsID.String())
+		}
+		return nil, err
+	}
+	return u, err
+}
+
+func (c *CloudClient) UpdateClusterUserPassword(ctx context.Context, clusterNsID uuid.UUID, username, password string) error {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.UpdateClusterUserPassword(ctx, info.Id, username, password)
+}
+
+func (c *CloudClient) DeleteClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) error {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DeleteClusterUser(ctx, info.Id, username)
 }
