@@ -28,4 +28,4 @@ A RisingWave Cluster
 
 ### Read-Only
 
-- `id` (String) The global identifier for the resource: <cluster ID>.<username>
+- `id` (String) The global identifier for the resource: [cluster ID].[username]
