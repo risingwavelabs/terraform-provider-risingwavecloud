@@ -61,7 +61,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
 			{
-				Config: testClusterResourceUpdateConfig("v1.6.0", clusterName),
+				Config: testClusterResourceUpdateConfig(clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.default_node_group.replica", "2"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.risingwave_config", "[server]\nheartbeat_interval_ms = 997\n"),
@@ -70,7 +70,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// Create and Read testing: user
 			{
-				Config: testClusterResourceUpdateConfig("v1.6.0", clusterName) + testClusterUser("test-password"),
+				Config: testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_user.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "username", "test-user"),
@@ -82,14 +82,14 @@ func TestClusterResource(t *testing.T) {
 			},
 			// import user
 			{
-				Config:        testClusterResourceUpdateConfig("v1.6.0", clusterName) + testClusterUser("test-password"),
+				Config:        testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
 				ResourceName:  "risingwavecloud_cluster_user.test",
 				ImportStateId: userID,
 				ImportState:   true,
 			},
 			// update user
 			{
-				Config:             testClusterResourceUpdateConfig("v1.6.0", clusterName) + testClusterUser("new-password"),
+				Config:             testClusterResourceUpdateConfig(clusterName) + testClusterUser("new-password"),
 				ExpectNonEmptyPlan: true,
 			},
 			// Delete testing automatically occurs in TestCase
@@ -145,12 +145,12 @@ resource "risingwavecloud_cluster" "test" {
 }
 
 // update: compactor replica 1 -> 2, etcd_config, risingwave_config
-func testClusterResourceUpdateConfig(version, name string) string {
+func testClusterResourceUpdateConfig(name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
-	version  = "%s"
+	version  = "v1.6.0"
 	spec     = {
 		compute = {
 			default_node_group = {
@@ -196,7 +196,7 @@ resource "risingwavecloud_cluster" "test" {
 		EOT
 	}
 }
-`, name, version)
+`, name)
 }
 
 func testClusterUser(password string) string {
