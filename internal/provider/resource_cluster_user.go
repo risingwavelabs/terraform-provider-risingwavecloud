@@ -149,7 +149,7 @@ func (r *ClusterUserResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// the password is stored in the state to avoid inconsistency error.
-	clusterUserToDataModel(nsID, createdUser, password, &data)
+	clusterUserToDataModel(nsID, createdUser, &data)
 
 	tflog.Info(ctx, fmt.Sprintf("cluster user created, username: %s", username))
 
@@ -176,13 +176,14 @@ type DataGetter interface {
 	Get(ctx context.Context, target interface{}) diag.Diagnostics
 }
 
-func clusterUserToDataModel(clusterNsID uuid.UUID, user *apigen.DBUser, passwordValue string, data *ClusterUserModel) {
+// clusterUserToDataModel converts the user from the API to the data model.
+// it does not overwrite the password as we cannot know the password through API.
+func clusterUserToDataModel(clusterNsID uuid.UUID, user *apigen.DBUser, data *ClusterUserModel) {
 	data.ID = types.StringValue(fmt.Sprintf("%s.%s", clusterNsID.String(), user.Username))
 	data.ClusterID = types.StringValue(clusterNsID.String())
 	data.CreateDB = types.BoolValue(user.Usecreatedb)
 	data.SuperUser = types.BoolValue(user.Usesuper)
 	data.Username = types.StringValue(user.Username)
-	data.Password = types.StringValue(passwordValue)
 }
 
 func (r *ClusterUserResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -208,7 +209,8 @@ func (r *ClusterUserResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	clusterUserToDataModel(nsID, user, passwordMask, &data)
+	// it uses password stored in the state
+	clusterUserToDataModel(nsID, user, &data)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -273,7 +275,7 @@ func (r *ClusterUserResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	// the password is stored in the state to avoid inconsistency error.
-	clusterUserToDataModel(stateNsID, user, data.Password.ValueString(), &data)
+	clusterUserToDataModel(stateNsID, user, &data)
 
 	// Directly save the plan to the state since we cannot know the password through API.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

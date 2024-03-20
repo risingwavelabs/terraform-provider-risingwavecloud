@@ -78,7 +78,6 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "create_db", "false"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "super_user", "false"),
 				),
-				ExpectNonEmptyPlan: true,
 			},
 			// import user
 			{
@@ -89,8 +88,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// update user
 			{
-				Config:             testClusterResourceUpdateConfig(clusterName) + testClusterUser("new-password"),
-				ExpectNonEmptyPlan: true,
+				Config: testClusterResourceUpdateConfig(clusterName) + testClusterUser("new-password"),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
