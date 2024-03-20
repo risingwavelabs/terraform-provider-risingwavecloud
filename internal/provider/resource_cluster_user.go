@@ -18,8 +18,8 @@ import (
 )
 
 // Assert provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &ClusterResource{}
-var _ resource.ResourceWithImportState = &ClusterResource{}
+var _ resource.Resource = &ClusterUserResource{}
+var _ resource.ResourceWithImportState = &ClusterUserResource{}
 
 func NewClusterUserResource() resource.Resource {
 	return &ClusterUserResource{}
