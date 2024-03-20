@@ -17,8 +17,6 @@ import (
 	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 )
 
-var passwordMask = "******"
-
 // Assert provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ClusterResource{}
 var _ resource.ResourceWithImportState = &ClusterResource{}
