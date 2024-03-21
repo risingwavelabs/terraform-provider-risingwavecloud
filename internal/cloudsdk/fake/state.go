@@ -133,7 +133,7 @@ func (g *GlobalState) GetNsIDByRegionAndName(region, name string) (uuid.UUID, er
 			return c.tenant.NsId, nil
 		}
 	}
-	return uuid.UUID{}, cloudsdk.ErrClusterNotFound
+	return uuid.UUID{}, errors.Wrapf(cloudsdk.ErrClusterNotFound, "region: %s, name: %s", region, name)
 }
 
 var state GlobalState
