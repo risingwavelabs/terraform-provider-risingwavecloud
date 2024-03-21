@@ -38,7 +38,11 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
-						id = fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", "tf-test").String()
+						nsID, err := fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", "tf-test")
+						if err != nil {
+							return err
+						}
+						id = nsID.String()
 						userID = fmt.Sprintf("%s.test-user", id)
 						return nil
 					},

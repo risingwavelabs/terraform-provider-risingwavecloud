@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"runtime"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -33,192 +34,6 @@ func debugFuncCaller() {
 	log.Default().Println()
 }
 
-type GlobalState struct {
-	regionStates map[string]*RegionState
-}
-
-func (g *GlobalState) GetRegionState(region string) *RegionState {
-	if _, ok := g.regionStates[region]; !ok {
-		g.regionStates[region] = NewRegionState()
-	}
-	return g.regionStates[region]
-}
-
-func (g *GlobalState) GetClusterByNsID(nsID uuid.UUID) (apigen_mgmt.Tenant, error) {
-	for _, r := range g.regionStates {
-		cluster, err := r.GetClusterByNsID(nsID)
-		if err == nil {
-			return cluster, nil
-		}
-	}
-	return apigen_mgmt.Tenant{}, errors.Wrapf(cloudsdk.ErrClusterNotFound, "nsID: %s", nsID.String())
-}
-
-func (g *GlobalState) GetClusterUser(nsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error) {
-	for _, r := range g.regionStates {
-		_, err := r.GetClusterByNsID(nsID)
-		if err == nil {
-			if u := r.GetClusterUser(nsID, username); u != nil {
-				return u, nil
-			}
-			return nil, errors.Errorf("user %s not found in cluster %s", username, nsID.String())
-		}
-	}
-
-	return nil, errors.Wrapf(cloudsdk.ErrClusterNotFound, "nsID: %s", nsID.String())
-}
-
-func (g *GlobalState) CreateClusterUser(nsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error) {
-	for _, r := range g.regionStates {
-		_, err := r.GetClusterByNsID(nsID)
-		if err == nil {
-			u := apigen_mgmt.DBUser{
-				Usecreatedb: createDB,
-				Username:    username,
-				Usesysid:    uint64(len(r.clusterUsers) + 1),
-				Usesuper:    superUser,
-			}
-			r.CreateClusterUser(nsID, u)
-			return &u, nil
-		}
-	}
-
-	return nil, errors.Wrapf(cloudsdk.ErrClusterNotFound, "nsID: %s", nsID.String())
-}
-
-func (g *GlobalState) DeleteClusterUser(nsID uuid.UUID, username string) {
-	for _, r := range g.regionStates {
-		_, err := r.GetClusterByNsID(nsID)
-		if err == nil {
-			r.DeleteClusterUser(nsID, username)
-		}
-	}
-}
-
-func (g *GlobalState) DeleteClusterByNsID(nsID uuid.UUID) error {
-	for _, r := range g.regionStates {
-		r.DeleteCluster(nsID)
-	}
-	return nil
-}
-
-func (g *GlobalState) GetNsIDByRegionAndName(region, name string) uuid.UUID {
-	r := g.GetRegionState(region)
-	for _, c := range r.GetClusters() {
-		if c.TenantName == name {
-			return c.NsId
-		}
-	}
-	return uuid.UUID{}
-}
-
-var state GlobalState
-
-func init() {
-	state = GlobalState{
-		regionStates: map[string]*RegionState{},
-	}
-}
-
-func GetFakerState() *GlobalState {
-	return &state
-}
-
-type RegionState struct {
-	clusters     []apigen_mgmt.Tenant
-	clusterUsers map[string][]apigen_mgmt.DBUser
-	mu           sync.RWMutex
-}
-
-func NewRegionState() *RegionState {
-	return &RegionState{
-		clusterUsers: map[string][]apigen_mgmt.DBUser{},
-	}
-}
-
-func (r *RegionState) GetClusters() []apigen_mgmt.Tenant {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	return r.clusters
-}
-
-func (r *RegionState) GetClusterByNsID(nsID uuid.UUID) (apigen_mgmt.Tenant, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for _, c := range r.clusters {
-		if c.NsId == nsID {
-			return c, nil
-		}
-	}
-	return apigen_mgmt.Tenant{}, errors.Wrapf(cloudsdk.ErrClusterNotFound, "nsID: %s", nsID.String())
-}
-func (s *RegionState) AddCluster(cluster apigen_mgmt.Tenant) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.clusters = append(s.clusters, cluster)
-}
-
-func (s *RegionState) DeleteCluster(nsID uuid.UUID) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i, c := range s.clusters {
-		if c.NsId == nsID {
-			s.clusters = append(s.clusters[:i], s.clusters[i+1:]...)
-			return
-		}
-	}
-}
-
-func (s *RegionState) ReplaceCluster(nsID uuid.UUID, cluster apigen_mgmt.Tenant) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i, c := range s.clusters {
-		if c.NsId == nsID {
-			s.clusters[i] = cluster
-			return
-		}
-	}
-}
-
-func (s *RegionState) CreateClusterUser(nsID uuid.UUID, user apigen_mgmt.DBUser) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.clusterUsers[nsID.String()]; !ok {
-		s.clusterUsers[nsID.String()] = []apigen_mgmt.DBUser{}
-	}
-
-	s.clusterUsers[nsID.String()] = append(s.clusterUsers[nsID.String()], user)
-}
-
-func (s *RegionState) GetClusterUser(nsID uuid.UUID, username string) *apigen_mgmt.DBUser {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, u := range s.clusterUsers[nsID.String()] {
-		if u.Username == username {
-			return ptr.Ptr(u)
-		}
-	}
-	return nil
-}
-
-func (s *RegionState) DeleteClusterUser(nsID uuid.UUID, username string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for i, u := range s.clusterUsers[nsID.String()] {
-		if u.Username == username {
-			s.clusterUsers[nsID.String()] = append(
-				s.clusterUsers[nsID.String()][:i],
-				s.clusterUsers[nsID.String()][i+1:]...,
-			)
-		}
-	}
-}
-
 func NewCloudClient() *FakeCloudClient {
 	return &FakeCloudClient{}
 }
@@ -237,7 +52,7 @@ func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-	return &cluster, nil
+	return cluster.tenant, nil
 }
 
 func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string, tenantName string) (bool, error) {
@@ -245,7 +60,7 @@ func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string
 
 	r := state.GetRegionState(region)
 	for _, c := range r.GetClusters() {
-		if c.TenantName == tenantName {
+		if c.GetTenant().TenantName == tenantName {
 			return true, nil
 		}
 	}
@@ -256,7 +71,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 	debugFuncCaller()
 
 	r := state.GetRegionState(region)
-	cluster := apigen_mgmt.Tenant{
+	t := &apigen_mgmt.Tenant{
 		Id:         uint64(len(r.GetClusters()) + 1),
 		TenantName: req.TenantName,
 		ImageTag:   *req.ImageTag,
@@ -266,8 +81,9 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 		Resources:  reqResouceToClusterResource(req.Resources),
 		NsId:       uuid.New(),
 	}
+	cluster := NewClusterState(t)
 	r.AddCluster(cluster)
-	return &cluster, nil
+	return t, nil
 }
 
 var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
@@ -336,7 +152,16 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 func (acc *FakeCloudClient) DeleteClusterByNsIDAwait(ctx context.Context, nsID uuid.UUID) error {
 	debugFuncCaller()
 
-	return state.DeleteClusterByNsID(nsID)
+	c, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			return nil
+		}
+	}
+
+	state.GetRegionState(c.tenant.Region).DeleteCluster(nsID)
+
+	return nil
 }
 
 func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uuid.UUID, version string) error {
@@ -346,8 +171,8 @@ func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, n
 	if err != nil {
 		return err
 	}
-	cluster.ImageTag = version
-	r := state.GetRegionState(cluster.Region)
+	cluster.GetTenant().ImageTag = version
+	r := state.GetRegionState(cluster.GetTenant().Region)
 	r.ReplaceCluster(nsID, cluster)
 	return nil
 }
@@ -359,11 +184,11 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 	if err != nil {
 		return err
 	}
-	cluster.Resources.Components.Compactor = componentReqToComponent(req.Compactor)
-	cluster.Resources.Components.Compute = componentReqToComponent(req.Compute)
-	cluster.Resources.Components.Frontend = componentReqToComponent(req.Frontend)
-	cluster.Resources.Components.Meta = componentReqToComponent(req.Meta)
-	r := state.GetRegionState(cluster.Region)
+	cluster.GetTenant().Resources.Components.Compactor = componentReqToComponent(req.Compactor)
+	cluster.GetTenant().Resources.Components.Compute = componentReqToComponent(req.Compute)
+	cluster.GetTenant().Resources.Components.Frontend = componentReqToComponent(req.Frontend)
+	cluster.GetTenant().Resources.Components.Meta = componentReqToComponent(req.Meta)
+	r := state.GetRegionState(cluster.GetTenant().Region)
 	r.ReplaceCluster(nsID, cluster)
 	return nil
 }
@@ -375,8 +200,8 @@ func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Contex
 	if err != nil {
 		return err
 	}
-	cluster.RwConfig = rwConfig
-	r := state.GetRegionState(cluster.Region)
+	cluster.GetTenant().RwConfig = rwConfig
+	r := state.GetRegionState(cluster.GetTenant().Region)
 	r.ReplaceCluster(nsID, cluster)
 	return nil
 }
@@ -388,8 +213,8 @@ func (acc *FakeCloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsI
 	if err != nil {
 		return err
 	}
-	cluster.EtcdConfig = etcdConfig
-	r := state.GetRegionState(cluster.Region)
+	cluster.GetTenant().EtcdConfig = etcdConfig
+	r := state.GetRegionState(cluster.GetTenant().Region)
 	r.ReplaceCluster(nsID, cluster)
 	return nil
 }
@@ -397,26 +222,55 @@ func (acc *FakeCloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsI
 func (acc *FakeCloudClient) GetClusterUser(ctx context.Context, nsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error) {
 	debugFuncCaller()
 
-	return state.GetClusterUser(nsID, username)
+	c, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.GetClusterUser(username)
 }
 
 func (acc *FakeCloudClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error) {
 	debugFuncCaller()
 
-	return state.CreateClusterUser(nsID, username, password, createDB, superUser)
+	c, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return nil, err
+	}
+
+	dbuser := &apigen_mgmt.DBUser{
+		Usecreatedb: createDB,
+		Username:    username,
+		Usesysid:    uint64((time.Now().Unix() << 10) + int64(rand.Int31n(1024))),
+		Usesuper:    superUser,
+	}
+
+	c.AddClusterUser(dbuser)
+
+	return dbuser, nil
 }
 
 func (acc *FakeCloudClient) UpdateClusterUserPassword(ctx context.Context, nsID uuid.UUID, username, password string) error {
 	debugFuncCaller()
 
-	_, err := state.GetClusterUser(nsID, username)
+	c, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.GetClusterUser(username)
 	return err
 }
 
 func (acc *FakeCloudClient) DeleteClusterUser(ctx context.Context, nsID uuid.UUID, username string) error {
 	debugFuncCaller()
 
-	state.DeleteClusterUser(nsID, username)
+	c, err := state.GetClusterByNsID(nsID)
+	if err != nil {
+		return err
+	}
+
+	c.DeleteClusterUser(username)
 
 	return nil
 }
@@ -448,5 +302,17 @@ func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_
 			}
 		}
 	}
+	return nil
+}
+
+func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
+	return nil, nil
+}
+
+func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
+	return nil, nil
+}
+
+func (acc *FakeCloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {
 	return nil
 }
