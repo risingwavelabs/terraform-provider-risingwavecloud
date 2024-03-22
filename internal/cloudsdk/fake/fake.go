@@ -50,6 +50,18 @@ func (acc *FakeCloudClient) Ping(context.Context) error {
 	return nil
 }
 
+func (acc *FakeCloudClient) GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error) {
+	debugFuncCaller()
+
+	r := state.GetRegionState(region)
+	for _, c := range r.clusters {
+		if c.tenant.TenantName == name {
+			return c.tenant, nil
+		}
+	}
+	return nil, errors.Wrapf(cloudsdk.ErrClusterNotFound, "cluster %s not found", name)
+}
+
 func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error) {
 	debugFuncCaller()
 
@@ -308,6 +320,23 @@ func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_
 		}
 	}
 	return nil
+}
+
+func (acc *FakeCloudClient) GetPrivateLinks(ctx context.Context) ([]cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	var plis []cloudsdk.PrivateLinkInfo
+	for _, r := range state.regionStates {
+		for _, c := range r.GetClusters() {
+			for _, pl := range c.GetPrivateLinks() {
+				plis = append(plis, cloudsdk.PrivateLinkInfo{
+					PrivateLink: pl,
+					ClusterNsID: c.GetTenant().NsId,
+				})
+			}
+		}
+	}
+	return plis, nil
 }
 
 func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*cloudsdk.PrivateLinkInfo, error) {

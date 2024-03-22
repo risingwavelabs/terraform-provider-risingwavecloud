@@ -1,6 +1,7 @@
 package acc
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -9,7 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,13 +25,34 @@ func getTestNamespace(t *testing.T) string {
 	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "_")
 }
 
+func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
+	t.Helper()
+
+	if fake.UseFakeBackend() {
+		return fake.NewCloudClient()
+	}
+	endpoint := os.Getenv(provider.EnvNameEndpoint)
+	require.NotEmpty(t, endpoint)
+
+	apiKey := os.Getenv(provider.EnvNameAPIKey)
+	require.NotEmpty(t, apiKey)
+
+	apiSecret := os.Getenv(provider.EnvNameAPISecret)
+	require.NotEmpty(t, apiSecret)
+
+	client, err := cloudsdk.NewCloudClient(context.Background(), endpoint, apiKey, apiSecret)
+	require.NoError(t, err)
+
+	return client
+}
+
 func TestClusterResource(t *testing.T) {
 
 	clusterName := fmt.Sprintf("tf-test%s", getTestNamespace(t))
+	cloud := initCloudSDK(t)
 
 	var clusterID uuid.UUID
-	var userID string
-	var privateLinkID uuid.UUID
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -40,14 +64,11 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
-						if fake.UseFakeBackend() {
-							nsID, err := fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", clusterName)
-							if err != nil {
-								return err
-							}
-							clusterID = nsID
-							userID = fmt.Sprintf("%s.test-user", clusterID.String())
+						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
+						if err != nil {
+							return err
 						}
+						clusterID = cluster.NsId
 						return nil
 					},
 				),
@@ -94,7 +115,7 @@ func TestClusterResource(t *testing.T) {
 				Config:       testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
 				ResourceName: "risingwavecloud_cluster_user.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
-					return userID, nil
+					return fmt.Sprintf("%s.test-user", clusterID.String()), nil
 				},
 				ImportState: true,
 			},
@@ -108,21 +129,6 @@ func TestClusterResource(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "id"),
 					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "endpoint"),
-					func(s *terraform.State) error {
-						if fake.UseFakeBackend() {
-							c, err := fake.GetFakerState().GetRegionState("us-east-1").GetClusterByNsID(clusterID)
-							if err != nil {
-								return err
-							}
-							for _, pl := range c.GetPrivateLinks() {
-								if pl.ConnectionName == "test-connection" {
-									privateLinkID = pl.Id
-								}
-							}
-						}
-
-						return nil
-					},
 				),
 			},
 			// import private link
@@ -130,7 +136,16 @@ func TestClusterResource(t *testing.T) {
 				Config:       testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
 				ResourceName: "risingwavecloud_privatelink.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
-					return privateLinkID.String(), nil
+					pls, err := cloud.GetPrivateLinks(context.Background())
+					if err != nil {
+						return "", err
+					}
+					for _, pl := range pls {
+						if pl.PrivateLink.ConnectionName == "test-connection" {
+							return pl.PrivateLink.Id.String(), nil
+						}
+					}
+					return "", fmt.Errorf("private link not found")
 				},
 				ImportState: true,
 			},
