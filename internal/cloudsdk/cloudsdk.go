@@ -55,6 +55,18 @@ type CloudClientInterface interface {
 	UpdateClusterUserPassword(ctx context.Context, clusterNsID uuid.UUID, username, password string) error
 
 	DeleteClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) error
+
+	/* Private Link */
+
+	// GetPrivateLink returns the private link and its cluster ID by the given private link ID.
+	GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error)
+
+	// CreatePrivateLinkAwait creates the private link and waits for the creation to complete.
+	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
+
+	// DeletePrivateLinkAwait deletes the private link and waits for the deletion to complete. it
+	// returns nil if the private link is deleted successfully or not found.
+	DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error
 }
 
 type CloudClient struct {
@@ -310,4 +322,78 @@ func (c *CloudClient) DeleteClusterUser(ctx context.Context, clusterNsID uuid.UU
 		return err
 	}
 	return rs.DeleteClusterUser(ctx, info.Id, username)
+}
+
+type PrivateLinkInfo struct {
+	ClusterNsID uuid.UUID
+	PrivateLink *apigen_mgmt.PrivateLink
+}
+
+func (c *CloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error) {
+	var (
+		offset uint64 = 0
+		limit  uint64 = 10
+	)
+	var privateLinks []apigen_acc.PrivateLink
+	for {
+		res, err := c.accClient.GetPrivatelinksWithResponse(ctx, &apigen_acc.GetPrivatelinksParams{
+			Offset: &offset,
+			Limit:  &limit,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to call API get private links")
+		}
+		if err = apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+			return nil, err
+		}
+		offset = res.JSON200.Offset
+		limit = res.JSON200.Limit
+		privateLinks = append(privateLinks, res.JSON200.PrivateLinks...)
+		if limit*(offset+1) >= res.JSON200.Size {
+			break
+		}
+		offset++
+	}
+	var plInfo *apigen_acc.PrivateLink
+	for _, pl := range privateLinks {
+		if pl.Id == privateLinkID {
+			plInfo = ptr.Ptr(pl)
+			break
+		}
+	}
+	if plInfo == nil {
+		return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link ID %s", privateLinkID.String())
+	}
+	rs, err := c.getRegionClient(plInfo.Region)
+	if err != nil {
+		return nil, err
+	}
+	cluster, err := rs.GetClusterByID(ctx, plInfo.TenantId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get cluster through id %d provided by private link with ID %s", plInfo.TenantId, privateLinkID.String())
+	}
+	pl, err := rs.GetPrivateLink(ctx, plInfo.TenantId, privateLinkID)
+	if err != nil {
+		return nil, err
+	}
+	return &PrivateLinkInfo{
+		ClusterNsID: cluster.NsId,
+		PrivateLink: pl,
+	}, nil
+}
+
+func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.CreatePrivateLinkAwait(ctx, info.Id, req)
+}
+
+func (c *CloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DeletePrivateLinkAwait(ctx, info.Id, privateLinkID)
 }

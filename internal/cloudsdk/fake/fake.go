@@ -305,14 +305,56 @@ func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_
 	return nil
 }
 
-func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
-	return nil, nil
+func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	for _, r := range state.regionStates {
+		for _, c := range r.GetClusters() {
+			pl, err := c.GetPrivateLink(privateLinkID)
+			if err == nil {
+				return &cloudsdk.PrivateLinkInfo{
+					PrivateLink: pl,
+					ClusterNsID: c.GetTenant().NsId,
+				}, nil
+			}
+		}
+	}
+
+	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", privateLinkID)
 }
 
 func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
-	return nil, nil
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+
+	pl := &apigen_mgmt.PrivateLink{
+		Id:              uuid.New(),
+		ConnectionName:  req.ConnectionName,
+		Target:          &req.Target,
+		Endpoint:        ptr.Ptr("vpce-fakestatetest"),
+		Status:          apigen_mgmt.CREATED,
+		ConnectionState: apigen_mgmt.ACCEPTED,
+		TenantId:        int64(c.GetTenant().Id),
+	}
+
+	c.AddPrivateLink(pl)
+
+	return pl, nil
 }
 
 func (acc *FakeCloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+
+	c.DeletePrivateLink(privateLinkID)
+
 	return nil
 }
