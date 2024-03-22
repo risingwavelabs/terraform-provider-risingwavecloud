@@ -18,9 +18,17 @@ type ClusterState struct {
 
 func NewClusterState(tenant *apigen_mgmt.Tenant) *ClusterState {
 	return &ClusterState{
-		tenant: tenant,
-		users:  map[string]*apigen_mgmt.DBUser{},
+		tenant:       tenant,
+		users:        map[string]*apigen_mgmt.DBUser{},
+		privateLinks: map[string]*apigen_mgmt.PrivateLink{},
 	}
+}
+
+func (c *ClusterState) GetPrivateLinks() map[string]*apigen_mgmt.PrivateLink {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.privateLinks
 }
 
 func (c *ClusterState) AddClusterUser(user *apigen_mgmt.DBUser) {

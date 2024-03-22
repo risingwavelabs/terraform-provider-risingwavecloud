@@ -21,7 +21,7 @@ var _ resource.Resource = &PrivateLinkResource{}
 var _ resource.ResourceWithImportState = &PrivateLinkResource{}
 
 func NewPrivateLinkResource() resource.Resource {
-	return &ClusterUserResource{}
+	return &PrivateLinkResource{}
 }
 
 type PrivateLinkResource struct {
@@ -32,12 +32,12 @@ type PrivateLinkModel struct {
 	ID             types.String `tfsdk:"id"`
 	ClusterID      types.String `tfsdk:"cluster_id"`
 	ConnectionName types.String `tfsdk:"connection_name"`
-	Target         types.String `tfsdk:"cluster_id"`
+	Target         types.String `tfsdk:"target"`
 	Endpoint       types.String `tfsdk:"endpoint"`
 }
 
 func (r *PrivateLinkResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_private_link"
+	resp.TypeName = req.ProviderTypeName + "_privatelink"
 }
 
 func (r *PrivateLinkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -121,12 +121,13 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	data.ID = types.StringValue(pl.Id.String())
+	privateLinkToDataModel(pl, &data)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func privateLinkToDataModel(plInfo *cloudsdk.PrivateLinkInfo, data *PrivateLinkModel) {
+	data.ID = types.StringValue(plInfo.PrivateLink.Id.String())
 	data.ClusterID = types.StringValue(plInfo.ClusterNsID.String())
 	data.ConnectionName = types.StringValue(plInfo.PrivateLink.ConnectionName)
 	data.Target = types.StringValue(defaults.UnwrapOr(plInfo.PrivateLink.Target, ""))

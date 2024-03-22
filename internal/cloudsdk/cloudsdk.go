@@ -62,7 +62,7 @@ type CloudClientInterface interface {
 	GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error)
 
 	// CreatePrivateLinkAwait creates the private link and waits for the creation to complete.
-	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
+	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
 
 	// DeletePrivateLinkAwait deletes the private link and waits for the deletion to complete. it
 	// returns nil if the private link is deleted successfully or not found.
@@ -382,12 +382,19 @@ func (c *CloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUI
 	}, nil
 }
 
-func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
+func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error) {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
 		return nil, err
 	}
-	return rs.CreatePrivateLinkAwait(ctx, info.Id, req)
+	pl, err := rs.CreatePrivateLinkAwait(ctx, info.Id, req)
+	if err != nil {
+		return nil, err
+	}
+	return &PrivateLinkInfo{
+		ClusterNsID: info.NsId,
+		PrivateLink: pl,
+	}, nil
 }
 
 func (c *CloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {

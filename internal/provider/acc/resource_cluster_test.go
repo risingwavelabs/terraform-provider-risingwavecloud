@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
@@ -25,8 +26,9 @@ func TestClusterResource(t *testing.T) {
 
 	clusterName := fmt.Sprintf("tf-test%s", getTestNamespace(t))
 
-	var id string
+	var clusterID uuid.UUID
 	var userID string
+	var privateLinkID uuid.UUID
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -38,21 +40,25 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
-						nsID, err := fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", clusterName)
-						if err != nil {
-							return err
+						if fake.UseFakeBackend() {
+							nsID, err := fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", clusterName)
+							if err != nil {
+								return err
+							}
+							clusterID = nsID
+							userID = fmt.Sprintf("%s.test-user", clusterID.String())
 						}
-						id = nsID.String()
-						userID = fmt.Sprintf("%s.test-user", id)
 						return nil
 					},
 				),
 			},
 			// ImportState testing
 			{
-				Config:            testClusterResourceConfig("v1.5.0", clusterName),
-				ResourceName:      "risingwavecloud_cluster.test",
-				ImportStateId:     id,
+				Config:       testClusterResourceConfig("v1.5.0", clusterName),
+				ResourceName: "risingwavecloud_cluster.test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					return clusterID.String(), nil
+				},
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -85,14 +91,48 @@ func TestClusterResource(t *testing.T) {
 			},
 			// import user
 			{
-				Config:        testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
-				ResourceName:  "risingwavecloud_cluster_user.test",
-				ImportStateId: userID,
-				ImportState:   true,
+				Config:       testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
+				ResourceName: "risingwavecloud_cluster_user.test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					return userID, nil
+				},
+				ImportState: true,
 			},
 			// update user
 			{
 				Config: testClusterResourceUpdateConfig(clusterName) + testClusterUser("new-password"),
+			},
+			// Create and read testing: private link
+			{
+				Config: testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "id"),
+					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "endpoint"),
+					func(s *terraform.State) error {
+						if fake.UseFakeBackend() {
+							c, err := fake.GetFakerState().GetRegionState("us-east-1").GetClusterByNsID(clusterID)
+							if err != nil {
+								return err
+							}
+							for _, pl := range c.GetPrivateLinks() {
+								if pl.ConnectionName == "test-connection" {
+									privateLinkID = pl.Id
+								}
+							}
+						}
+
+						return nil
+					},
+				),
+			},
+			// import private link
+			{
+				Config:       testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
+				ResourceName: "risingwavecloud_privatelink.test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					return privateLinkID.String(), nil
+				},
+				ImportState: true,
 			},
 			// Delete testing automatically occurs in TestCase
 		},
@@ -209,4 +249,13 @@ resource "risingwavecloud_cluster_user" "test" {
 	password   = "%s"
 }	
 `, password)
+}
+
+func testPrivateLink() string {
+	return `
+resource "risingwavecloud_privatelink" "test" {
+	cluster_id = risingwavecloud_cluster.test.id
+	connection_name = "test-connection"
+	target = "test-target"
+}`
 }

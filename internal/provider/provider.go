@@ -110,7 +110,9 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 
 	var client cloudsdk.CloudClientInterface
 
-	if len(os.Getenv("RWC_MOCK")) == 0 {
+	if fake.UseFakeBackend() {
+		client = fake.NewCloudClient()
+	} else {
 		acc, err := cloudsdk.NewCloudClient(ctx, endpoint, apiKey, apiSecret)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -134,8 +136,6 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 			return
 		}
 		client = acc
-	} else {
-		client = fake.NewCloudClient()
 	}
 
 	resp.DataSourceData = client
@@ -146,6 +146,7 @@ func (p *RisingWaveCloudProvider) Resources(ctx context.Context) []func() resour
 	return []func() resource.Resource{
 		NewClusterResource,
 		NewClusterUserResource,
+		NewPrivateLinkResource,
 	}
 }
 
