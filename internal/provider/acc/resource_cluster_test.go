@@ -1,4 +1,4 @@
-package provider
+package acc
 
 import (
 	"fmt"
@@ -26,6 +26,7 @@ func TestClusterResource(t *testing.T) {
 	clusterName := fmt.Sprintf("tf-test%s", getTestNamespace(t))
 
 	var id string
+	var userID string
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -38,6 +39,7 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
 						id = fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", "tf-test").String()
+						userID = fmt.Sprintf("%s.test-user", id)
 						return nil
 					},
 				),
@@ -59,12 +61,34 @@ func TestClusterResource(t *testing.T) {
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
 			{
-				Config: testClusterResourceUpdateConfig("v1.6.0", clusterName),
+				Config: testClusterResourceUpdateConfig(clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.default_node_group.replica", "2"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.risingwave_config", "[server]\nheartbeat_interval_ms = 997\n"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.meta.etcd_meta_store.etcd_config", "ETCD_MAX_REQUEST_BYTES: \"100000000\"\n"),
 				),
+			},
+			// Create and Read testing: user
+			{
+				Config: testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_user.test", "id"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "username", "test-user"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "password", "test-password"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "create_db", "false"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "super_user", "false"),
+				),
+			},
+			// import user
+			{
+				Config:        testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
+				ResourceName:  "risingwavecloud_cluster_user.test",
+				ImportStateId: userID,
+				ImportState:   true,
+			},
+			// update user
+			{
+				Config: testClusterResourceUpdateConfig(clusterName) + testClusterUser("new-password"),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
@@ -119,12 +143,12 @@ resource "risingwavecloud_cluster" "test" {
 }
 
 // update: compactor replica 1 -> 2, etcd_config, risingwave_config
-func testClusterResourceUpdateConfig(version, name string) string {
+func testClusterResourceUpdateConfig(name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
-	version  = "%s"
+	version  = "v1.6.0"
 	spec     = {
 		compute = {
 			default_node_group = {
@@ -170,5 +194,15 @@ resource "risingwavecloud_cluster" "test" {
 		EOT
 	}
 }
-`, name, version)
+`, name)
+}
+
+func testClusterUser(password string) string {
+	return fmt.Sprintf(`
+resource "risingwavecloud_cluster_user" "test" {
+	cluster_id = risingwavecloud_cluster.test.id
+	username   = "test-user"
+	password   = "%s"
+}	
+`, password)
 }

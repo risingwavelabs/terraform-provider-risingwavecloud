@@ -64,6 +64,7 @@ const (
 
 // Defines values for TierId.
 const (
+	BYOC           TierId = "BYOC"
 	Benchmark      TierId = "Benchmark"
 	Developer      TierId = "Developer"
 	DeveloperBasic TierId = "Developer-Basic"
@@ -97,10 +98,35 @@ type ComponentResourceRequest struct {
 	Replica         int    `json:"replica"`
 }
 
+// CreateDBUserRequestBody defines model for CreateDBUserRequestBody.
+type CreateDBUserRequestBody struct {
+	Createdb  bool   `json:"createdb"`
+	Password  string `json:"password"`
+	Superuser bool   `json:"superuser"`
+	TenantId  uint64 `json:"tenantId"`
+	Username  string `json:"username"`
+}
+
 // CreateTenantResponseBody defines model for CreateTenantResponseBody.
 type CreateTenantResponseBody struct {
 	TenantId   uint64 `json:"tenantId"`
 	TenantName string `json:"tenantName"`
+}
+
+// DBUser defines model for DBUser.
+type DBUser struct {
+	Usecreatedb bool   `json:"usecreatedb"`
+	Username    string `json:"username"`
+	Usesuper    bool   `json:"usesuper"`
+	Usesysid    uint64 `json:"usesysid"`
+}
+
+// DBUserArray defines model for DBUserArray.
+type DBUserArray = []DBUser
+
+// DBUsers defines model for DBUsers.
+type DBUsers struct {
+	Dbusers *DBUserArray `json:"dbusers,omitempty"`
 }
 
 // Endpoint defines model for Endpoint.
@@ -284,6 +310,13 @@ type Tiers struct {
 	Tiers TierArray `json:"tiers"`
 }
 
+// UpdateDBUserRequestBody defines model for UpdateDBUserRequestBody.
+type UpdateDBUserRequestBody struct {
+	Password string `json:"password"`
+	TenantId uint64 `json:"tenantId"`
+	Username string `json:"username"`
+}
+
 // BadRequestResponse defines model for BadRequestResponse.
 type BadRequestResponse struct {
 	Msg string `json:"msg"`
@@ -296,6 +329,11 @@ type DefaultResponse struct {
 
 // NotFoundResponse defines model for NotFoundResponse.
 type NotFoundResponse struct {
+	Msg string `json:"msg"`
+}
+
+// ServiceUnavailableResponse defines model for ServiceUnavailableResponse.
+type ServiceUnavailableResponse struct {
 	Msg string `json:"msg"`
 }
 
@@ -317,6 +355,17 @@ type GetTenantParams struct {
 	TenantName *string `form:"tenantName,omitempty" json:"tenantName,omitempty"`
 }
 
+// DeleteTenantDbusersParams defines parameters for DeleteTenantDbusers.
+type DeleteTenantDbusersParams struct {
+	TenantId uint64 `form:"tenantId" json:"tenantId"`
+	Username string `form:"username" json:"username"`
+}
+
+// GetTenantDbusersParams defines parameters for GetTenantDbusers.
+type GetTenantDbusersParams struct {
+	TenantId uint64 `form:"tenantId" json:"tenantId"`
+}
+
 // PostTenantTenantIdUpdateVersionJSONBody defines parameters for PostTenantTenantIdUpdateVersion.
 type PostTenantTenantIdUpdateVersionJSONBody struct {
 	Version *string `json:"version,omitempty"`
@@ -327,6 +376,12 @@ type GetTenantsParams struct {
 	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 }
+
+// PostTenantDbusersJSONRequestBody defines body for PostTenantDbusers for application/json ContentType.
+type PostTenantDbusersJSONRequestBody = CreateDBUserRequestBody
+
+// PutTenantDbusersJSONRequestBody defines body for PutTenantDbusers for application/json ContentType.
+type PutTenantDbusersJSONRequestBody = UpdateDBUserRequestBody
 
 // PostTenantTenantIdPrivatelinksJSONRequestBody defines body for PostTenantTenantIdPrivatelinks for application/json ContentType.
 type PostTenantTenantIdPrivatelinksJSONRequestBody = PostPrivateLinkRequestBody
@@ -425,6 +480,22 @@ type ClientInterface interface {
 	// GetTenant request
 	GetTenant(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteTenantDbusers request
+	DeleteTenantDbusers(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantDbusers request
+	GetTenantDbusers(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantDbusersWithBody request with any body
+	PostTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantDbusers(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutTenantDbusersWithBody request with any body
+	PutTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutTenantDbusers(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTenantTags request
 	GetTenantTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -505,6 +576,78 @@ func (c *Client) DeleteTenant(ctx context.Context, params *DeleteTenantParams, r
 
 func (c *Client) GetTenant(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantDbusers(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantDbusersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantDbusers(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantDbusersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantDbusersRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantDbusers(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantDbusersRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantDbusersRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantDbusers(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantDbusersRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -913,6 +1056,188 @@ func NewGetTenantRequest(server string, params *GetTenantParams) (*http.Request,
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDeleteTenantDbusersRequest generates requests for DeleteTenantDbusers
+func NewDeleteTenantDbusersRequest(server string, params *DeleteTenantDbusersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenant/dbusers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, params.TenantId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "username", runtime.ParamLocationQuery, params.Username); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantDbusersRequest generates requests for GetTenantDbusers
+func NewGetTenantDbusersRequest(server string, params *GetTenantDbusersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenant/dbusers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, params.TenantId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantDbusersRequest calls the generic PostTenantDbusers builder with application/json body
+func NewPostTenantDbusersRequest(server string, body PostTenantDbusersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantDbusersRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostTenantDbusersRequestWithBody generates requests for PostTenantDbusers with any type of body
+func NewPostTenantDbusersRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenant/dbusers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPutTenantDbusersRequest calls the generic PutTenantDbusers builder with application/json body
+func NewPutTenantDbusersRequest(server string, body PutTenantDbusersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutTenantDbusersRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPutTenantDbusersRequestWithBody generates requests for PutTenantDbusers with any type of body
+func NewPutTenantDbusersRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenant/dbusers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1426,6 +1751,22 @@ type ClientWithResponsesInterface interface {
 	// GetTenantWithResponse request
 	GetTenantWithResponse(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*GetTenantResponse, error)
 
+	// DeleteTenantDbusersWithResponse request
+	DeleteTenantDbusersWithResponse(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*DeleteTenantDbusersResponse, error)
+
+	// GetTenantDbusersWithResponse request
+	GetTenantDbusersWithResponse(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*GetTenantDbusersResponse, error)
+
+	// PostTenantDbusersWithBodyWithResponse request with any body
+	PostTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error)
+
+	PostTenantDbusersWithResponse(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error)
+
+	// PutTenantDbusersWithBodyWithResponse request with any body
+	PutTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error)
+
+	PutTenantDbusersWithResponse(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error)
+
 	// GetTenantTagsWithResponse request
 	GetTenantTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTenantTagsResponse, error)
 
@@ -1553,6 +1894,102 @@ func (r GetTenantResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantDbusersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON404      *DefaultResponse
+	JSON503      *ServiceUnavailableResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantDbusersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantDbusersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantDbusersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DBUsers
+	JSON404      *DefaultResponse
+	JSON503      *ServiceUnavailableResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantDbusersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantDbusersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantDbusersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DBUser
+	JSON404      *DefaultResponse
+	JSON503      *ServiceUnavailableResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantDbusersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantDbusersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutTenantDbusersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON404      *DefaultResponse
+	JSON503      *ServiceUnavailableResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PutTenantDbusersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutTenantDbusersResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1848,6 +2285,58 @@ func (c *ClientWithResponses) GetTenantWithResponse(ctx context.Context, params 
 	return ParseGetTenantResponse(rsp)
 }
 
+// DeleteTenantDbusersWithResponse request returning *DeleteTenantDbusersResponse
+func (c *ClientWithResponses) DeleteTenantDbusersWithResponse(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*DeleteTenantDbusersResponse, error) {
+	rsp, err := c.DeleteTenantDbusers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantDbusersResponse(rsp)
+}
+
+// GetTenantDbusersWithResponse request returning *GetTenantDbusersResponse
+func (c *ClientWithResponses) GetTenantDbusersWithResponse(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*GetTenantDbusersResponse, error) {
+	rsp, err := c.GetTenantDbusers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantDbusersResponse(rsp)
+}
+
+// PostTenantDbusersWithBodyWithResponse request with arbitrary body returning *PostTenantDbusersResponse
+func (c *ClientWithResponses) PostTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error) {
+	rsp, err := c.PostTenantDbusersWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantDbusersResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantDbusersWithResponse(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error) {
+	rsp, err := c.PostTenantDbusers(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantDbusersResponse(rsp)
+}
+
+// PutTenantDbusersWithBodyWithResponse request with arbitrary body returning *PutTenantDbusersResponse
+func (c *ClientWithResponses) PutTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error) {
+	rsp, err := c.PutTenantDbusersWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantDbusersResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutTenantDbusersWithResponse(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error) {
+	rsp, err := c.PutTenantDbusers(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantDbusersResponse(rsp)
+}
+
 // GetTenantTagsWithResponse request returning *GetTenantTagsResponse
 func (c *ClientWithResponses) GetTenantTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTenantTagsResponse, error) {
 	rsp, err := c.GetTenantTags(ctx, reqEditors...)
@@ -2095,6 +2584,166 @@ func ParseGetTenantResponse(rsp *http.Response) (*GetTenantResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantDbusersResponse parses an HTTP response from a DeleteTenantDbusersWithResponse call
+func ParseDeleteTenantDbusersResponse(rsp *http.Response) (*DeleteTenantDbusersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantDbusersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailableResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantDbusersResponse parses an HTTP response from a GetTenantDbusersWithResponse call
+func ParseGetTenantDbusersResponse(rsp *http.Response) (*GetTenantDbusersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantDbusersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DBUsers
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailableResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantDbusersResponse parses an HTTP response from a PostTenantDbusersWithResponse call
+func ParsePostTenantDbusersResponse(rsp *http.Response) (*PostTenantDbusersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantDbusersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DBUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailableResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutTenantDbusersResponse parses an HTTP response from a PutTenantDbusersWithResponse call
+func ParsePutTenantDbusersResponse(rsp *http.Response) (*PutTenantDbusersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutTenantDbusersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailableResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 
