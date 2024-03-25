@@ -3,12 +3,12 @@
 page_title: "risingwavecloud_cluster_user Resource - terraform-provider-risingwavecloud"
 subcategory: ""
 description: |-
-  A RisingWave Cluster
+  A database user in a RisingWave cluster.
 ---
 
 # risingwavecloud_cluster_user (Resource)
 
-A RisingWave Cluster
+A database user in a RisingWave cluster.
 
 
 
