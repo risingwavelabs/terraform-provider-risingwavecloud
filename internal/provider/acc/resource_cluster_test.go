@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
 	"github.com/stretchr/testify/require"
 )
@@ -36,6 +37,7 @@ func TestClusterResource(t *testing.T) {
 				Config: testClusterResourceConfig("v1.5.0", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
 						nsID, err := fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", clusterName)

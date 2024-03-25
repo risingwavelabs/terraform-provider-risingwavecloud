@@ -80,6 +80,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 		EtcdConfig: *req.EtcdConfig,
 		Resources:  reqResouceToClusterResource(req.Resources),
 		NsId:       uuid.New(),
+		Tier:       *req.Tier,
 	}
 	cluster := NewClusterState(t)
 	r.AddCluster(cluster)
