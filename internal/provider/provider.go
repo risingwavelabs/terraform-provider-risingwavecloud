@@ -19,6 +19,10 @@ import (
 
 const (
 	DefaultEndpoint = "https://canary-useast2-acc.risingwave.cloud/api/v1"
+
+	EnvNameAPIKey    = "RWC_API_KEY"
+	EnvNameAPISecret = "RWC_API_SECRET"
+	EnvNameEndpoint  = "RWC_ENDPOINT"
 )
 
 // Assert the provider satisfies various provider interfaces.
@@ -73,9 +77,9 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 	}
 
 	var (
-		apiKey    = strings.Trim(defaults.String(data.APIKey.ValueString(), os.Getenv("RWC_API_KEY")), " \n\t\r")
-		apiSecret = strings.Trim(defaults.String(data.APISecret.ValueString(), os.Getenv("RWC_API_SECRET")), " \n\t\r")
-		endpoint  = strings.Trim(defaults.String(data.Endpoint.ValueString(), os.Getenv("RWC_ENDPOINT")), " \n\t\r")
+		apiKey    = strings.Trim(defaults.String(data.APIKey.ValueString(), os.Getenv(EnvNameAPIKey)), " \n\t\r")
+		apiSecret = strings.Trim(defaults.String(data.APISecret.ValueString(), os.Getenv(EnvNameAPISecret)), " \n\t\r")
+		endpoint  = strings.Trim(defaults.String(data.Endpoint.ValueString(), os.Getenv(EnvNameEndpoint)), " \n\t\r")
 	)
 	if len(endpoint) == 0 {
 		endpoint = DefaultEndpoint
@@ -110,7 +114,9 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 
 	var client cloudsdk.CloudClientInterface
 
-	if len(os.Getenv("RWC_MOCK")) == 0 {
+	if fake.UseFakeBackend() {
+		client = fake.NewCloudClient()
+	} else {
 		acc, err := cloudsdk.NewCloudClient(ctx, endpoint, apiKey, apiSecret)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -134,8 +140,6 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 			return
 		}
 		client = acc
-	} else {
-		client = fake.NewCloudClient()
 	}
 
 	resp.DataSourceData = client
@@ -145,6 +149,8 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 func (p *RisingWaveCloudProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewClusterResource,
+		NewClusterUserResource,
+		NewPrivateLinkResource,
 	}
 }
 
