@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
@@ -18,6 +19,7 @@ import (
 var (
 	ErrClusterNotFound     = errors.New("cluster not found")
 	ErrClusterUserNotFound = errors.New("cluster user not found")
+	ErrPrivateLinkNotFound = errors.New("private link not found")
 )
 
 const (
@@ -38,9 +40,21 @@ var (
 		Timeout:  15 * time.Minute,
 		Interval: 3 * time.Second,
 	}
+
+	PollingPrivateLinkCreation = wait.PollingParams{
+		Timeout:  5 * time.Minute,
+		Interval: 3 * time.Second,
+	}
+
+	PollingPrivateLinkDeletion = wait.PollingParams{
+		Timeout:  5 * time.Minute,
+		Interval: 3 * time.Second,
+	}
 )
 
 type RegionServiceClientInterface interface {
+	GetClusterByName(ctx context.Context, name string) (*apigen_mgmt.Tenant, error)
+
 	GetClusterByID(ctx context.Context, id uint64) (*apigen_mgmt.Tenant, error)
 
 	IsTenantNameExist(ctx context.Context, tenantName string) (bool, error)
@@ -68,6 +82,12 @@ type RegionServiceClientInterface interface {
 	UpdateClusterUserPassword(ctx context.Context, id uint64, username, password string) error
 
 	DeleteClusterUser(ctx context.Context, id uint64, username string) error
+
+	GetPrivateLink(ctx context.Context, id uint64, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error)
+
+	CreatePrivateLinkAwait(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
+
+	DeletePrivateLinkAwait(ctx context.Context, id uint64, privateLinkID uuid.UUID) error
 }
 
 type RegionServiceClient struct {
@@ -75,7 +95,7 @@ type RegionServiceClient struct {
 }
 
 func (c *RegionServiceClient) IsTenantNameExist(ctx context.Context, tenantName string) (bool, error) {
-	_, err := c.getClusterByName(ctx, tenantName)
+	_, err := c.GetClusterByName(ctx, tenantName)
 	if err != nil {
 		if errors.Is(err, ErrClusterNotFound) {
 			return false, nil
@@ -104,7 +124,7 @@ func (c *RegionServiceClient) waitClusterRunning(ctx context.Context, id uint64)
 func (c *RegionServiceClient) waitClusterByName(ctx context.Context, name string, target apigen_mgmt.TenantStatus) error {
 	var currentStatus apigen_mgmt.TenantStatus
 	if err := wait.Poll(ctx, func() (bool, error) {
-		cluster, err := c.getClusterByName(ctx, name)
+		cluster, err := c.GetClusterByName(ctx, name)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to get the cluster info")
 		}
@@ -117,7 +137,7 @@ func (c *RegionServiceClient) waitClusterByName(ctx context.Context, name string
 }
 
 // this is used only when the cluster ID is unknown.
-func (c *RegionServiceClient) getClusterByName(ctx context.Context, name string) (*apigen_mgmt.Tenant, error) {
+func (c *RegionServiceClient) GetClusterByName(ctx context.Context, name string) (*apigen_mgmt.Tenant, error) {
 	res, err := c.mgmtClient.GetTenantWithResponse(ctx, &apigen_mgmt.GetTenantParams{
 		TenantName: &name,
 	})
@@ -164,7 +184,7 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 		return nil, err
 	}
 
-	cluster, err := c.getClusterByName(ctx, req.TenantName)
+	cluster, err := c.GetClusterByName(ctx, req.TenantName)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cluster info")
 	}
@@ -372,4 +392,72 @@ func (c *RegionServiceClient) DeleteClusterUser(ctx context.Context, id uint64, 
 		return nil
 	}
 	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK)
+}
+
+func (c *RegionServiceClient) GetPrivateLink(ctx context.Context, id uint64, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
+	res, err := c.mgmtClient.GetTenantTenantIdPrivatelinkPrivateLinkIdWithResponse(ctx, id, privateLinkID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get private link")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, ErrPrivateLinkNotFound
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
+}
+
+func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
+	res, err := c.mgmtClient.PostTenantTenantIdPrivatelinksWithResponse(ctx, id, req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to create private link")
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
+		return nil, err
+	}
+	var info = res.JSON202
+	var rtn *apigen_mgmt.PrivateLink
+	err = wait.Poll(ctx, func() (bool, error) {
+		link, err := c.GetPrivateLink(ctx, id, info.Id)
+		if err != nil {
+			return false, err
+		}
+		rtn = link
+		if link.Status == apigen_mgmt.ERROR {
+			return false, errors.Errorf("failed to create private link, id: %s, creation of privateLink fails and enters an ERROR state", info.Id)
+		}
+		if link.Status == apigen_mgmt.CREATED {
+			return true, nil
+		}
+		return false, nil
+	}, PollingPrivateLinkCreation)
+
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
+func (c *RegionServiceClient) DeletePrivateLinkAwait(ctx context.Context, id uint64, privateLinkID uuid.UUID) error {
+	res, err := c.mgmtClient.DeleteTenantTenantIdPrivatelinkPrivateLinkIdWithResponse(ctx, id, privateLinkID)
+	if err != nil {
+		return errors.Wrap(err, "failed to call API to delete private link")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
+		return err
+	}
+	return wait.Poll(ctx, func() (bool, error) {
+		_, err := c.GetPrivateLink(ctx, id, privateLinkID)
+		if err != nil {
+			if errors.Is(err, ErrPrivateLinkNotFound) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	}, PollingPrivateLinkDeletion)
 }

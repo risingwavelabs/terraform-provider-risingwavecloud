@@ -46,6 +46,8 @@ type CloudClientInterface interface {
 
 	UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error
 
+	GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error)
+
 	/* Cluster User */
 
 	GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error)
@@ -55,6 +57,20 @@ type CloudClientInterface interface {
 	UpdateClusterUserPassword(ctx context.Context, clusterNsID uuid.UUID, username, password string) error
 
 	DeleteClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) error
+
+	/* Private Link */
+
+	GetPrivateLinks(ctx context.Context) ([]PrivateLinkInfo, error)
+
+	// GetPrivateLink returns the private link and its cluster ID by the given private link ID.
+	GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error)
+
+	// CreatePrivateLinkAwait creates the private link and waits for the creation to complete.
+	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
+
+	// DeletePrivateLinkAwait deletes the private link and waits for the deletion to complete. it
+	// returns nil if the private link is deleted successfully or not found.
+	DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error
 }
 
 type CloudClient struct {
@@ -310,4 +326,102 @@ func (c *CloudClient) DeleteClusterUser(ctx context.Context, clusterNsID uuid.UU
 		return err
 	}
 	return rs.DeleteClusterUser(ctx, info.Id, username)
+}
+
+type PrivateLinkInfo struct {
+	ClusterNsID uuid.UUID
+	PrivateLink *apigen_mgmt.PrivateLink
+}
+
+func (c *CloudClient) GetPrivateLinks(ctx context.Context) ([]PrivateLinkInfo, error) {
+	var (
+		offset uint64 = 0
+		limit  uint64 = 10
+	)
+	var privateLinks []apigen_acc.PrivateLink
+	for {
+		res, err := c.accClient.GetPrivatelinksWithResponse(ctx, &apigen_acc.GetPrivatelinksParams{
+			Offset: &offset,
+			Limit:  &limit,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to call API get private links")
+		}
+		if err = apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+			return nil, err
+		}
+		offset = res.JSON200.Offset
+		limit = res.JSON200.Limit
+		privateLinks = append(privateLinks, res.JSON200.PrivateLinks...)
+		if limit*(offset+1) >= res.JSON200.Size {
+			break
+		}
+		offset++
+	}
+	var plInfos []PrivateLinkInfo
+	for _, accpl := range privateLinks {
+		rs, err := c.getRegionClient(accpl.Region)
+		if err != nil {
+			return nil, err
+		}
+		pl, err := rs.GetPrivateLink(ctx, accpl.TenantId, accpl.Id)
+		if err != nil {
+			return nil, err
+		}
+		cluster, err := rs.GetClusterByID(ctx, accpl.TenantId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get cluster through id %d provided by private link with ID %s", accpl.TenantId, pl.Id.String())
+		}
+		plInfos = append(plInfos, PrivateLinkInfo{
+			ClusterNsID: cluster.NsId,
+			PrivateLink: pl,
+		})
+	}
+	return plInfos, nil
+}
+
+func (c *CloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error) {
+
+	pls, err := c.GetPrivateLinks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, pl := range pls {
+		if pl.PrivateLink.Id == privateLinkID {
+			return &pl, nil
+		}
+	}
+
+	return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link %s", privateLinkID.String())
+}
+
+func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	pl, err := rs.CreatePrivateLinkAwait(ctx, info.Id, req)
+	if err != nil {
+		return nil, err
+	}
+	return &PrivateLinkInfo{
+		ClusterNsID: info.NsId,
+		PrivateLink: pl,
+	}, nil
+}
+
+func (c *CloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DeletePrivateLinkAwait(ctx, info.Id, privateLinkID)
+}
+
+func (c *CloudClient) GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error) {
+	rs, err := c.getRegionClient(region)
+	if err != nil {
+		return nil, err
+	}
+	return rs.GetClusterByName(ctx, name)
 }

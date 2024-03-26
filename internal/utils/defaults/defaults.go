@@ -6,3 +6,10 @@ func String(v string, d string) string {
 	}
 	return v
 }
+
+func UnwrapOr[T any](v *T, u T) T {
+	if v == nil {
+		return u
+	}
+	return *v
+}

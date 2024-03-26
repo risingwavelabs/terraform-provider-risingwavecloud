@@ -10,16 +10,25 @@ import (
 )
 
 type ClusterState struct {
-	mu     sync.RWMutex
-	tenant *apigen_mgmt.Tenant
-	users  map[string]*apigen_mgmt.DBUser
+	mu           sync.RWMutex
+	tenant       *apigen_mgmt.Tenant
+	users        map[string]*apigen_mgmt.DBUser
+	privateLinks map[string]*apigen_mgmt.PrivateLink
 }
 
 func NewClusterState(tenant *apigen_mgmt.Tenant) *ClusterState {
 	return &ClusterState{
-		tenant: tenant,
-		users:  map[string]*apigen_mgmt.DBUser{},
+		tenant:       tenant,
+		users:        map[string]*apigen_mgmt.DBUser{},
+		privateLinks: map[string]*apigen_mgmt.PrivateLink{},
 	}
+}
+
+func (c *ClusterState) GetPrivateLinks() map[string]*apigen_mgmt.PrivateLink {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.privateLinks
 }
 
 func (c *ClusterState) AddClusterUser(user *apigen_mgmt.DBUser) {
@@ -52,6 +61,31 @@ func (c *ClusterState) GetTenant() *apigen_mgmt.Tenant {
 	defer c.mu.RUnlock()
 
 	return c.tenant
+}
+
+func (c *ClusterState) AddPrivateLink(privateLink *apigen_mgmt.PrivateLink) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.privateLinks[privateLink.Id.String()] = privateLink
+}
+
+func (c *ClusterState) DeletePrivateLink(id uuid.UUID) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.privateLinks, id.String())
+}
+
+func (c *ClusterState) GetPrivateLink(id uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	pl, ok := c.privateLinks[id.String()]
+	if !ok {
+		return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "id: %s", id.String())
+	}
+	return pl, nil
 }
 
 type RegionState struct {
