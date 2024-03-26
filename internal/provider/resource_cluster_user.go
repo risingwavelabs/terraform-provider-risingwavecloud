@@ -45,7 +45,7 @@ func (r *ClusterUserResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *ClusterUserResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "A database user in a RisingWave cluster.",
+		MarkdownDescription: clusterUserMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The global identifier for the resource: [cluster ID].[username]",

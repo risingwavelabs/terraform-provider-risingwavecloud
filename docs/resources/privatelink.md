@@ -5,8 +5,21 @@ subcategory: ""
 description: |-
   A Private Link connection on the RisingWave Cloud platform.
   In AWS, it is a configured endpoint to connect to a VPC endpoint service in your VPC.
-  In GCP, it is a connected project to a service attachment in your private network.
+  In GCP, it is a endpoint to a service attachment in your private network.
   Learn more details about this resource at RisingWave Cloud Documentation https://docs.risingwave.com/cloud/create-a-connection/.
+  Import a Privatelink Resource
+  To import a Privatelink resource, follow the steps below:
+  Get the UUID of the privatelink from the RisingWave Cloud platform.Write a resource definition to import the cluster. For example:
+  hcl
+    resource "risingwavecloud_privatelink" "test" {
+      cluster_id      = "cluster-id"
+      connection_name = "test-connection"
+      target          = "test-target"
+    }
+  
+  Run the import command:
+  shell
+  terraform import risingwavecloud_privatelink.test <privatelink_id>
 ---
 
 # risingwavecloud_privatelink (Resource)
@@ -15,9 +28,31 @@ A Private Link connection on the RisingWave Cloud platform.
 
 In AWS, it is a configured endpoint to connect to a VPC endpoint service in your VPC.
 
-In GCP, it is a connected project to a service attachment in your private network.
+In GCP, it is a endpoint to a service attachment in your private network.
 
 Learn more details about this resource at [RisingWave Cloud Documentation](https://docs.risingwave.com/cloud/create-a-connection/).
+
+## Import a Privatelink Resource
+
+To import a Privatelink resource, follow the steps below:
+
+1. Get the UUID of the privatelink from the RisingWave Cloud platform.
+
+2. Write a resource definition to import the cluster. For example:
+
+```hcl
+  resource "risingwavecloud_privatelink" "test" {
+    cluster_id      = "cluster-id"
+    connection_name = "test-connection"
+    target          = "test-target"
+  }
+  ```
+
+3. Run the import command:
+
+```shell
+terraform import risingwavecloud_privatelink.test <privatelink_id>
+```
 
 
 
