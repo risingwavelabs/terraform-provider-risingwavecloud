@@ -1,14 +1,18 @@
 package acc
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,12 +25,34 @@ func getTestNamespace(t *testing.T) string {
 	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "_")
 }
 
+func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
+	t.Helper()
+
+	if fake.UseFakeBackend() {
+		return fake.NewCloudClient()
+	}
+	endpoint := os.Getenv(provider.EnvNameEndpoint)
+	require.NotEmpty(t, endpoint)
+
+	apiKey := os.Getenv(provider.EnvNameAPIKey)
+	require.NotEmpty(t, apiKey)
+
+	apiSecret := os.Getenv(provider.EnvNameAPISecret)
+	require.NotEmpty(t, apiSecret)
+
+	client, err := cloudsdk.NewCloudClient(context.Background(), endpoint, apiKey, apiSecret)
+	require.NoError(t, err)
+
+	return client
+}
+
 func TestClusterResource(t *testing.T) {
 
 	clusterName := fmt.Sprintf("tf-test%s", getTestNamespace(t))
+	cloud := initCloudSDK(t)
 
-	var id string
-	var userID string
+	var clusterID uuid.UUID
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -38,21 +64,22 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
-						nsID, err := fake.GetFakerState().GetNsIDByRegionAndName("us-east-1", clusterName)
+						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
 						if err != nil {
 							return err
 						}
-						id = nsID.String()
-						userID = fmt.Sprintf("%s.test-user", id)
+						clusterID = cluster.NsId
 						return nil
 					},
 				),
 			},
 			// ImportState testing
 			{
-				Config:            testClusterResourceConfig("v1.5.0", clusterName),
-				ResourceName:      "risingwavecloud_cluster.test",
-				ImportStateId:     id,
+				Config:       testClusterResourceConfig("v1.5.0", clusterName),
+				ResourceName: "risingwavecloud_cluster.test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					return clusterID.String(), nil
+				},
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -85,14 +112,42 @@ func TestClusterResource(t *testing.T) {
 			},
 			// import user
 			{
-				Config:        testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
-				ResourceName:  "risingwavecloud_cluster_user.test",
-				ImportStateId: userID,
-				ImportState:   true,
+				Config:       testClusterResourceUpdateConfig(clusterName) + testClusterUser("test-password"),
+				ResourceName: "risingwavecloud_cluster_user.test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					return fmt.Sprintf("%s.test-user", clusterID.String()), nil
+				},
+				ImportState: true,
 			},
 			// update user
 			{
 				Config: testClusterResourceUpdateConfig(clusterName) + testClusterUser("new-password"),
+			},
+			// Create and read testing: private link
+			{
+				Config: testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "id"),
+					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "endpoint"),
+				),
+			},
+			// import private link
+			{
+				Config:       testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
+				ResourceName: "risingwavecloud_privatelink.test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					pls, err := cloud.GetPrivateLinks(context.Background())
+					if err != nil {
+						return "", err
+					}
+					for _, pl := range pls {
+						if pl.PrivateLink.ConnectionName == "test-connection" {
+							return pl.PrivateLink.Id.String(), nil
+						}
+					}
+					return "", fmt.Errorf("private link not found")
+				},
+				ImportState: true,
 			},
 			// Delete testing automatically occurs in TestCase
 		},
@@ -209,4 +264,13 @@ resource "risingwavecloud_cluster_user" "test" {
 	password   = "%s"
 }	
 `, password)
+}
+
+func testPrivateLink() string {
+	return `
+resource "risingwavecloud_privatelink" "test" {
+	cluster_id = risingwavecloud_cluster.test.id
+	connection_name = "test-connection"
+	target = "test-target"
+}`
 }

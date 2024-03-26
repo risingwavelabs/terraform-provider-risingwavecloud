@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -15,6 +16,10 @@ import (
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 )
+
+func UseFakeBackend() bool {
+	return len(os.Getenv("RWC_MOCK")) != 0
+}
 
 func debugFuncCaller() {
 	for _, stack := range []int{1, 2} {
@@ -43,6 +48,18 @@ type FakeCloudClient struct {
 
 func (acc *FakeCloudClient) Ping(context.Context) error {
 	return nil
+}
+
+func (acc *FakeCloudClient) GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error) {
+	debugFuncCaller()
+
+	r := state.GetRegionState(region)
+	for _, c := range r.clusters {
+		if c.tenant.TenantName == name {
+			return c.tenant, nil
+		}
+	}
+	return nil, errors.Wrapf(cloudsdk.ErrClusterNotFound, "cluster %s not found", name)
 }
 
 func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error) {
@@ -305,14 +322,76 @@ func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_
 	return nil
 }
 
-func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
-	return nil, nil
+func (acc *FakeCloudClient) GetPrivateLinks(ctx context.Context) ([]cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	var plis []cloudsdk.PrivateLinkInfo
+	for _, r := range state.regionStates {
+		for _, c := range r.GetClusters() {
+			for _, pl := range c.GetPrivateLinks() {
+				plis = append(plis, cloudsdk.PrivateLinkInfo{
+					PrivateLink: pl,
+					ClusterNsID: c.GetTenant().NsId,
+				})
+			}
+		}
+	}
+	return plis, nil
 }
 
-func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
-	return nil, nil
+func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	for _, r := range state.regionStates {
+		for _, c := range r.GetClusters() {
+			pl, err := c.GetPrivateLink(privateLinkID)
+			if err == nil {
+				return &cloudsdk.PrivateLinkInfo{
+					PrivateLink: pl,
+					ClusterNsID: c.GetTenant().NsId,
+				}, nil
+			}
+		}
+	}
+
+	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", privateLinkID)
+}
+
+func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+
+	pl := &apigen_mgmt.PrivateLink{
+		Id:              uuid.New(),
+		ConnectionName:  req.ConnectionName,
+		Target:          &req.Target,
+		Endpoint:        ptr.Ptr("vpce-fakestatetest"),
+		Status:          apigen_mgmt.CREATED,
+		ConnectionState: apigen_mgmt.ACCEPTED,
+		TenantId:        int64(c.GetTenant().Id),
+	}
+
+	c.AddPrivateLink(pl)
+
+	return &cloudsdk.PrivateLinkInfo{
+		PrivateLink: pl,
+		ClusterNsID: clusterNsID,
+	}, nil
 }
 
 func (acc *FakeCloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+
+	c.DeletePrivateLink(privateLinkID)
+
 	return nil
 }
