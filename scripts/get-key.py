@@ -7,7 +7,7 @@ import os
 RWC_ENDPOINT = os.getenv("RWC_ENDPOINT")
 sa_name = 'terraform-provider'
 
-if len(RWC_ENDPOINT) == 0:
+if not RWC_ENDPOINT:
     RWC_ENDPOINT = "https://canary-useast2-acc.risingwave.cloud/api/v1"
 
 email = input("Enter email: ")
