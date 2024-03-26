@@ -3,12 +3,12 @@
 page_title: "risingwavecloud_cluster Resource - terraform-provider-risingwavecloud"
 subcategory: ""
 description: |-
-  A RisingWave Cluster
+  A managed RisingWave Cluster on the RisingWave Cloud platform.
 ---
 
 # risingwavecloud_cluster (Resource)
 
-A RisingWave Cluster
+A managed RisingWave Cluster on the RisingWave Cloud platform.
 
 
 

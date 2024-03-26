@@ -3,12 +3,21 @@
 page_title: "risingwavecloud_privatelink Resource - terraform-provider-risingwavecloud"
 subcategory: ""
 description: |-
-  A Private Link connection
+  A Private Link connection on the RisingWave Cloud platform.
+  In AWS, it is a configured endpoint to connect to a VPC endpoint service in your VPC.
+  In GCP, it is a connected project to a service attachment in your private network.
+  Learn more details about this resource at RisingWave Cloud Documentation https://docs.risingwave.com/cloud/create-a-connection/.
 ---
 
 # risingwavecloud_privatelink (Resource)
 
-A Private Link connection
+A Private Link connection on the RisingWave Cloud platform.
+
+In AWS, it is a configured endpoint to connect to a VPC endpoint service in your VPC.
+
+In GCP, it is a connected project to a service attachment in your private network.
+
+Learn more details about this resource at [RisingWave Cloud Documentation](https://docs.risingwave.com/cloud/create-a-connection/).
 
 
 
