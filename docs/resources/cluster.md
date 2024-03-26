@@ -141,6 +141,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 ### Read-Only
 
 - `id` (String) The NsID (namespace id) of the cluster.
+- `tier` (String) The tier of your RisingWave cluster. When creating a new cluster, the value is `standard`.
 
 <a id="nestedatt--spec"></a>
 ### Nested Schema for `spec`
