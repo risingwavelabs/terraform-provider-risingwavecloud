@@ -162,6 +162,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 	}
 
 	resp.Schema = schema.Schema{
+		Description:         "A managed RisingWave Cluster on the RisingWave Cloud platform",
 		MarkdownDescription: clusterMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

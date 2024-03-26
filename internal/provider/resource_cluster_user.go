@@ -45,6 +45,7 @@ func (r *ClusterUserResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *ClusterUserResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description:         "A cluster user is a database user that can connect to a cluster.",
 		MarkdownDescription: clusterUserMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

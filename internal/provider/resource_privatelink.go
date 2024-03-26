@@ -42,6 +42,7 @@ func (r *PrivateLinkResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *PrivateLinkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description:         "A Private Link connection on the RisingWave Cloud platform.",
 		MarkdownDescription: privateLinkMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
