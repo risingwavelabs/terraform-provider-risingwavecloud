@@ -23,7 +23,6 @@ import (
 )
 
 var (
-	DefaultTier                   = apigen_mgmt.Standard
 	DefaultEnableComputeFileCache = true
 	DefaultComputeFileCacheSizeGB = 20
 	DefaultEtcdVolumeSizeGB       = 10
@@ -123,6 +122,7 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 
 type ClusterModel struct {
 	ID      types.String `tfsdk:"id"`
+	Tier    types.String `tfsdk:"tier"`
 	Region  types.String `tfsdk:"region"`
 	Name    types.String `tfsdk:"name"`
 	Version types.String `tfsdk:"version"`
@@ -167,6 +167,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The NsID (namespace id) of the cluster.",
+				Computed:            true,
+			},
+			"tier": schema.StringAttribute{
+				MarkdownDescription: "The tier of your RisingWave cluster. When creating a new cluster, the value is `standard`.",
 				Computed:            true,
 			},
 			"region": schema.StringAttribute{
@@ -322,6 +326,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 	data.Version = types.StringValue(cluster.ImageTag)
 	data.ID = types.StringValue(cluster.NsId.String())
 	data.Region = types.StringValue(cluster.Region)
+	data.Tier = types.StringValue(string(cluster.Tier))
 
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
@@ -468,7 +473,7 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
-	cluster.Tier = DefaultTier
+	cluster.Tier = apigen_mgmt.TierId(data.Tier.ValueString())
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
@@ -521,6 +526,8 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	data.Tier = types.StringValue(string(apigen_mgmt.Standard))
+
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &cluster)...)
 
 	if resp.Diagnostics.HasError() {
@@ -551,7 +558,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	var tenantReq = apigen_mgmt.TenantRequestRequestBody{}
 	tenantReq.TenantName = cluster.TenantName
 	tenantReq.ImageTag = &cluster.ImageTag
-	tenantReq.Tier = &DefaultTier
+	tenantReq.Tier = &cluster.Tier
 	tenantReq.RwConfig = &cluster.RwConfig
 	tenantReq.EtcdConfig = &cluster.EtcdConfig
 	tenantReq.Resources = &apigen_mgmt.TenantResourceRequest{
@@ -682,10 +689,6 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	var updated = apigen_mgmt.Tenant{}
-
-	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &updated)...)
-
 	previous, err := r.client.GetClusterByNsID(ctx, nsID)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -695,10 +698,16 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	// assign ID as the ID is obtained by computing.
+	var updated = apigen_mgmt.Tenant{}
+
+	// assign computed fields to updated
 	data.ID = types.StringValue(previous.NsId.String())
+	data.Tier = types.StringValue(string(previous.Tier))
+
+	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &updated)...)
 
 	// immutable fields
+
 	if previous.Resources.EnableComputeFileCache != updated.Resources.EnableComputeFileCache {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",

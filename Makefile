@@ -52,10 +52,10 @@ clean-gen-mock:
 ### Tests
 ############################################################
 testacc:
-	TF_ACC=1 TF_LOG=INFO go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acc
+	TF_ACC=1 TF_LOG=INFO go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acctest
 
 mockacc:
-	RWC_ENDPOINT=testendpoint RWC_API_KEY=testkey RWC_API_SECRET=testsecret RWC_MOCK=1 TF_ACC=1 TF_LOG=INFO go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acc
+	RWC_ENDPOINT=testendpoint RWC_API_KEY=testkey RWC_API_SECRET=testsecret RWC_MOCK=1 TF_ACC=1 TF_LOG=INFO go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acctest
 
 ut:
 	COLOR=ALWAYS go test -race -covermode=atomic -coverprofile=coverage.out -tags ut ./...
