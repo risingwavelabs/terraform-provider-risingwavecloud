@@ -42,6 +42,8 @@ func (p *RisingWaveCloudProvider) Metadata(ctx context.Context, req provider.Met
 
 func (p *RisingWaveCloudProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description:         "The Terraform plugin for https://cloud.risingwave.com allows you to manage your resources on the RisingWave Cloud platform with Terraform.",
+		MarkdownDescription: providerMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
 				MarkdownDescription: "The endpoint of the RisingWave Cloud API server. This is only used for testing.",

@@ -3,12 +3,181 @@
 page_title: "risingwavecloud Provider"
 subcategory: ""
 description: |-
+  The Terraform plugin for RisingWave Cloud https://cloud.risingwave.com/ allows you to manage your resources
+  on the RisingWave Cloud platform with Terraform.
+  This project is under heavy development. Please join our
+  Slack https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA to get the latest information.
+  Quick Start
+  ```hcl
+  Install Terraform provider for RisingWave Cloud
+  terraform {
+      required_providers {
+        risingwavecloud = {
+            source = "risingwavelabs/risingwavecloud"
+            version =
+        }
+      }
+  }
+  Configure the RisingWave Cloud provider
+  provider "risingwavecloud" {
+      apikey    =
+      apisecret =
+  }
+  Create a RisingWave Cluster
+  resource "risingwavecloudcluster" "mycluster" {
+    name    = "mycluster"
+    version = "v1.7.1"
+    region  = "us-east-1"
+    spec = {
+      risingwaveconfig = ""
+      compute = {
+        defaultnodegroup = {
+          cpu    = "0.5"
+          memory = "2 GB"
+        }
+      }
+      compactor = {
+        defaultnodegroup = {
+          cpu    = "1"
+          memory = "4 GB"
+        }
+      }
+      meta = {
+        defaultnodegroup = {
+          cpu    = "0.5"
+          memory = "2 GB"
+        }
+        etcdmetastore = {
+          defaultnodegroup = {
+            cpu    = "0.5"
+            memory = "2 GB"
+          }
+        }
+      }
+      frontend = {
+        defaultnodegroup = {
+          cpu    = "0.5"
+          memory = "2 GB"
+        }
+      }
+    }
+  }```
+  Authentication
+  The API key and API secret are created at the RisingWave Cloud portal https://cloud.risingwave.com/.
+  Note that you can also use environment variables to set the API key and API secret:
+  hcl
+  RWC_API_KEY=myapikeyvalue
+  RWC_API_SECRET=myapisecretvalue
   
+  This allows you to manage your credentials in a more secure way.
+  Import Resources
+  You can import existing resources into Terraform using the terraform import command.
+  To import a resource, you need to know the resource ID to let the provider know which resource to fetch from
+  the RisingWave Cloud platform. Read the documentation of each resource to know how to get its ID.
+  For more details about this command, check the Terraform documentation https://developer.hashicorp.com/terraform/cli/import.
+  Feature Requests
+  Please join our
+  Slack https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA to request new features.
+  Reporting Issues
+  Please report any issues at the GitHub repository https://github.com/risingwavelabs/terraform-provider-risingwavecloud.
 ---
 
 # risingwavecloud Provider
 
+The Terraform plugin for [RisingWave Cloud](https://cloud.risingwave.com/) allows you to manage your resources 
+on the RisingWave Cloud platform with Terraform.
 
+**This project is under heavy development. Please join our 
+[Slack](https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA) to get the latest information.**
+
+## Quick Start
+
+```hcl
+# Install Terraform provider for RisingWave Cloud
+terraform {
+	required_providers {
+	  risingwavecloud = {
+		  source = "risingwavelabs/risingwavecloud"
+		  version = <provider version>
+	  }
+	}
+}
+
+# Configure the RisingWave Cloud provider
+provider "risingwavecloud" {
+	api_key    = <API Key>
+	api_secret = <API Secret>
+}
+
+# Create a RisingWave Cluster
+resource "risingwavecloud_cluster" "my_cluster" {
+  name    = "my_cluster"
+  version = "v1.7.1"
+  region  = "us-east-1"
+  spec = {
+    risingwave_config = ""
+    compute = {
+      default_node_group = {
+        cpu    = "0.5"
+        memory = "2 GB"
+      }
+    }
+    compactor = {
+      default_node_group = {
+        cpu    = "1"
+        memory = "4 GB"
+      }
+    }
+    meta = {
+      default_node_group = {
+        cpu    = "0.5"
+        memory = "2 GB"
+      }
+      etcd_meta_store = {
+        default_node_group = {
+          cpu    = "0.5"
+          memory = "2 GB"
+        }
+      }
+    }
+    frontend = {
+      default_node_group = {
+        cpu    = "0.5"
+        memory = "2 GB"
+      }
+    }
+  }
+}  
+```
+
+
+## Authentication
+The API key and API secret are created at the [RisingWave Cloud portal](https://cloud.risingwave.com/).
+
+Note that you can also use environment variables to set the API key and API secret:
+```hcl
+RWC_API_KEY=myapikeyvalue
+RWC_API_SECRET=myapisecretvalue
+```
+This allows you to manage your credentials in a more secure way.
+
+
+## Import Resources
+You can import existing resources into Terraform using the `terraform import` command. 
+
+To import a resource, you need to know the resource ID to let the provider know which resource to fetch from 
+the RisingWave Cloud platform. Read the documentation of each resource to know how to get its ID.
+
+For more details about this command, check the [Terraform documentation](https://developer.hashicorp.com/terraform/cli/import).
+
+
+## Feature Requests
+Please join our 
+[Slack](https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA) to request new features.
+
+
+## Reporting Issues
+Please report any issues at the [GitHub repository](https://github.com/risingwavelabs/terraform-provider-risingwavecloud).
 
 ## Example Usage
 

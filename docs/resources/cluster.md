@@ -3,12 +3,125 @@
 page_title: "risingwavecloud_cluster Resource - terraform-provider-risingwavecloud"
 subcategory: ""
 description: |-
-  A RisingWave Cluster
+  A managed RisingWave Cluster on the RisingWave Cloud platform.
+  Import a RisingWave Cluster
+  To import a RisingWave cluster, follow the steps below:
+  Get the UUID of the cluster from the RisingWave Cloud platform.Write a resource definition to import the cluster. For example:
+  ```hcl
+    resource "risingwavecloudcluster" "mycluster" {
+      region  = "us-east-1"
+      name    = "mycluster"
+      version = "v1.8.0"
+      spec = {
+        compute = {
+          defaultnodegroup = {
+            cpu     = "2"
+            memory  = "8 GB"
+            replica = 1
+          }
+        }
+        compactor = {
+          defaultnodegroup = {
+            cpu     = "1"
+            memory  = "4 GB"
+            replica = 1
+          }
+        }
+        frontend = {
+          defaultnodegroup = {
+            cpu     = "1"
+            memory  = "4 GB"
+            replica = 1
+          }
+        }
+        meta = {
+          defaultnodegroup = {
+            cpu     = "1"
+            memory  = "4 GB"
+            replica = 1
+          }
+          etcdmetastore = {
+            defaultnode_group = {
+              cpu     = "1"
+              memory  = "4 GB"
+              replica = 1
+            }
+          }
+        }
+      }
+    }
+  ```
+  Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
+  Run the import command:
+  shell
+    terraform import risingwavecloud_cluster.my_cluster <cluster_id>
 ---
 
 # risingwavecloud_cluster (Resource)
 
-A RisingWave Cluster
+A managed RisingWave Cluster on the RisingWave Cloud platform.
+
+## Import a RisingWave Cluster
+
+To import a RisingWave cluster, follow the steps below:
+
+1. Get the UUID of the cluster from the RisingWave Cloud platform.
+
+2. Write a resource definition to import the cluster. For example:
+
+  ```hcl
+  resource "risingwavecloud_cluster" "my_cluster" {
+    region  = "us-east-1"
+    name    = "my_cluster"
+    version = "v1.8.0"
+    spec = {
+      compute = {
+        default_node_group = {
+          cpu     = "2"
+          memory  = "8 GB"
+          replica = 1
+        }
+      }
+      compactor = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+      }
+      frontend = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+      }
+      meta = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+        etcd_meta_store = {
+          default_node_group = {
+            cpu     = "1"
+            memory  = "4 GB"
+            replica = 1
+          }
+        }
+      }
+    }
+  }
+
+  ```
+
+Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
+
+3. Run the import command:
+
+  ```shell
+  terraform import risingwavecloud_cluster.my_cluster <cluster_id>
+  ```
 
 
 

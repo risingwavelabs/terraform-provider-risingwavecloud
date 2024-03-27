@@ -3,12 +3,49 @@
 page_title: "risingwavecloud_cluster_user Resource - terraform-provider-risingwavecloud"
 subcategory: ""
 description: |-
-  A database user in a RisingWave cluster.
+  A database user in a RisingWave cluster. The username and password of the dabase user are used to
+  connect to the RisingWave cluster.
+  Import a Cluster User
+  To import a cluster user, follow the steps below:
+  Get the UUID of the corrsponding cluster from the RisingWave Cloud platform.Write a resource definition to import the cluster user. For example:
+  hcl
+    resource "risingwavecloud_cluster_user" "test" {
+      cluster_id = "cluster-id"
+      username   = "test-user"
+      password   = "test-password"
+    } 
+  
+  Run the import command:
+  shell
+  terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
 ---
 
 # risingwavecloud_cluster_user (Resource)
 
-A database user in a RisingWave cluster.
+A database user in a RisingWave cluster. The username and password of the dabase user are used to
+connect to the RisingWave cluster.
+
+## Import a Cluster User
+
+To import a cluster user, follow the steps below:
+
+1. Get the UUID of the corrsponding cluster from the RisingWave Cloud platform.
+
+2. Write a resource definition to import the cluster user. For example:
+
+```hcl
+  resource "risingwavecloud_cluster_user" "test" {
+    cluster_id = "cluster-id"
+    username   = "test-user"
+    password   = "test-password"
+  } 
+  ```
+
+3. Run the import command:
+
+```shell
+terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
+```
 
 
 

@@ -42,7 +42,8 @@ func (r *PrivateLinkResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *PrivateLinkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "A Private Link connection",
+		Description:         "A Private Link connection on the RisingWave Cloud platform.",
+		MarkdownDescription: privateLinkMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The global identifier for the resource in format of UUID.",
