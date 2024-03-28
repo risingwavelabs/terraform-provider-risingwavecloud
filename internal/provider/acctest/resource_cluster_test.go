@@ -108,8 +108,8 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_user.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "username", "test-user"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "password", "test-password"),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "create_db", "false"),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "super_user", "false"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "create_db", "true"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "super_user", "true"),
 				),
 			},
 			// import user
@@ -264,6 +264,8 @@ resource "risingwavecloud_cluster_user" "test" {
 	cluster_id = risingwavecloud_cluster.test.id
 	username   = "test-user"
 	password   = "%s"
+	super_user = true
+	create_db  = true
 }	
 `, password)
 }
