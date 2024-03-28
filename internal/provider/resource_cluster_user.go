@@ -117,11 +117,11 @@ func (r *ClusterUserResource) Create(ctx context.Context, req resource.CreateReq
 		superUser = false
 	)
 
-	if !data.CreateDB.IsUnknown() {
+	if !(data.CreateDB.IsUnknown() || data.CreateDB.IsNull()) {
 		createDB = data.CreateDB.ValueBool()
 	}
 
-	if !data.SuperUser.IsUnknown() {
+	if !(data.SuperUser.IsUnknown() || data.CreateDB.IsNull()) {
 		superUser = data.SuperUser.ValueBool()
 	}
 
