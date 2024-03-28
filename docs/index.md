@@ -110,8 +110,8 @@ provider "risingwavecloud" {
 }
 
 # Create a RisingWave Cluster
-resource "risingwavecloud_cluster" "my_cluster" {
-  name    = "my_cluster"
+resource "risingwavecloud_cluster" "mycluster" {
+  name    = "mycluster"
   version = "v1.7.1"
   region  = "us-east-1"
   spec = {

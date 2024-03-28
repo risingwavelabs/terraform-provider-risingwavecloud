@@ -27,8 +27,8 @@ provider "risingwavecloud" {
 }
 
 # Create a RisingWave Cluster
-resource "risingwavecloud_cluster" "my_cluster" {
-  name    = "my_cluster"
+resource "risingwavecloud_cluster" "mycluster" {
+  name    = "mycluster"
   version = "v1.7.1"
   region  = "us-east-1"
   spec = {
@@ -109,9 +109,9 @@ To import a RisingWave cluster, follow the steps below:
 2. Write a resource definition to import the cluster. For example:
 
 ` + "  ```hcl" + `
-  resource "risingwavecloud_cluster" "my_cluster" {
+  resource "risingwavecloud_cluster" "mycluster" {
     region  = "us-east-1"
-    name    = "my_cluster"
+    name    = "mycluster"
     version = "v1.8.0"
     spec = {
       compute = {
@@ -159,7 +159,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 3. Run the import command:
 
 ` + "  ```shell" + `
-  terraform import risingwavecloud_cluster.my_cluster <cluster_id>
+  terraform import risingwavecloud_cluster.mycluster <cluster_id>
 ` + "  ```" + `
 `
 

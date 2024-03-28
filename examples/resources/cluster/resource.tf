@@ -1,6 +1,6 @@
-resource "risingwavecloud_cluster" "my_cluster" {
+resource "risingwavecloud_cluster" "mycluster" {
   region  = "us-east-1"
-  name    = "my_cluster"
+  name    = "mycluster"
   version = "v1.8.0"
   spec = {
     compute = {
