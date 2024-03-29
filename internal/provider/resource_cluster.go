@@ -651,6 +651,14 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	if cluster.Tier != apigen_mgmt.Standard && cluster.Tier != apigen_mgmt.Invited {
+		resp.Diagnostics.AddError(
+			"Invalid tier",
+			"Supported tiers are: standard, invited",
+		)
+		return
+	}
+
 	clusterToDataModel(cluster, &data)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
