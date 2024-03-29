@@ -182,11 +182,18 @@ To import a Privatelink resource, follow the steps below:
 
 ` + "```hcl" + `
   resource "risingwavecloud_privatelink" "test" {
+    depends_on = [risingwavecloud_cluster.mycluster]
+
     cluster_id      = "cluster-id"
     connection_name = "test-connection"
     target          = "test-target"
   }
   ` + "```" + `
+
+  ~> **Note:** When destroying all resources, make sure the Terraform be aware of the dependency between the cluster and the 
+  private link resource. If the cluster is deleted before the private link resource, the deletion of the private link resource 
+  will fail. You can either use the ` + "`" + `depends_on` + "`" + ` argument or use the output of the cluster to create the 
+  private link resource.
 
 3. Run the import command:
 
@@ -199,6 +206,9 @@ var clusterUserMarkdownDescription = `
 A database user in a RisingWave cluster. The username and password of the dabase user are used to
 connect to the RisingWave cluster.
 
+~> **Note:** Username and password will be stored in the state file in plain text.
+[Read more about sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
+
 ## Import a Cluster User
 
 To import a cluster user, follow the steps below:
@@ -209,15 +219,28 @@ To import a cluster user, follow the steps below:
 
 ` + "```hcl" + `
   resource "risingwavecloud_cluster_user" "test" {
+    depends_on = [risingwavecloud_cluster.mycluster]
+
     cluster_id = "cluster-id"
     username   = "test-user"
     password   = "test-password"
   } 
   ` + "```" + `
 
+  ~> **Note:** The password is stored in the state for comparing changes. RisingWave Cloud platform
+  does not store the password after the user is created. If you change the password outside of Terraform,
+  the new password won't be reflected in the state file.
+
+  ~> **Note:** When destroying all resources, make sure the Terraform be aware of the dependency between the cluster and the user.
+  If the cluster is deleted before the user, the deletion of the user will fail. You can either use the ` + "`" + `depends_on` + "`" + `
+  argument or use the output of the cluster to create the user.
+
 3. Run the import command:
 
 ` + "```shell" + `
 terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
 ` + "```" + `
+
+  ~> **Note:** The password is set to NULL in the state file after the import. Terraform will show a password change
+  when you run ` + "`" + `terraform plan` + "`" + `. 
 `
