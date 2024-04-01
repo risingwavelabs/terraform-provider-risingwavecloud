@@ -18,6 +18,12 @@ var (
 	ErrInvalidCredential = errors.New("invalid credential")
 )
 
+const (
+	headerUserAgent = "User-Agent"
+
+	userAgentProductName = "terraform-provider-risingwavecloud"
+)
+
 type JSON = map[string]any
 
 type CloudClientInterface interface {
@@ -85,7 +91,7 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVe
 
 	requestEditor := func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("X-API-KEY", apiKeyPair)
-		req.Header.Set("User-Agent", fmt.Sprintf("terraform-provider-risingwavecloud/%s", tfPluginVersion))
+		req.Header.Set(headerUserAgent, fmt.Sprintf("%s/%s", userAgentProductName, tfPluginVersion))
 		return nil
 	}
 
