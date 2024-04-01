@@ -41,7 +41,7 @@ func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 	apiSecret := os.Getenv(provider.EnvNameAPISecret)
 	require.NotEmpty(t, apiSecret)
 
-	client, err := cloudsdk.NewCloudClient(context.Background(), endpoint, apiKey, apiSecret)
+	client, err := cloudsdk.NewCloudClient(context.Background(), endpoint, apiKey, apiSecret, "acctest")
 	require.NoError(t, err)
 
 	return client

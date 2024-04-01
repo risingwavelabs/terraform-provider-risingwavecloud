@@ -80,12 +80,16 @@ type CloudClient struct {
 	regions    map[string]RegionServiceClientInterface
 }
 
-func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret string) (CloudClientInterface, error) {
+func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVersion string) (CloudClientInterface, error) {
 	apiKeyPair := fmt.Sprintf("%s:%s", apiKey, apiSecret)
-	accClient, err := apigen_acc.NewClientWithResponses(endpoint, apigen_acc.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+
+	requestEditor := func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("X-API-KEY", apiKeyPair)
+		req.Header.Set("User-Agent", fmt.Sprintf("terraform-provider-risingwavecloud/%s", tfPluginVersion))
 		return nil
-	}))
+	}
+
+	accClient, err := apigen_acc.NewClientWithResponses(endpoint, apigen_acc.WithRequestEditorFn(requestEditor))
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +112,7 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret string) (Cl
 
 	regionMap := make(map[string]RegionServiceClientInterface)
 	for _, region := range regions {
-		rs, err := createRegionServiceClient(region.Url, apiKeyPair)
+		rs, err := createRegionServiceClient(region.Url, requestEditor)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get region service client")
 		}
@@ -123,11 +127,8 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret string) (Cl
 	}, nil
 }
 
-func createRegionServiceClient(url, apiKeyPair string) (RegionServiceClientInterface, error) {
-	mgmtClient, err := apigen_mgmt.NewClientWithResponses(url, apigen_mgmt.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		req.Header.Set("X-API-KEY", apiKeyPair)
-		return nil
-	}))
+func createRegionServiceClient(url string, reqEditor func(ctx context.Context, req *http.Request) error) (RegionServiceClientInterface, error) {
+	mgmtClient, err := apigen_mgmt.NewClientWithResponses(url, apigen_mgmt.WithRequestEditorFn(reqEditor))
 	if err != nil {
 		return nil, err
 	}
