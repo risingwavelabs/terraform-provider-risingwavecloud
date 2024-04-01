@@ -427,11 +427,18 @@ func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uin
 			return false, err
 		}
 		rtn = link
-		return true, nil
+		if link.Status == apigen_mgmt.CREATED {
+			return true, nil
+		}
+		return false, nil
 	}, PollingPrivateLinkCreation)
 
 	if err != nil {
-		return nil, err
+		lastStatus := "<nil>"
+		if rtn != nil {
+			lastStatus = string(rtn.Status)
+		}
+		return nil, errors.Wrapf(err, "failed to wait for the private link to be created, last status is %s", lastStatus)
 	}
 	return rtn, nil
 }

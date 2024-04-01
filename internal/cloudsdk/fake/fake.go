@@ -396,3 +396,22 @@ func (acc *FakeCloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterN
 
 	return nil
 }
+
+func (acc *FakeCloudClient) GetPrivateLinkByName(ctx context.Context, connectionName string) (*cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	for _, r := range state.regionStates {
+		for _, c := range r.GetClusters() {
+			for _, pl := range c.GetPrivateLinks() {
+				if pl.ConnectionName == connectionName {
+					return &cloudsdk.PrivateLinkInfo{
+						PrivateLink: pl,
+						ClusterNsID: c.GetTenant().NsId,
+					}, nil
+				}
+			}
+		}
+	}
+
+	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", connectionName)
+}

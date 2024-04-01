@@ -113,9 +113,36 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	pl, err := r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
-		ConnectionName: data.ConnectionName.ValueString(),
-		Target:         data.Target.ValueString(),
+	var (
+		connectionName = data.ConnectionName.ValueString()
+		target         = data.Target.ValueString()
+	)
+
+	pl, err := r.client.GetPrivateLinkByName(ctx, connectionName)
+	if err != nil {
+		// ignore not found error
+		if !errors.Is(err, cloudsdk.ErrPrivateLinkNotFound) {
+			resp.Diagnostics.AddError("Get failed", err.Error())
+			return
+		}
+	} else {
+		if pl.PrivateLink.Status != apigen.ERROR {
+			resp.Diagnostics.AddError(
+				"Private Link already exists",
+				fmt.Sprintf("Private Link with the same connection name '%s' already exists", connectionName),
+			)
+			return
+		}
+		// delete the existing private link in error state
+		if err := r.client.DeletePrivateLinkAwait(ctx, nsID, pl.PrivateLink.Id); err != nil {
+			resp.Diagnostics.AddError("Failed to delete failed privatelink before creation", err.Error())
+			return
+		}
+	}
+
+	pl, err = r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
+		ConnectionName: connectionName,
+		Target:         target,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Create failed", err.Error())

@@ -534,23 +534,33 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	exist, err := r.client.IsTenantNameExist(ctx, region, cluster.TenantName)
+	c, err := r.client.GetClusterByRegionAndName(ctx, region, cluster.TenantName)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to check cluster existence",
-			err.Error(),
-		)
-		return
-	}
-	if exist {
-		resp.Diagnostics.AddError(
-			"Cluster name already exists",
-			fmt.Sprintf(
-				"Cluster with name %s already exists, please use `terraform import` command to manage existing clusters",
-				cluster.TenantName,
-			),
-		)
-		return
+		// Ignore returning errors that signify the resource is no longer existent
+		if !errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			resp.Diagnostics.AddError(
+				"Failed to get cluster",
+				err.Error(),
+			)
+			return
+		}
+	} else {
+		// a healthy cluster already exists
+		if c.Status != apigen_mgmt.Failed {
+			resp.Diagnostics.AddError(
+				"Cluster already exists",
+				fmt.Sprintf("Cluster with the name %s already exists in the region %s", c.TenantName, region),
+			)
+			return
+		}
+		// delete the failed cluster
+		if err := r.client.DeleteClusterByNsIDAwait(ctx, c.NsId); err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to delete failed cluster before creation",
+				err.Error(),
+			)
+			return
+		}
 	}
 
 	// If applicable, this is a great opportunity to initialize any necessary
