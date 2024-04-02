@@ -21,11 +21,14 @@ var _ resource.Resource = &PrivateLinkResource{}
 var _ resource.ResourceWithImportState = &PrivateLinkResource{}
 
 func NewPrivateLinkResource() resource.Resource {
-	return &PrivateLinkResource{}
+	return &PrivateLinkResource{
+		dataHelper: &DataExtractHelper{},
+	}
 }
 
 type PrivateLinkResource struct {
-	client cloudsdk.CloudClientInterface
+	client     cloudsdk.CloudClientInterface
+	dataHelper DataExtractHelperInterface
 }
 
 type PrivateLinkModel struct {
@@ -92,7 +95,7 @@ func (r *PrivateLinkResource) Configure(ctx context.Context, req resource.Config
 func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data PrivateLinkModel
 
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Get(ctx, &req.Plan, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -120,8 +123,10 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 
 	pl, err := r.client.GetPrivateLinkByName(ctx, connectionName)
 	if err != nil {
-		// ignore not found error
-		if !errors.Is(err, cloudsdk.ErrPrivateLinkNotFound) {
+		if errors.Is(err, cloudsdk.ErrPrivateLinkNotFound) {
+			// no previous private link found, continue the creation
+		} else {
+			// abort on unknown errors
 			resp.Diagnostics.AddError("Get failed", err.Error())
 			return
 		}
@@ -151,7 +156,7 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 
 	privateLinkToDataModel(pl, &data)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Set(ctx, &resp.State, &data)...)
 }
 
 func privateLinkToDataModel(plInfo *cloudsdk.PrivateLinkInfo, data *PrivateLinkModel) {

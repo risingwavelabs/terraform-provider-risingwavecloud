@@ -539,8 +539,10 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	c, err := r.client.GetClusterByRegionAndName(ctx, region, cluster.TenantName)
 	if err != nil {
-		// Ignore returning errors that signify the resource is no longer existent
-		if !errors.Is(err, cloudsdk.ErrClusterNotFound) {
+		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			// no previous cluster found, continue the creation
+		} else {
+			// abort on unknown errors
 			resp.Diagnostics.AddError(
 				"Failed to get cluster",
 				err.Error(),

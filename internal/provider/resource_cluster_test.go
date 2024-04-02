@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	cloudsdk_mock "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/mock"
+	"github.com/stretchr/testify/assert"
 )
 
 func createSimpleTestCluster(t *testing.T, name, region, imageTag string, tier apigen_mgmt.TierId, status apigen_mgmt.TenantStatus) *apigen_mgmt.Tenant {
@@ -61,7 +62,7 @@ func createSimpleTestCluster(t *testing.T, name, region, imageTag string, tier a
 	}
 }
 
-func TestCreate_previous_creation_failed(t *testing.T) {
+func TestClusterCreate_previous_creation_failed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -81,7 +82,9 @@ func TestCreate_previous_creation_failed(t *testing.T) {
 	dataHelper.EXPECT().
 		Get(ctx, gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, getter DataGetter, target interface{}) diag.Diagnostics {
-			clusterToDataModel(tenant, target.(*ClusterModel))
+			p, ok := target.(*ClusterModel)
+			assert.True(t, ok)
+			clusterToDataModel(tenant, p)
 			return nil
 		})
 	dataHelper.EXPECT().
