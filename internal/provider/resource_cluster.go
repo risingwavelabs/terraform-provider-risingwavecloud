@@ -33,11 +33,14 @@ var _ resource.Resource = &ClusterResource{}
 var _ resource.ResourceWithImportState = &ClusterResource{}
 
 func NewClusterResource() resource.Resource {
-	return &ClusterResource{}
+	return &ClusterResource{
+		dataHelper: &DataExtractHelper{},
+	}
 }
 
 type ClusterResource struct {
-	client cloudsdk.CloudClientInterface
+	client     cloudsdk.CloudClientInterface
+	dataHelper DataExtractHelperInterface
 }
 
 var defaultNodeGroup = map[string]attr.Type{
@@ -507,7 +510,7 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterModel
 
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Get(ctx, &req.Plan, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -622,7 +625,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tflog.Info(ctx, fmt.Sprintf("cluster created, UUID: %s", createdCluster.NsId))
 
 	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Set(ctx, &resp.State, &data)...)
 }
 
 func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

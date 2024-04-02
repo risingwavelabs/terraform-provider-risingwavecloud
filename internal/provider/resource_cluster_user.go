@@ -171,10 +171,6 @@ func parseClusterUserIdentifier(clusterUserResourceID string, diags *diag.Diagno
 	return
 }
 
-type DataGetter interface {
-	Get(ctx context.Context, target interface{}) diag.Diagnostics
-}
-
 // clusterUserToDataModel converts the user from the API to the data model.
 // it does not overwrite the password as we cannot know the password through API.
 func clusterUserToDataModel(clusterNsID uuid.UUID, user *apigen.DBUser, data *ClusterUserModel) {
