@@ -18,6 +18,12 @@ var (
 	ErrInvalidCredential = errors.New("invalid credential")
 )
 
+const (
+	headerUserAgent = "User-Agent"
+
+	userAgentProductName = "terraform-provider-risingwavecloud"
+)
+
 type JSON = map[string]any
 
 type CloudClientInterface interface {
@@ -65,6 +71,9 @@ type CloudClientInterface interface {
 	// GetPrivateLink returns the private link and its cluster ID by the given private link ID.
 	GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error)
 
+	// GetPrivateLink returns the private link and its cluster ID by the given connection name.
+	GetPrivateLinkByName(ctx context.Context, connectionName string) (*PrivateLinkInfo, error)
+
 	// CreatePrivateLinkAwait creates the private link and waits for the creation to complete.
 	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
 
@@ -80,12 +89,16 @@ type CloudClient struct {
 	regions    map[string]RegionServiceClientInterface
 }
 
-func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret string) (CloudClientInterface, error) {
+func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVersion string) (CloudClientInterface, error) {
 	apiKeyPair := fmt.Sprintf("%s:%s", apiKey, apiSecret)
-	accClient, err := apigen_acc.NewClientWithResponses(endpoint, apigen_acc.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+
+	requestEditor := func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("X-API-KEY", apiKeyPair)
+		req.Header.Set(headerUserAgent, fmt.Sprintf("%s/%s", userAgentProductName, tfPluginVersion))
 		return nil
-	}))
+	}
+
+	accClient, err := apigen_acc.NewClientWithResponses(endpoint, apigen_acc.WithRequestEditorFn(requestEditor))
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +121,7 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret string) (Cl
 
 	regionMap := make(map[string]RegionServiceClientInterface)
 	for _, region := range regions {
-		rs, err := createRegionServiceClient(region.Url, apiKeyPair)
+		rs, err := createRegionServiceClient(region.Url, requestEditor)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get region service client")
 		}
@@ -123,11 +136,8 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret string) (Cl
 	}, nil
 }
 
-func createRegionServiceClient(url, apiKeyPair string) (RegionServiceClientInterface, error) {
-	mgmtClient, err := apigen_mgmt.NewClientWithResponses(url, apigen_mgmt.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		req.Header.Set("X-API-KEY", apiKeyPair)
-		return nil
-	}))
+func createRegionServiceClient(url string, reqEditor func(ctx context.Context, req *http.Request) error) (RegionServiceClientInterface, error) {
+	mgmtClient, err := apigen_mgmt.NewClientWithResponses(url, apigen_mgmt.WithRequestEditorFn(reqEditor))
 	if err != nil {
 		return nil, err
 	}
@@ -424,4 +434,17 @@ func (c *CloudClient) GetClusterByRegionAndName(ctx context.Context, region, nam
 		return nil, err
 	}
 	return rs.GetClusterByName(ctx, name)
+}
+
+func (c *CloudClient) GetPrivateLinkByName(ctx context.Context, connectionName string) (*PrivateLinkInfo, error) {
+	pls, err := c.GetPrivateLinks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, pl := range pls {
+		if pl.PrivateLink.ConnectionName == connectionName {
+			return &pl, nil
+		}
+	}
+	return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link %s", connectionName)
 }

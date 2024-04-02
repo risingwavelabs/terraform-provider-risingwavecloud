@@ -119,7 +119,7 @@ func (p *RisingWaveCloudProvider) Configure(ctx context.Context, req provider.Co
 	if fake.UseFakeBackend() {
 		client = fake.NewCloudClient()
 	} else {
-		acc, err := cloudsdk.NewCloudClient(ctx, endpoint, apiKey, apiSecret)
+		acc, err := cloudsdk.NewCloudClient(ctx, endpoint, apiKey, apiSecret, p.version)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Unexpected error",
