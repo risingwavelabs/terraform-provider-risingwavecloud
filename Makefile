@@ -1,4 +1,5 @@
 PROJECT_DIR=$(shell pwd)
+MODULE=github.com/risingwavelabs/terraform-provider-risingwavecloud
 
 ############################################################
 ### Go Lint 
@@ -38,11 +39,14 @@ gen-spec: install-oapi-codegen prune-spec
 ############################################################
 ### OpenAPI Client Codegen
 ############################################################
+GOMOCK_GEN=$(PROJECT_DIR)/bin/mockgen
+
 install-mockgen:
 	DIR=$(PROJECT_DIR)/bin VERSION=${MOCKGEN_VERSION} ./scripts/install-mockgen.sh
 
 gen-mock: install-mockgen
-	@echo "no mock packages needed"
+	$(GOMOCK_GEN) -package=mock -destination=internal/cloudsdk/mock/cloudsdk_gen.go $(MODULE)/internal/cloudsdk CloudClientInterface
+	$(GOMOCK_GEN) -package=provider -destination=internal/provider/mock_gen.go $(MODULE)/internal/provider DataExtractHelperInterface
 
 clean-gen-mock:
 	@echo "no mock packages"

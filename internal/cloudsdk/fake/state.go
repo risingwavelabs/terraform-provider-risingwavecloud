@@ -10,9 +10,14 @@ import (
 )
 
 type ClusterState struct {
-	mu           sync.RWMutex
-	tenant       *apigen_mgmt.Tenant
-	users        map[string]*apigen_mgmt.DBUser
+	mu sync.RWMutex
+
+	tenant *apigen_mgmt.Tenant
+
+	// username -> user
+	users map[string]*apigen_mgmt.DBUser
+
+	// private link ID -> private link
 	privateLinks map[string]*apigen_mgmt.PrivateLink
 }
 

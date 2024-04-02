@@ -21,11 +21,14 @@ var _ resource.Resource = &PrivateLinkResource{}
 var _ resource.ResourceWithImportState = &PrivateLinkResource{}
 
 func NewPrivateLinkResource() resource.Resource {
-	return &PrivateLinkResource{}
+	return &PrivateLinkResource{
+		dataHelper: &DataExtractHelper{},
+	}
 }
 
 type PrivateLinkResource struct {
-	client cloudsdk.CloudClientInterface
+	client     cloudsdk.CloudClientInterface
+	dataHelper DataExtractHelperInterface
 }
 
 type PrivateLinkModel struct {
@@ -92,7 +95,7 @@ func (r *PrivateLinkResource) Configure(ctx context.Context, req resource.Config
 func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data PrivateLinkModel
 
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Get(ctx, &req.Plan, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -113,9 +116,38 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	pl, err := r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
-		ConnectionName: data.ConnectionName.ValueString(),
-		Target:         data.Target.ValueString(),
+	var (
+		connectionName = data.ConnectionName.ValueString()
+		target         = data.Target.ValueString()
+	)
+
+	pl, err := r.client.GetPrivateLinkByName(ctx, connectionName)
+	if err != nil {
+		if errors.Is(err, cloudsdk.ErrPrivateLinkNotFound) {
+			// no previous private link found, continue the creation
+		} else {
+			// abort on unknown errors
+			resp.Diagnostics.AddError("Get failed", err.Error())
+			return
+		}
+	} else {
+		if pl.PrivateLink.Status != apigen.ERROR {
+			resp.Diagnostics.AddError(
+				"Private Link already exists",
+				fmt.Sprintf("Private Link with the same connection name '%s' already exists", connectionName),
+			)
+			return
+		}
+		// delete the existing private link in error state
+		if err := r.client.DeletePrivateLinkAwait(ctx, nsID, pl.PrivateLink.Id); err != nil {
+			resp.Diagnostics.AddError("Failed to delete failed privatelink before creation", err.Error())
+			return
+		}
+	}
+
+	pl, err = r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
+		ConnectionName: connectionName,
+		Target:         target,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Create failed", err.Error())
@@ -124,7 +156,7 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 
 	privateLinkToDataModel(pl, &data)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Set(ctx, &resp.State, &data)...)
 }
 
 func privateLinkToDataModel(plInfo *cloudsdk.PrivateLinkInfo, data *PrivateLinkModel) {

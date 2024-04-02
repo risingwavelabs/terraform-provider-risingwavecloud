@@ -33,11 +33,14 @@ var _ resource.Resource = &ClusterResource{}
 var _ resource.ResourceWithImportState = &ClusterResource{}
 
 func NewClusterResource() resource.Resource {
-	return &ClusterResource{}
+	return &ClusterResource{
+		dataHelper: &DataExtractHelper{},
+	}
 }
 
 type ClusterResource struct {
-	client cloudsdk.CloudClientInterface
+	client     cloudsdk.CloudClientInterface
+	dataHelper DataExtractHelperInterface
 }
 
 var defaultNodeGroup = map[string]attr.Type{
@@ -507,7 +510,7 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterModel
 
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Get(ctx, &req.Plan, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -534,23 +537,35 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	exist, err := r.client.IsTenantNameExist(ctx, region, cluster.TenantName)
+	c, err := r.client.GetClusterByRegionAndName(ctx, region, cluster.TenantName)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to check cluster existence",
-			err.Error(),
-		)
-		return
-	}
-	if exist {
-		resp.Diagnostics.AddError(
-			"Cluster name already exists",
-			fmt.Sprintf(
-				"Cluster with name %s already exists, please use `terraform import` command to manage existing clusters",
-				cluster.TenantName,
-			),
-		)
-		return
+		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			// no previous cluster found, continue the creation
+		} else {
+			// abort on unknown errors
+			resp.Diagnostics.AddError(
+				"Failed to get cluster",
+				err.Error(),
+			)
+			return
+		}
+	} else {
+		// a healthy cluster already exists
+		if c.Status != apigen_mgmt.Failed {
+			resp.Diagnostics.AddError(
+				"Cluster already exists",
+				fmt.Sprintf("Cluster with the name %s already exists in the region %s", c.TenantName, region),
+			)
+			return
+		}
+		// delete the failed cluster
+		if err := r.client.DeleteClusterByNsIDAwait(ctx, c.NsId); err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to delete failed cluster before creation",
+				err.Error(),
+			)
+			return
+		}
 	}
 
 	// If applicable, this is a great opportunity to initialize any necessary
@@ -612,7 +627,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tflog.Info(ctx, fmt.Sprintf("cluster created, UUID: %s", createdCluster.NsId))
 
 	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(r.dataHelper.Set(ctx, &resp.State, &data)...)
 }
 
 func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
