@@ -2,6 +2,7 @@ package cloudsdk
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -19,7 +20,9 @@ var (
 )
 
 const (
-	headerUserAgent = "User-Agent"
+	headerUserAgent     = "User-Agent"
+	headerAPIKey        = "X-API-KEY"
+	headerAuthorization = "Authorization"
 
 	userAgentProductName = "terraform-provider-risingwavecloud"
 )
@@ -93,7 +96,8 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVe
 	apiKeyPair := fmt.Sprintf("%s:%s", apiKey, apiSecret)
 
 	requestEditor := func(ctx context.Context, req *http.Request) error {
-		req.Header.Set("X-API-KEY", apiKeyPair)
+		req.Header.Set(headerAPIKey, apiKeyPair) // deprecated: keep it to support old version
+		req.Header.Set(headerAuthorization, fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(apiKeyPair))))
 		req.Header.Set(headerUserAgent, fmt.Sprintf("%s/%s", userAgentProductName, tfPluginVersion))
 		return nil
 	}
