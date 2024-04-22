@@ -9,28 +9,30 @@ description: |-
   Read more about sensitive data in state https://www.terraform.io/docs/state/sensitive-data.html.
   Import a Cluster User
   To import a cluster user, follow the steps below:
-  Get the UUID of the corrsponding cluster from the RisingWave Cloud platform.Write a resource definition to import the cluster user. For example:
-  ```hcl
-    resource "risingwavecloudclusteruser" "test" {
-      dependson = [risingwavecloudcluster.mycluster]
-  cluster_id = "cluster-id"
-  username   = "test-user"
-  password   = "test-password"
   
-  }
-    ```
+  Get the UUID of the corrsponding cluster from the RisingWave Cloud platform.
+  Write a resource definition to import the cluster user. For example:
+  
+    resource "risingwavecloud_cluster_user" "test" {
+      depends_on = [risingwavecloud_cluster.mycluster]
+  
+      cluster_id = "cluster-id"
+      username   = "test-user"
+      password   = "test-password"
+    } 
+  
   ~> Note: The password is stored in the state for comparing changes. RisingWave Cloud platform
-    does not store the password after the user is created. If you change the password outside of Terraform,
-    the new password won't be reflected in the state file.
+  does not store the password after the user is created. If you change the password outside of Terraform,
+  the new password won't be reflected in the state file.
   ~> Note: When destroying all resources, make sure the Terraform be aware of the dependency between the cluster and the user.
-    If the cluster is deleted before the user, the deletion of the user will fail. You can either use the depends_on
-    argument or use the output of the cluster to create the user.
+  If the cluster is deleted before the user, the deletion of the user will fail. You can either use the depends_on
+  argument or use the output of the cluster to create the user.
   Run the import command:
-  shell
+  
   terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
   
   ~> Note: The password is set to NULL in the state file after the import. Terraform will show a password change
-    when you run terraform plan.
+  when you run terraform plan.
 ---
 
 # risingwavecloud_cluster_user (Resource)

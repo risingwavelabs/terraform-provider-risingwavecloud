@@ -8,64 +8,67 @@ description: |-
   This project is under heavy development. Please join our
   Slack https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA to get the latest information.
   Quick Start
-  ```hcl
-  Install Terraform provider for RisingWave Cloud
+  
+  # Install Terraform provider for RisingWave Cloud
   terraform {
-      required_providers {
-        risingwavecloud = {
-            source = "risingwavelabs/risingwavecloud"
-            version =
-        }
-      }
+  	required_providers {
+  	  risingwavecloud = {
+  		  source = "risingwavelabs/risingwavecloud"
+  		  version = <provider version>
+  	  }
+  	}
   }
-  Configure the RisingWave Cloud provider
+  
+  # Configure the RisingWave Cloud provider
   provider "risingwavecloud" {
-      apikey    =
-      apisecret =
+  	api_key    = <API Key>
+  	api_secret = <API Secret>
   }
-  Create a RisingWave Cluster
-  resource "risingwavecloudcluster" "mycluster" {
+  
+  # Create a RisingWave Cluster
+  resource "risingwavecloud_cluster" "mycluster" {
     name    = "mycluster"
     version = "v1.7.1"
     region  = "us-east-1"
     spec = {
-      risingwaveconfig = ""
+      risingwave_config = ""
       compute = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
         }
       }
       compactor = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "1"
           memory = "4 GB"
         }
       }
       meta = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
         }
-        etcdmetastore = {
-          defaultnodegroup = {
+        etcd_meta_store = {
+          default_node_group = {
             cpu    = "0.5"
             memory = "2 GB"
           }
         }
       }
       frontend = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
         }
       }
     }
-  }```
+  }  
+  
   Authentication
   The API key and API secret are created at the RisingWave Cloud portal https://cloud.risingwave.com/.
   Note that you can also use environment variables to set the API key and API secret:
-  hcl
+  
   RWC_API_KEY=myapikeyvalue
   RWC_API_SECRET=myapisecretvalue
   
