@@ -6,55 +6,58 @@ description: |-
   A managed RisingWave Cluster on the RisingWave Cloud platform.
   Import a RisingWave Cluster
   To import a RisingWave cluster, follow the steps below:
-  Get the UUID of the cluster from the RisingWave Cloud platform.Write a resource definition to import the cluster. For example:
-  ```hcl
-    resource "risingwavecloudcluster" "mycluster" {
-      region  = "us-east-1"
-      name    = "mycluster"
-      version = "v1.8.0"
-      spec = {
-        compute = {
-          defaultnodegroup = {
-            cpu     = "2"
-            memory  = "8 GB"
-            replica = 1
-          }
+  
+  Get the UUID of the cluster from the RisingWave Cloud platform.
+  Write a resource definition to import the cluster. For example:
+  
+  resource "risingwavecloud_cluster" "mycluster" {
+    region  = "us-east-1"
+    name    = "mycluster"
+    version = "v1.8.0"
+    spec = {
+      compute = {
+        default_node_group = {
+          cpu     = "2"
+          memory  = "8 GB"
+          replica = 1
         }
-        compactor = {
-          defaultnodegroup = {
+      }
+      compactor = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+      }
+      frontend = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+      }
+      meta = {
+        default_node_group = {
+          cpu     = "1"
+          memory  = "4 GB"
+          replica = 1
+        }
+        etcd_meta_store = {
+          default_node_group = {
             cpu     = "1"
             memory  = "4 GB"
             replica = 1
-          }
-        }
-        frontend = {
-          defaultnodegroup = {
-            cpu     = "1"
-            memory  = "4 GB"
-            replica = 1
-          }
-        }
-        meta = {
-          defaultnodegroup = {
-            cpu     = "1"
-            memory  = "4 GB"
-            replica = 1
-          }
-          etcdmetastore = {
-            defaultnode_group = {
-              cpu     = "1"
-              memory  = "4 GB"
-              replica = 1
-            }
           }
         }
       }
     }
-  ```
+  }
+  
+  
   Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
   Run the import command:
-  shell
-    terraform import risingwavecloud_cluster.mycluster <cluster_id>
+  
+  terraform import risingwavecloud_cluster.mycluster <cluster_id>
 ---
 
 # risingwavecloud_cluster (Resource)
@@ -256,7 +259,7 @@ Optional:
 - `etcd_config` (String) The environment variable list of the etcd configuration
 
 <a id="nestedatt--spec--meta--etcd_meta_store--default_node_group"></a>
-### Nested Schema for `spec.meta.etcd_meta_store.etcd_config`
+### Nested Schema for `spec.meta.etcd_meta_store.default_node_group`
 
 Required:
 
