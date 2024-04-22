@@ -12,66 +12,69 @@ description: |-
   Please check the
   documentation https://docs.risingwave.com/cloud/service-account for more information.
   Note that you can also use environment variables to set the API key and API secret:
-  hcl
+  
   RWC_API_KEY=myapikeyvalue
   RWC_API_SECRET=myapisecretvalue
   
   This allows you to manage your credentials in a more secure way.
   Quick Start
-  ```hcl
-  Install Terraform provider for RisingWave Cloud
+  
+  # Install Terraform provider for RisingWave Cloud
   terraform {
-      required_providers {
-        risingwavecloud = {
-            source = "risingwavelabs/risingwavecloud"
-            version =
-        }
-      }
+  	required_providers {
+  	  risingwavecloud = {
+  		  source = "risingwavelabs/risingwavecloud"
+  		  version = <provider version>
+  	  }
+  	}
   }
-  Configure the RisingWave Cloud provider
+  
+  # Configure the RisingWave Cloud provider
   provider "risingwavecloud" {
-      apikey    =     # or use RWCAPIKEY environment variable
-      apisecret =  # or use RWCAPISECRET environment variable
+  	api_key    = <API Key>    # or use RWC_API_KEY environment variable
+  	api_secret = <API Secret> # or use RWC_API_SECRET environment variable
   }
-  Create a RisingWave Cluster
-  resource "risingwavecloudcluster" "mycluster" {
+  
+  # Create a RisingWave Cluster
+  resource "risingwavecloud_cluster" "mycluster" {
     name    = "mycluster"
     version = "v1.7.1"
     region  = "us-east-1"
     spec = {
-      risingwaveconfig = ""
+      risingwave_config = ""
       compute = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
         }
       }
       compactor = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "1"
           memory = "4 GB"
         }
       }
       meta = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
         }
-        etcdmetastore = {
-          defaultnodegroup = {
+        etcd_meta_store = {
+          default_node_group = {
             cpu    = "0.5"
             memory = "2 GB"
           }
         }
       }
       frontend = {
-        defaultnodegroup = {
+        default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
         }
       }
     }
-  }```
+  }  
+  
   Import Resources
   You can import existing resources into Terraform using the terraform import command.
   To import a resource, you need to know the resource ID to let the provider know which resource to fetch from

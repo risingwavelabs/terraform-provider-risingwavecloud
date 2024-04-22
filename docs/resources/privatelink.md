@@ -9,22 +9,24 @@ description: |-
   Learn more details about this resource at RisingWave Cloud Documentation https://docs.risingwave.com/cloud/create-a-connection/.
   Import a Privatelink Resource
   To import a Privatelink resource, follow the steps below:
-  Get the UUID of the privatelink from the RisingWave Cloud platform.Write a resource definition to import the cluster. For example:
-  ```hcl
-    resource "risingwavecloudprivatelink" "test" {
-      dependson = [risingwavecloud_cluster.mycluster]
-  cluster_id      = "cluster-id"
-  connection_name = "test-connection"
-  target          = "test-target"
   
-  }
-    ```
+  Get the UUID of the privatelink from the RisingWave Cloud platform.
+  Write a resource definition to import the cluster. For example:
+  
+    resource "risingwavecloud_privatelink" "test" {
+      depends_on = [risingwavecloud_cluster.mycluster]
+  
+      cluster_id      = "cluster-id"
+      connection_name = "test-connection"
+      target          = "test-target"
+    }
+  
   ~> Note: When destroying all resources, make sure the Terraform be aware of the dependency between the cluster and the
-    private link resource. If the cluster is deleted before the private link resource, the deletion of the private link resource
-    will fail. You can either use the depends_on argument or use the output of the cluster to create the
-    private link resource.
+  private link resource. If the cluster is deleted before the private link resource, the deletion of the private link resource
+  will fail. You can either use the depends_on argument or use the output of the cluster to create the
+  private link resource.
   Run the import command:
-  shell
+  
   terraform import risingwavecloud_privatelink.test <privatelink_id>
 ---
 
