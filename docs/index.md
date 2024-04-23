@@ -7,6 +7,16 @@ description: |-
   on the RisingWave Cloud platform with Terraform.
   This project is under heavy development. Please join our
   Slack https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA to get the latest information.
+  Authentication
+  Before using the provider, you need to create an API key and API secret at the RisingWave Cloud portal.
+  Please check the
+  documentation https://docs.risingwave.com/cloud/service-account for more information.
+  Note that you can also use environment variables to set the API key and API secret:
+  
+  RWC_API_KEY=myapikeyvalue
+  RWC_API_SECRET=myapisecretvalue
+  
+  This allows you to manage your credentials in a more secure way.
   Quick Start
   
   # Install Terraform provider for RisingWave Cloud
@@ -21,8 +31,8 @@ description: |-
   
   # Configure the RisingWave Cloud provider
   provider "risingwavecloud" {
-  	api_key    = <API Key>
-  	api_secret = <API Secret>
+  	api_key    = <API Key>    # or use RWC_API_KEY environment variable
+  	api_secret = <API Secret> # or use RWC_API_SECRET environment variable
   }
   
   # Create a RisingWave Cluster
@@ -65,14 +75,6 @@ description: |-
     }
   }  
   
-  Authentication
-  The API key and API secret are created at the RisingWave Cloud portal https://cloud.risingwave.com/.
-  Note that you can also use environment variables to set the API key and API secret:
-  
-  RWC_API_KEY=myapikeyvalue
-  RWC_API_SECRET=myapisecretvalue
-  
-  This allows you to manage your credentials in a more secure way.
   Import Resources
   You can import existing resources into Terraform using the terraform import command.
   To import a resource, you need to know the resource ID to let the provider know which resource to fetch from
@@ -93,6 +95,20 @@ on the RisingWave Cloud platform with Terraform.
 **This project is under heavy development. Please join our 
 [Slack](https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA) to get the latest information.**
 
+
+## Authentication
+Before using the provider, you need to create an API key and API secret at the RisingWave Cloud portal.
+Please check the 
+[documentation](https://docs.risingwave.com/cloud/service-account) for more information.
+
+Note that you can also use environment variables to set the API key and API secret:
+```hcl
+RWC_API_KEY=myapikeyvalue
+RWC_API_SECRET=myapisecretvalue
+```
+This allows you to manage your credentials in a more secure way.
+
+
 ## Quick Start
 
 ```hcl
@@ -108,8 +124,8 @@ terraform {
 
 # Configure the RisingWave Cloud provider
 provider "risingwavecloud" {
-	api_key    = <API Key>
-	api_secret = <API Secret>
+	api_key    = <API Key>    # or use RWC_API_KEY environment variable
+	api_secret = <API Secret> # or use RWC_API_SECRET environment variable
 }
 
 # Create a RisingWave Cluster
@@ -152,17 +168,6 @@ resource "risingwavecloud_cluster" "mycluster" {
   }
 }  
 ```
-
-
-## Authentication
-The API key and API secret are created at the [RisingWave Cloud portal](https://cloud.risingwave.com/).
-
-Note that you can also use environment variables to set the API key and API secret:
-```hcl
-RWC_API_KEY=myapikeyvalue
-RWC_API_SECRET=myapisecretvalue
-```
-This allows you to manage your credentials in a more secure way.
 
 
 ## Import Resources
