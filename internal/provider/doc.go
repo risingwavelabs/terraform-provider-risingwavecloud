@@ -2,10 +2,8 @@ package provider
 
 var providerMarkdownDescription = `
 The Terraform plugin for [RisingWave Cloud](https://cloud.risingwave.com/) allows you to manage your resources 
-on the RisingWave Cloud platform with Terraform.
-
-**This project is under heavy development. Please join our 
-[Slack](https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA) to get the latest information.**
+on the RisingWave Cloud platform with Terraform. Please join our 
+[Slack](https://join.slack.com/t/risingwave-community/shared_invite/zt-1jei7dk79-fguGadPI2KnhtWnnxBVGoA) to get the latest information.
 
 
 ## Authentication
