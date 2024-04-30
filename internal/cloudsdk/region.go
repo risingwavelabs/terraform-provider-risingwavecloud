@@ -429,6 +429,9 @@ func (c *RegionServiceClient) CreatePrivateLink(ctx context.Context, id uint64, 
 			return false, err
 		}
 		rtn = link
+		if link.Status == apigen_mgmt.CREATED {
+			return true, nil
+		}
 		return true, nil
 	}, PollingPrivateLinkCreation)
 	if err != nil {
@@ -460,7 +463,7 @@ func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uin
 			return false, err
 		}
 		rtn = link
-		if link.Status == apigen_mgmt.CREATED || link.Status == apigen_mgmt.ERROR {
+		if link.ConnectionState == apigen_mgmt.ACCEPTED {
 			return true, nil
 		}
 		return false, nil

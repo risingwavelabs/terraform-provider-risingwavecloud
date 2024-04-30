@@ -153,14 +153,24 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 			return
 		}
 	}
-
-	pl, err = r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
-		ConnectionName: connectionName,
-		Target:         target,
-	})
-	if err != nil {
-		resp.Diagnostics.AddError("Create failed", err.Error())
-		return
+	if data.WaitForReady.ValueBool() {
+		pl, err = r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
+			ConnectionName: connectionName,
+			Target:         target,
+		})
+		if err != nil {
+			resp.Diagnostics.AddError("Create failed", err.Error())
+			return
+		}
+	} else {
+		pl, err = r.client.CreatePrivateLink(ctx, nsID, apigen.PostPrivateLinkRequestBody{
+			ConnectionName: connectionName,
+			Target:         target,
+		})
+		if err != nil {
+			resp.Diagnostics.AddError("Create failed", err.Error())
+			return
+		}
 	}
 
 	tflog.Info(ctx, fmt.Sprintf("private link created, connection name: %s", connectionName))
