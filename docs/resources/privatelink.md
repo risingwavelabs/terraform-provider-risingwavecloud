@@ -80,6 +80,10 @@ terraform import risingwavecloud_privatelink.test <privatelink_id>
 - `connection_name` (String) The name of the Private Link connection, just for display purpose.
 - `target` (String) The target of the Private Link connection. In AWS, it is the service name of the VPC endpoint service. In GCP, it is the service attachment in Private Service Connect.
 
+### Optional
+
+- `wait_for_ready` (Boolean) Whether to wait for the private link to be ready after creation. Default is false.
+
 ### Read-Only
 
 - `endpoint` (String) The endpoint of the Private Link to connect to. This has different format for different platforms.
