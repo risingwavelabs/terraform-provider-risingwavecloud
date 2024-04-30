@@ -358,7 +358,7 @@ func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, privateLinkID uu
 	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", privateLinkID)
 }
 
-func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+func (acc *FakeCloudClient) CreatePrivateLink(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
 	debugFuncCaller()
 
 	c, err := state.GetClusterByNsID(clusterNsID)
@@ -382,6 +382,12 @@ func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterN
 		PrivateLink: pl,
 		ClusterNsID: clusterNsID,
 	}, nil
+}
+
+func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+	debugFuncCaller()
+
+	return acc.CreatePrivateLink(ctx, clusterNsID, req)
 }
 
 func (acc *FakeCloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error {

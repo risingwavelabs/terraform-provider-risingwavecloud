@@ -9,7 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/defaults"
@@ -37,6 +39,7 @@ type PrivateLinkModel struct {
 	ConnectionName types.String `tfsdk:"connection_name"`
 	Target         types.String `tfsdk:"target"`
 	Endpoint       types.String `tfsdk:"endpoint"`
+	WaitForReady   types.Bool   `tfsdk:"wait_for_ready"`
 }
 
 func (r *PrivateLinkResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -66,6 +69,12 @@ func (r *PrivateLinkResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"endpoint": schema.StringAttribute{
 				MarkdownDescription: "The endpoint of the Private Link to connect to. This has different format for different platforms.",
+				Computed:            true,
+			},
+			"wait_for_ready": schema.BoolAttribute{
+				MarkdownDescription: "Whether to wait for the private link to be ready after creation. Default is false.",
+				Optional:            true,
+				Default:             booldefault.StaticBool(false),
 				Computed:            true,
 			},
 		},
@@ -154,6 +163,8 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	tflog.Info(ctx, fmt.Sprintf("private link created, connection name: %s", connectionName))
+
 	privateLinkToDataModel(pl, &data)
 
 	resp.Diagnostics.Append(r.dataHelper.Set(ctx, &resp.State, &data)...)
@@ -232,6 +243,8 @@ func (r *PrivateLinkResource) Update(ctx context.Context, req resource.UpdateReq
 
 	data.ID = state.ID
 
+	tflog.Info(ctx, fmt.Sprintf("private link updated, connection name: %s", state.ConnectionName.ValueString()))
+
 	// Directly save the plan to the state since we cannot know the password through API.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -275,6 +288,8 @@ func (r *PrivateLinkResource) Delete(ctx context.Context, req resource.DeleteReq
 			return
 		}
 	}
+
+	tflog.Info(ctx, fmt.Sprintf("private link deleted, connection name: %s", data.ConnectionName.ValueString()))
 }
 
 func (r *PrivateLinkResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

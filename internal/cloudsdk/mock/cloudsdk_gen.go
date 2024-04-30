@@ -67,6 +67,21 @@ func (mr *MockCloudClientInterfaceMockRecorder) CreateClusterAwait(arg0, arg1, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateClusterAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateClusterAwait), arg0, arg1, arg2)
 }
 
+// CreatePrivateLink mocks base method.
+func (m *MockCloudClientInterface) CreatePrivateLink(arg0 context.Context, arg1 uuid.UUID, arg2 apigen.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePrivateLink", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*cloudsdk.PrivateLinkInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreatePrivateLink indicates an expected call of CreatePrivateLink.
+func (mr *MockCloudClientInterfaceMockRecorder) CreatePrivateLink(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePrivateLink", reflect.TypeOf((*MockCloudClientInterface)(nil).CreatePrivateLink), arg0, arg1, arg2)
+}
+
 // CreatePrivateLinkAwait mocks base method.
 func (m *MockCloudClientInterface) CreatePrivateLinkAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
 	m.ctrl.T.Helper()

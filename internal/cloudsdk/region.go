@@ -85,6 +85,8 @@ type RegionServiceClientInterface interface {
 
 	GetPrivateLink(ctx context.Context, id uint64, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error)
 
+	CreatePrivateLink(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
+
 	CreatePrivateLinkAwait(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
 
 	DeletePrivateLinkAwait(ctx context.Context, id uint64, privateLinkID uuid.UUID) error
@@ -408,6 +410,37 @@ func (c *RegionServiceClient) GetPrivateLink(ctx context.Context, id uint64, pri
 	return res.JSON200, nil
 }
 
+func (c *RegionServiceClient) CreatePrivateLink(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
+	res, err := c.mgmtClient.PostTenantTenantIdPrivatelinksWithResponse(ctx, id, req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to create private link")
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
+		return nil, err
+	}
+	var info = res.JSON202
+	var rtn *apigen_mgmt.PrivateLink
+	err = wait.Poll(ctx, func() (bool, error) {
+		link, err := c.GetPrivateLink(ctx, id, info.Id)
+		if err != nil {
+			if errors.Is(err, ErrPrivateLinkNotFound) {
+				return false, nil
+			}
+			return false, err
+		}
+		rtn = link
+		return true, nil
+	}, PollingPrivateLinkCreation)
+	if err != nil {
+		lastStatus := "<nil>"
+		if rtn != nil {
+			lastStatus = string(rtn.Status)
+		}
+		return nil, errors.Wrapf(err, "failed to wait for the private link to be created, last status of the private link resource is %s", lastStatus)
+	}
+	return rtn, nil
+}
+
 func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error) {
 	res, err := c.mgmtClient.PostTenantTenantIdPrivatelinksWithResponse(ctx, id, req)
 	if err != nil {
@@ -427,7 +460,7 @@ func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uin
 			return false, err
 		}
 		rtn = link
-		if link.Status == apigen_mgmt.CREATED {
+		if link.Status == apigen_mgmt.CREATED || link.Status == apigen_mgmt.ERROR {
 			return true, nil
 		}
 		return false, nil
@@ -438,7 +471,7 @@ func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uin
 		if rtn != nil {
 			lastStatus = string(rtn.Status)
 		}
-		return nil, errors.Wrapf(err, "failed to wait for the private link to be created, last status is %s", lastStatus)
+		return nil, errors.Wrapf(err, "failed to wait for the private link to be ready, last status of the private link resource is %s", lastStatus)
 	}
 	return rtn, nil
 }

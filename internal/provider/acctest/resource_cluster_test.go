@@ -1,3 +1,6 @@
+//go:build !ut
+// +build !ut
+
 package acctest
 
 import (
@@ -14,17 +17,20 @@ import (
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func getTestNamespace(t *testing.T) string {
 	t.Helper()
 
-	r, err := regexp.Compile("[^a-zA-Z0-9]")
+	r, err := regexp.Compile("[^a-zA-Z0-9-]")
 	require.NoError(t, err)
 
-	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "_")
+	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "-")
 }
+
+var region = utils.IfElse(len(os.Getenv("TEST_REGION")) != 0, os.Getenv("TEST_REGION"), "us-east-1")
 
 func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 	t.Helper()
@@ -66,7 +72,7 @@ func TestClusterResource(t *testing.T) {
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
 					func(s *terraform.State) error {
-						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
+						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), region, clusterName)
 						if err != nil {
 							return err
 						}
@@ -159,7 +165,7 @@ func TestClusterResource(t *testing.T) {
 func testClusterResourceConfig(version, name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
-	region   = "us-east-1"
+	region   = "%s"
 	name     = "%s"
 	version  = "%s"
 	spec     = {
@@ -200,14 +206,14 @@ resource "risingwavecloud_cluster" "test" {
 		}
 	}
 }
-`, name, version)
+`, region, name, version)
 }
 
 // update: compactor replica 1 -> 2, etcd_config, risingwave_config
 func testClusterResourceUpdateConfig(name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
-	region   = "us-east-1"
+	region   = "%s"
 	name     = "%s"
 	version  = "v1.6.0"
 	spec     = {
@@ -255,7 +261,7 @@ resource "risingwavecloud_cluster" "test" {
 		EOT
 	}
 }
-`, name)
+`, region, name)
 }
 
 func testClusterUser(password string) string {

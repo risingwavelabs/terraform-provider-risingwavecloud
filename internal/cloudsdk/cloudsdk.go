@@ -77,6 +77,9 @@ type CloudClientInterface interface {
 	// GetPrivateLink returns the private link and its cluster ID by the given connection name.
 	GetPrivateLinkByName(ctx context.Context, connectionName string) (*PrivateLinkInfo, error)
 
+	// CreatePrivateLink creates the private link and returns the private link.
+	CreatePrivateLink(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
+
 	// CreatePrivateLinkAwait creates the private link and waits for the creation to complete.
 	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
 
@@ -407,6 +410,21 @@ func (c *CloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUI
 	}
 
 	return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link %s", privateLinkID.String())
+}
+
+func (c *CloudClient) CreatePrivateLink(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	pl, err := rs.CreatePrivateLink(ctx, info.Id, req)
+	if err != nil {
+		return nil, err
+	}
+	return &PrivateLinkInfo{
+		ClusterNsID: info.NsId,
+		PrivateLink: pl,
+	}, nil
 }
 
 func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error) {
