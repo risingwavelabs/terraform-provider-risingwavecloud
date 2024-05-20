@@ -23,7 +23,7 @@ func getTestNamespace(t *testing.T) string {
 	r, err := regexp.Compile("[^a-zA-Z0-9]")
 	require.NoError(t, err)
 
-	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "_")
+	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "-")
 }
 
 func getPrivateLinkTarget(t *testing.T) string {
@@ -57,7 +57,8 @@ func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 
 func TestClusterResource(t *testing.T) {
 
-	clusterName := fmt.Sprintf("tf-test%s", getTestNamespace(t))
+	clusterName := fmt.Sprintf("tf%stest", getTestNamespace(t))
+	fmt.Println(clusterName)
 	cloud := initCloudSDK(t)
 
 	privateLinkTarget := getPrivateLinkTarget(t)
