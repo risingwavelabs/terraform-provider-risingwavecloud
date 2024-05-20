@@ -30,6 +30,14 @@ func getTestNamespace(t *testing.T) string {
 	return r.ReplaceAllString(os.Getenv("TEST_NAMESPACE"), "-")
 }
 
+func getPrivateLinkTarget(t *testing.T) string {
+	t.Helper()
+
+	target := os.Getenv("TEST_PRIVATE_LINK_TARGET")
+	require.NotEmpty(t, target, "TEST_PRIVATE_LINK_TARGET must be set")
+	return target
+}
+
 var region = utils.IfElse(len(os.Getenv("TEST_REGION")) != 0, os.Getenv("TEST_REGION"), "us-east-1")
 
 func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
@@ -57,6 +65,8 @@ func TestClusterResource(t *testing.T) {
 
 	clusterName := fmt.Sprintf("tf-test%s", getTestNamespace(t))
 	cloud := initCloudSDK(t)
+
+	privateLinkTarget := getPrivateLinkTarget(t)
 
 	var clusterID uuid.UUID
 
@@ -133,7 +143,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// Create and read testing: private link
 			{
-				Config: testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
+				Config: testClusterResourceUpdateConfig(clusterName) + testPrivateLink(privateLinkTarget),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "id"),
 					resource.TestCheckResourceAttrSet("risingwavecloud_privatelink.test", "endpoint"),
@@ -141,7 +151,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// import private link
 			{
-				Config:       testClusterResourceUpdateConfig(clusterName) + testPrivateLink(),
+				Config:       testClusterResourceUpdateConfig(clusterName) + testPrivateLink(privateLinkTarget),
 				ResourceName: "risingwavecloud_privatelink.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					pls, err := cloud.GetPrivateLinks(context.Background())
@@ -276,11 +286,11 @@ resource "risingwavecloud_cluster_user" "test" {
 `, password)
 }
 
-func testPrivateLink() string {
-	return `
+func testPrivateLink(target string) string {
+	return fmt.Sprintf(`
 resource "risingwavecloud_privatelink" "test" {
 	cluster_id = risingwavecloud_cluster.test.id
 	connection_name = "test-connection"
-	target = "test-target"
-}`
+	target = "%s"
+}`, target)
 }

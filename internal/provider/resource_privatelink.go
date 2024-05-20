@@ -286,7 +286,7 @@ func (r *PrivateLinkResource) Delete(ctx context.Context, req resource.DeleteReq
 	if err := r.client.DeletePrivateLinkAwait(ctx, clusterNsID, privateLinkID); err != nil {
 		if errors.Is(err, wait.ErrWaitTimeout) {
 			resp.Diagnostics.AddError(
-				"Timeout waiting for privatelink to be deleted",
+				fmt.Sprintf("Timeout waiting for privatelink %s to be deleted", privateLinkID.String()),
 				err.Error(),
 			)
 			return
