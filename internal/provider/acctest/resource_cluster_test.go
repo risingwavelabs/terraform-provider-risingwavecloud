@@ -57,7 +57,7 @@ func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 
 func TestClusterResource(t *testing.T) {
 
-	clusterName := fmt.Sprintf("tf%stest", getTestNamespace(t))
+	clusterName := fmt.Sprintf("tf%sacc", getTestNamespace(t))
 	fmt.Println(clusterName)
 	cloud := initCloudSDK(t)
 
@@ -71,11 +71,11 @@ func TestClusterResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testClusterResourceConfig("v1.5.0", clusterName),
+				Config: testClusterResourceConfig("v1.8.0", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.8.0"),
 					func(s *terraform.State) error {
 						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
 						if err != nil {
@@ -88,7 +88,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				Config:       testClusterResourceConfig("v1.5.0", clusterName),
+				Config:       testClusterResourceConfig("v1.8.0", clusterName),
 				ResourceName: "risingwavecloud_cluster.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return clusterID.String(), nil
@@ -98,9 +98,9 @@ func TestClusterResource(t *testing.T) {
 			},
 			// Update and Read: version
 			{
-				Config: testClusterResourceConfig("v1.6.0", clusterName),
+				Config: testClusterResourceConfig("v1.9.2", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.6.0"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.9.2"),
 				),
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
@@ -220,7 +220,7 @@ func testClusterResourceUpdateConfig(name string) string {
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
-	version  = "v1.6.0"
+	version  = "v1.9.2"
 	spec     = {
 		compute = {
 			default_node_group = {

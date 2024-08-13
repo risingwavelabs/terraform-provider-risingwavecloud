@@ -23,9 +23,8 @@ import (
 )
 
 var (
-	DefaultEnableComputeFileCache = true
 	DefaultComputeFileCacheSizeGB = 20
-	DefaultEtcdVolumeSizeGB       = 10
+	DefaultEtcdVolumeSizeGB       = 16
 )
 
 // Assert provider defined types fully satisfy framework interfaces.
@@ -391,9 +390,9 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 							"default_node_group": types.ObjectValueMust(
 								defaultNodeGroup,
 								map[string]attr.Value{
-									"cpu":     types.StringValue(cluster.Resources.Components.Etcd.Cpu),
-									"memory":  types.StringValue(cluster.Resources.Components.Etcd.Memory),
-									"replica": types.Int64Value(int64(cluster.Resources.Components.Etcd.Replica)),
+									"cpu":     types.StringValue(cluster.Resources.MetaStore.Etcd.Resource.Cpu),
+									"memory":  types.StringValue(cluster.Resources.MetaStore.Etcd.Resource.Memory),
+									"replica": types.Int64Value(int64(cluster.Resources.MetaStore.Etcd.Resource.Replica)),
 								},
 							),
 							"etcd_config": types.StringValue(cluster.EtcdConfig),
@@ -497,11 +496,17 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 			Compute:   computeResource,
 			Frontend:  frontendResource,
 			Meta:      metaResource,
-			Etcd:      *etcdResuorce,
 		},
-		ComputeFileCacheSizeGiB: DefaultComputeFileCacheSizeGB,
-		EnableComputeFileCache:  DefaultEnableComputeFileCache,
-		EtcdVolumeSizeGiB:       DefaultEtcdVolumeSizeGB,
+		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
+			SizeGb: DefaultComputeFileCacheSizeGB,
+		},
+		MetaStore: &apigen_mgmt.TenantResourceMetaStore{
+			Type: apigen_mgmt.Etcd,
+			Etcd: &apigen_mgmt.MetaStoreEtcd{
+				Resource: *etcdResuorce,
+				SizeGb:   DefaultEtcdVolumeSizeGB,
+			},
+		},
 	}
 
 	return diags
@@ -594,14 +599,16 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 				ComponentTypeId: cluster.Resources.Components.Compactor.ComponentTypeId,
 				Replica:         cluster.Resources.Components.Compactor.Replica,
 			},
-			Etcd: apigen_mgmt.ComponentResourceRequest{
-				ComponentTypeId: cluster.Resources.Components.Etcd.ComponentTypeId,
-				Replica:         cluster.Resources.Components.Etcd.Replica,
+		},
+		ComputeFileCacheSizeGiB: cluster.Resources.ComputeCache.SizeGb,
+		MetaStore: &apigen_mgmt.TenantResourceRequestMetaStore{
+			Type: apigen_mgmt.Etcd,
+			Etcd: &apigen_mgmt.TenantResourceRequestMetaStoreEtcd{
+				ComponentTypeId: cluster.Resources.MetaStore.Etcd.Resource.ComponentTypeId,
+				Replica:         cluster.Resources.MetaStore.Etcd.Resource.Replica,
+				SizeGb:          cluster.Resources.MetaStore.Etcd.SizeGb,
 			},
 		},
-		ComputeFileCacheSizeGiB: cluster.Resources.ComputeFileCacheSizeGiB,
-		EnableComputeFileCache:  cluster.Resources.EnableComputeFileCache,
-		EtcdVolumeSizeGiB:       cluster.Resources.EtcdVolumeSizeGiB,
 	}
 
 	createdCluster, err := r.client.CreateClusterAwait(ctx, region, tenantReq)
@@ -679,6 +686,22 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+func metaStoreEqual(a, b *apigen_mgmt.TenantResourceMetaStore) bool {
+	if a.Type != b.Type {
+		return false
+	}
+
+	if a.Type == apigen_mgmt.Etcd {
+		return resourceEqual(&a.Etcd.Resource, &b.Etcd.Resource) && a.Etcd.SizeGb == b.Etcd.SizeGb
+	}
+
+	if a.Type == apigen_mgmt.Postgresql {
+		return resourceEqual(&a.Postgresql.Resource, &b.Postgresql.Resource) && a.Postgresql.SizeGb == b.Postgresql.SizeGb
+	}
+
+	return false
+}
+
 func resourceEqual(a, b *apigen_mgmt.ComponentResource) bool {
 	return a.Cpu == b.Cpu &&
 		a.Memory == b.Memory &&
@@ -730,39 +753,20 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &updated)...)
 
 	// immutable fields
-
-	if previous.Resources.EnableComputeFileCache != updated.Resources.EnableComputeFileCache {
-		resp.Diagnostics.AddError(
-			"Cannot update immutable field",
-			"Compute file cache cannot be changed",
-		)
-	}
-	if previous.Resources.ComputeFileCacheSizeGiB != updated.Resources.ComputeFileCacheSizeGiB {
-		resp.Diagnostics.AddError(
-			"Cannot update immutable field",
-			"Compute file cache size cannot be changed",
-		)
-	}
-	if previous.Resources.EtcdVolumeSizeGiB != updated.Resources.EtcdVolumeSizeGiB {
-		resp.Diagnostics.AddError(
-			"Cannot update updatete immutable field",
-			"Etcd volume size cannot be changed",
-		)
-	}
 	if previous.TenantName != updated.TenantName {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
-			"Cluster name cannot be changed",
+			fmt.Sprintf("Tenant name cannot be changed, previous: %s, updated: %s", previous.TenantName, updated.TenantName),
 		)
 	}
 	if previous.Region != updated.Region {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
-			"Region name cannot be changed",
+			fmt.Sprintf("Region cannot be changed, previous: %s, updated: %s", previous.Region, updated.Region),
 		)
 	}
 
-	if !resourceEqual(&previous.Resources.Components.Etcd, &updated.Resources.Components.Etcd) {
+	if !metaStoreEqual(previous.Resources.MetaStore, updated.Resources.MetaStore) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
 			fmt.Sprintf("Etcd resource cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),

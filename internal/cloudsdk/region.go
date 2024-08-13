@@ -163,8 +163,8 @@ func (c *RegionServiceClient) GetClusterByID(ctx context.Context, id uint64) (*a
 	if res.StatusCode() == http.StatusNotFound {
 		return nil, errors.Wrapf(ErrClusterNotFound, fmt.Sprintf("cluster %d not found", id))
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
-		return nil, errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
 	}
 	return res.JSON200, nil
 }
@@ -175,8 +175,8 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	if err != nil {
 		return nil, errors.Wrap(err, "failed call API to to create cluster")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(createRes, http.StatusAccepted); err != nil {
-		return nil, errors.Wrapf(err, "message %s", string(createRes.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(createRes, http.StatusAccepted, string(createRes.Body)); err != nil {
+		return nil, err
 	}
 
 	// wait for the tenant to be ready
@@ -202,8 +202,8 @@ func (c *RegionServiceClient) DeleteClusterAwait(ctx context.Context, id uint64)
 	if deleteRes.StatusCode() == http.StatusNotFound {
 		return nil
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(deleteRes, http.StatusAccepted); err != nil {
-		return errors.Wrapf(err, "message %s", string(deleteRes.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(deleteRes, http.StatusAccepted, string(deleteRes.Body)); err != nil {
+		return err
 	}
 
 	// wait for the tenant to be deleted
@@ -230,8 +230,8 @@ func (c *RegionServiceClient) UpdateClusterImageAwait(ctx context.Context, id ui
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to udpate cluster image")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
-		return errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
 	}
 
 	// wait for the tenant to be ready
@@ -247,8 +247,8 @@ func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, i
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to udpate cluster resource")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
-		return errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
 	}
 
 	// wait for the tenant resource updated.
@@ -260,8 +260,8 @@ func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier,
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call API to retrieve information of all tiers")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
-		return nil, errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil,  err
 	}
 
 	return res.JSON200.Tiers, nil
@@ -309,8 +309,8 @@ func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, i
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to update cluster config")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
-		return errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
 	}
 
 	// wait for the tenant to be ready
@@ -326,8 +326,8 @@ func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, id uint
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to update cluster config")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
-		return errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
 	}
 
 	// wait for the tenant to be ready

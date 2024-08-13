@@ -112,8 +112,8 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVe
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get regions")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
-		return nil, errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
 	}
 	if res.JSON200 == nil {
 		return nil, errors.New("unexpected error, region array is nil")
@@ -207,8 +207,8 @@ func (c *CloudClient) Ping(ctx context.Context) error {
 	if res.StatusCode() == http.StatusForbidden {
 		return ErrInvalidCredential
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
-		return errors.Wrapf(err, "message %s", string(res.Body))
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return err
 	}
 	return nil
 }
