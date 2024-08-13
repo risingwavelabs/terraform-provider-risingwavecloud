@@ -299,7 +299,6 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 			Compactor: componentReqToComponent(reqResource.Components.Compactor),
 			Frontend:  componentReqToComponent(reqResource.Components.Frontend),
 			Meta:      componentReqToComponent(reqResource.Components.Meta),
-			Etcd:      componentReqToComponent(reqResource.Components.Etcd),
 		},
 		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
 			SizeGb: reqResource.ComputeFileCacheSizeGiB,
