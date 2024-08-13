@@ -36,6 +36,7 @@ const (
 	DeveloperBasic TierId = "Developer-Basic"
 	DeveloperFree  TierId = "Developer-Free"
 	DeveloperPlus  TierId = "Developer-Plus"
+	DeveloperTest  TierId = "Developer-Test"
 	Free           TierId = "Free"
 	Invited        TierId = "Invited"
 	Standard       TierId = "Standard"
@@ -92,6 +93,7 @@ type Region struct {
 	Platform      string `json:"platform"`
 	RegionName    string `json:"regionName"`
 	Url           string `json:"url"`
+	UrlV2         string `json:"urlV2"`
 }
 
 // RegionArray defines model for RegionArray.
