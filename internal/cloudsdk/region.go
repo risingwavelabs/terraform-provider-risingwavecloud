@@ -261,7 +261,7 @@ func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier,
 		return nil, errors.Wrap(err, "failed to call API to retrieve information of all tiers")
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
-		return nil,  err
+		return nil, err
 	}
 
 	return res.JSON200.Tiers, nil
