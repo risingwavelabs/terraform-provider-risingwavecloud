@@ -515,13 +515,11 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	if !data.BYOC.IsNull() && !data.BYOC.IsUnknown() {
 		diags.Append(data.BYOC.As(ctx, &byoc, objectAsOptions)...)
 		cluster.ClusterName = ptr.Ptr(byoc.Env.ValueString())
-		cluster.Tier = apigen_mgmt.BYOC
-	} else {
-		cluster.Tier = apigen_mgmt.Standard
 	}
 
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
+	cluster.Tier = apigen_mgmt.TierId(data.Tier.ValueString())
 
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
@@ -579,6 +577,14 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 			"Region is required",
 		)
 		return
+	}
+
+	if data.Tier.IsNull() || data.Tier.IsUnknown() {
+		if data.BYOC.IsNull() || data.BYOC.IsUnknown() {
+			data.Tier = types.StringValue(string(apigen_mgmt.Standard))
+		} else {
+			data.Tier = types.StringValue(string(apigen_mgmt.BYOC))
+		}
 	}
 
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &cluster)...)
@@ -721,10 +727,10 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	if cluster.Tier != apigen_mgmt.Standard && cluster.Tier != apigen_mgmt.Invited {
+	if cluster.Tier != apigen_mgmt.Standard && cluster.Tier != apigen_mgmt.Invited && cluster.Tier != apigen_mgmt.BYOC {
 		resp.Diagnostics.AddError(
 			"Invalid tier",
-			"Supported tiers are: standard, invited",
+			"Supported tiers are: Standard, Invited, BYOC",
 		)
 		return
 	}
@@ -800,8 +806,12 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// assign computed fields to updated
 	data.ID = types.StringValue(previous.NsId.String())
+	data.Tier = types.StringValue(string(previous.Tier))
 
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &updated)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// immutable fields
 	if previous.TenantName != updated.TenantName {
@@ -820,7 +830,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !metaStoreEqual(previous.Resources.MetaStore, updated.Resources.MetaStore) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
-			fmt.Sprintf("Etcd resource cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),
+			fmt.Sprintf("metastore cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),
 		)
 	}
 	if resp.Diagnostics.HasError() {
@@ -926,6 +936,20 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			return
 		}
 		tflog.Info(ctx, "cluster resources updated")
+	}
+
+	// Get the latest cluster state and save it to state
+	now, err := r.client.GetClusterByNsID(ctx, nsID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to read cluster",
+			err.Error(),
+		)
+		return
+	}
+	resp.Diagnostics.Append(clusterToDataModel(now, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Save updated data into Terraform state
