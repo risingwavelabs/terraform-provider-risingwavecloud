@@ -44,23 +44,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+      - uses: actions/checkout@v4
+        with: 
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
       - run: go mod download
       - run: go build -v .
       - name: Run linters
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          skip-cache: true
+          skip-save-cache: true
 
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+      - uses: actions/checkout@v4
+        with: 
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -84,8 +90,10 @@ jobs:
           - '1.6.*'
           - '1.7.*'
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+      - uses: actions/checkout@v4
+        with: 
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -103,5 +111,6 @@ jobs:
           TEST_NAMESPACE: ${{ matrix.terraform }}
           RWC_MOCK: "1"
           TEST_PRIVATE_LINK_TARGET: ${{ secrets.TEST_PRIVATE_LINK_TARGET }}
+          TEST_BYOC_ENV: ${{ secrets.TEST_BYOC_ENV }}
         run: go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acctest
         timeout-minutes: 20

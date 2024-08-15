@@ -51,11 +51,17 @@ func createSimpleTestCluster(t *testing.T, name, region, imageTag string, tier a
 					Memory:          "4 GB",
 					Replica:         1,
 				},
-				Etcd: apigen_mgmt.ComponentResource{
-					ComponentTypeId: "p-1c4g",
-					Cpu:             "1",
-					Memory:          "4 GB",
-					Replica:         1,
+			},
+			MetaStore: &apigen_mgmt.TenantResourceMetaStore{
+				Type: apigen_mgmt.Etcd,
+				Etcd: &apigen_mgmt.MetaStoreEtcd{
+					Resource: apigen_mgmt.ComponentResource{
+						ComponentTypeId: "p-1c4g",
+						Cpu:             "1",
+						Memory:          "4 GB",
+						Replica:         1,
+					},
+					SizeGb: 10,
 				},
 			},
 		},
@@ -70,7 +76,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 		ctx      = context.Background()
 		name     = "test-cluster"
 		region   = "us-west-2"
-		imageTag = "v1.7.3"
+		imageTag = "v1.10.0"
 		tier     = apigen_mgmt.Standard
 		tenant   = createSimpleTestCluster(t, name, region, imageTag, tier, apigen_mgmt.Failed)
 	)

@@ -1,15 +1,23 @@
 package apigen
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 type SpecResponse interface {
 	Status() string
 	StatusCode() int
 }
 
-func ExpectStatusCodeWithMessage(res SpecResponse, statusCode int) error {
+func ExpectStatusCodeWithMessage(res SpecResponse, statusCode int, message ...string) error {
 	if res.StatusCode() != statusCode {
-		return errors.Errorf("expected status code %d but got %d, message: ", statusCode, res.StatusCode())
+		content := fmt.Sprintf("expected status code %d but got %d", statusCode, res.StatusCode())
+		if len(message) > 0 {
+			content = fmt.Sprintf("%s, message: %s", content, message[0])
+		}
+		return errors.New(content)
 	}
 	return nil
 }

@@ -34,6 +34,14 @@ func getPrivateLinkTarget(t *testing.T) string {
 	return target
 }
 
+func getBYOCEnv(t *testing.T) string {
+	t.Helper()
+
+	env := os.Getenv("TEST_BYOC_ENV")
+	require.NotEmpty(t, env, "TEST_BYOC_ENV must be set")
+	return env
+}
+
 func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 	t.Helper()
 
@@ -55,9 +63,9 @@ func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 	return client
 }
 
-func TestClusterResource(t *testing.T) {
+func TestClusterResource_Standard(t *testing.T) {
 
-	clusterName := fmt.Sprintf("tf%stest", getTestNamespace(t))
+	clusterName := fmt.Sprintf("tf%sacc", getTestNamespace(t))
 	fmt.Println(clusterName)
 	cloud := initCloudSDK(t)
 
@@ -71,11 +79,11 @@ func TestClusterResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testClusterResourceConfig("v1.5.0", clusterName),
+				Config: testClusterResourceConfig("v1.8.0", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.5.0"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.8.0"),
 					func(s *terraform.State) error {
 						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
 						if err != nil {
@@ -88,7 +96,7 @@ func TestClusterResource(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				Config:       testClusterResourceConfig("v1.5.0", clusterName),
+				Config:       testClusterResourceConfig("v1.8.0", clusterName),
 				ResourceName: "risingwavecloud_cluster.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return clusterID.String(), nil
@@ -98,9 +106,9 @@ func TestClusterResource(t *testing.T) {
 			},
 			// Update and Read: version
 			{
-				Config: testClusterResourceConfig("v1.6.0", clusterName),
+				Config: testClusterResourceConfig("v1.9.2", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.6.0"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.9.2"),
 				),
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
@@ -167,6 +175,103 @@ func TestClusterResource(t *testing.T) {
 	})
 }
 
+func TestClusterResource_BYOC(t *testing.T) {
+
+	cloud := initCloudSDK(t)
+
+	var (
+		clusterName = fmt.Sprintf("tf%saccbyoc", getTestNamespace(t))
+		env         = getBYOCEnv(t)
+		region      = "us-central1"
+	)
+
+	var clusterID uuid.UUID
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create and Read testing
+			{
+				Config: testBYOCClusterResourceConfig(region, "v1.10.0", clusterName, env),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.byoc_test", "id"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.byoc_test", "tier", string(apigen_mgmt.BYOC)),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.byoc_test", "version", "v1.10.0"),
+					func(s *terraform.State) error {
+						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), region, clusterName)
+						if err != nil {
+							return err
+						}
+						clusterID = cluster.NsId
+						return nil
+					},
+				),
+			},
+			// ImportState testing
+			{
+				Config:       testBYOCClusterResourceConfig(region, "v1.10.0", clusterName, env),
+				ResourceName: "risingwavecloud_cluster.byoc_test",
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					return clusterID.String(), nil
+				},
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testBYOCClusterResourceConfig(region, version, name, env string) string {
+	return fmt.Sprintf(`
+resource "risingwavecloud_cluster" "byoc_test" {
+	region   = "%s"
+	name     = "%s"
+	version  = "%s"
+	byoc     = {
+		env = "%s"
+	}
+	spec     = {
+		compute = {
+			default_node_group = {
+				cpu     = "2"
+				memory  = "8 GB"
+				replica = 1
+			}
+		}
+		compactor = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		frontend = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		meta = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+			etcd_meta_store = {
+				default_node_group = {
+					cpu     = "1"
+					memory  = "4 GB"
+					replica = 1
+				}
+			}
+		}
+	}
+}
+`, region, name, version, env)
+}
+
 func testClusterResourceConfig(version, name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
@@ -220,7 +325,7 @@ func testClusterResourceUpdateConfig(name string) string {
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
-	version  = "v1.6.0"
+	version  = "v1.9.2"
 	spec     = {
 		compute = {
 			default_node_group = {

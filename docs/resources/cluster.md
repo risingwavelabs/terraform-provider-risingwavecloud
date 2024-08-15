@@ -139,6 +139,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 
 ### Optional
 
+- `byoc` (Attributes) The BYOC (Bring Your Own Cloud) configuration of the cluster. These fields are only used in BYOC clusters. (see [below for nested schema](#nestedatt--byoc))
 - `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registry of RisingWave Labs.The newest stable version will be used if this field is not present.
 
 ### Read-Only
@@ -269,3 +270,14 @@ Required:
 Optional:
 
 - `replica` (Number) The number of nodes
+
+
+
+
+
+<a id="nestedatt--byoc"></a>
+### Nested Schema for `byoc`
+
+Required:
+
+- `env` (String) The environment of BYOC clusters. This field is only used in BYOC clusters.
