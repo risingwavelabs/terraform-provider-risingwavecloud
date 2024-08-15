@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/wait"
 )
 
@@ -122,12 +123,21 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 	"risingwave_config": types.StringType,
 }
 
+type BYOCModel struct {
+	Env types.String `tfsdk:"env"`
+}
+
+var byocAttrTypes = map[string]attr.Type{
+	"env": types.StringType,
+}
+
 type ClusterModel struct {
 	ID      types.String `tfsdk:"id"`
 	Tier    types.String `tfsdk:"tier"`
 	Region  types.String `tfsdk:"region"`
 	Name    types.String `tfsdk:"name"`
 	Version types.String `tfsdk:"version"`
+	BYOC    types.Object `tfsdk:"byoc"`
 	Spec    types.Object `tfsdk:"spec"`
 }
 
@@ -187,6 +197,18 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 					"It is used to fetch the image from the official image registry of RisingWave Labs." +
 					"The newest stable version will be used if this field is not present.",
 				Optional: true,
+			},
+			"byoc": schema.SingleNestedAttribute{
+				MarkdownDescription: "The BYOC (Bring Your Own Cloud) configuration of the cluster. " +
+					"These fields are only used in BYOC clusters.",
+				Optional: true,
+				Attributes: map[string]schema.Attribute{
+					"env": schema.StringAttribute{
+						MarkdownDescription: "The environment of BYOC clusters. " +
+							"This field is only used in BYOC clusters.",
+						Required: true,
+					},
+				},
 			},
 			"spec": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -323,12 +345,27 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 	}
 }
 
-func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
+func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Diagnostics {
+	diags := diag.Diagnostics{}
+
 	data.Name = types.StringValue(cluster.TenantName)
 	data.Version = types.StringValue(cluster.ImageTag)
 	data.ID = types.StringValue(cluster.NsId.String())
 	data.Region = types.StringValue(cluster.Region)
 	data.Tier = types.StringValue(string(cluster.Tier))
+
+	if cluster.Tier == apigen_mgmt.BYOC {
+		if cluster.ClusterName == nil {
+			diags.AddError(
+				"Missing BYOC env name",
+				"The clusterName field is missing when the tier is BYOC",
+			)
+			return diags
+		}
+		data.BYOC = types.ObjectValueMust(byocAttrTypes, map[string]attr.Value{
+			"env": types.StringValue(*cluster.ClusterName),
+		})
+	}
 
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
@@ -402,6 +439,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) {
 			),
 		},
 	)
+	return diags
 }
 
 func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen_mgmt.Tenant) diag.Diagnostics {
@@ -421,6 +459,7 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		frontendDefaultNodeGroup  NodeGroupModel
 		metaSpec                  MetaSpecModel
 		metaDefaultNodeGroup      NodeGroupModel
+		byoc                      BYOCModel
 
 		useEtcdMetaStore     bool
 		etcdMetaStore        EtcdMetaStoreModel
@@ -473,9 +512,15 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		cluster.NsId = nsId
 	}
 
+	if !data.BYOC.IsNull() && !data.BYOC.IsUnknown() {
+		diags.Append(data.BYOC.As(ctx, &byoc, objectAsOptions)...)
+		cluster.ClusterName = ptr.Ptr(byoc.Env.ValueString())
+	}
+
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
 	cluster.Tier = apigen_mgmt.TierId(data.Tier.ValueString())
+
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
@@ -534,7 +579,13 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	data.Tier = types.StringValue(string(apigen_mgmt.Standard))
+	if data.Tier.IsNull() || data.Tier.IsUnknown() {
+		if data.BYOC.IsNull() || data.BYOC.IsUnknown() {
+			data.Tier = types.StringValue(string(apigen_mgmt.Standard))
+		} else {
+			data.Tier = types.StringValue(string(apigen_mgmt.BYOC))
+		}
+	}
 
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &cluster)...)
 
@@ -573,9 +624,8 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
 	var tenantReq = apigen_mgmt.TenantRequestRequestBody{}
+	tenantReq.ClusterName = cluster.ClusterName
 	tenantReq.TenantName = cluster.TenantName
 	tenantReq.ImageTag = &cluster.ImageTag
 	tenantReq.Tier = &cluster.Tier
@@ -627,7 +677,11 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	clusterToDataModel(createdCluster, &data)
+	resp.Diagnostics.Append(clusterToDataModel(createdCluster, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log
@@ -673,15 +727,19 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	if cluster.Tier != apigen_mgmt.Standard && cluster.Tier != apigen_mgmt.Invited {
+	if cluster.Tier != apigen_mgmt.Standard && cluster.Tier != apigen_mgmt.Invited && cluster.Tier != apigen_mgmt.BYOC {
 		resp.Diagnostics.AddError(
 			"Invalid tier",
-			"Supported tiers are: standard, invited",
+			"Supported tiers are: Standard, Invited, BYOC",
 		)
 		return
 	}
 
-	clusterToDataModel(cluster, &data)
+	resp.Diagnostics.Append(clusterToDataModel(cluster, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -751,8 +809,29 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	data.Tier = types.StringValue(string(previous.Tier))
 
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &updated)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// immutable fields
+	if previous.ClusterName == nil && updated.ClusterName != nil {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("Cluster name cannot be changed, previous is not set, now is %s", *updated.ClusterName),
+		)
+	}
+	if previous.ClusterName != nil && updated.ClusterName == nil {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("Cluster name cannot be changed, previous is %s, now is not set", *previous.ClusterName),
+		)
+	}
+	if (previous.ClusterName != nil && updated.ClusterName != nil) && (*previous.ClusterName != *updated.ClusterName) {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("Cluster name cannot be changed, previous: %s, updated: %s", *previous.ClusterName, *updated.ClusterName),
+		)
+	}
 	if previous.TenantName != updated.TenantName {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
@@ -769,7 +848,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !metaStoreEqual(previous.Resources.MetaStore, updated.Resources.MetaStore) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
-			fmt.Sprintf("Etcd resource cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),
+			fmt.Sprintf("metastore cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),
 		)
 	}
 	if resp.Diagnostics.HasError() {
@@ -875,6 +954,20 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			return
 		}
 		tflog.Info(ctx, "cluster resources updated")
+	}
+
+	// Get the latest cluster state and save it to state
+	now, err := r.client.GetClusterByNsID(ctx, nsID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to read cluster",
+			err.Error(),
+		)
+		return
+	}
+	resp.Diagnostics.Append(clusterToDataModel(now, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Save updated data into Terraform state

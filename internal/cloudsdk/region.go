@@ -2,7 +2,6 @@ package cloudsdk
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -161,7 +160,7 @@ func (c *RegionServiceClient) GetClusterByID(ctx context.Context, id uint64) (*a
 		return nil, errors.Wrap(err, "failed call API to to get cluster")
 	}
 	if res.StatusCode() == http.StatusNotFound {
-		return nil, errors.Wrapf(ErrClusterNotFound, fmt.Sprintf("cluster %d not found", id))
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %d not found", id)
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
 		return nil, err

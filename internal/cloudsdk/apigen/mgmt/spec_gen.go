@@ -255,6 +255,7 @@ type Size struct {
 
 // Tenant defines model for Tenant.
 type Tenant struct {
+	ClusterName    *string            `json:"clusterName,omitempty"`
 	CreatedAt      time.Time          `json:"createdAt"`
 	EtcdConfig     string             `json:"etcd_config"`
 	HealthStatus   TenantHealthStatus `json:"health_status"`
