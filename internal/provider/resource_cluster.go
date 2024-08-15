@@ -814,6 +814,24 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// immutable fields
+	if previous.ClusterName == nil && updated.ClusterName != nil {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("Cluster name cannot be changed, previous is not set, now is %s", *updated.ClusterName),
+		)
+	}
+	if previous.ClusterName != nil && updated.ClusterName == nil {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("Cluster name cannot be changed, previous is %s, now is not set", *previous.ClusterName),
+		)
+	}
+	if (previous.ClusterName != nil && updated.ClusterName != nil) && (*previous.ClusterName != *updated.ClusterName) {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("Cluster name cannot be changed, previous: %s, updated: %s", *previous.ClusterName, *updated.ClusterName),
+		)
+	}
 	if previous.TenantName != updated.TenantName {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
