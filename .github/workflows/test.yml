@@ -111,5 +111,6 @@ jobs:
           TEST_NAMESPACE: ${{ matrix.terraform }}
           RWC_MOCK: "1"
           TEST_PRIVATE_LINK_TARGET: ${{ secrets.TEST_PRIVATE_LINK_TARGET }}
+          TEST_BYOC_ENV: ${{ secrets.TEST_BYOC_ENV }}
         run: go test -v -timeout 30m github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider/acctest
         timeout-minutes: 20
