@@ -89,15 +89,16 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 
 	r := state.GetRegionState(region)
 	t := &apigen_mgmt.Tenant{
-		Id:         uint64(len(r.GetClusters()) + 1),
-		TenantName: req.TenantName,
-		ImageTag:   *req.ImageTag,
-		Region:     region,
-		RwConfig:   *req.RwConfig,
-		EtcdConfig: *req.EtcdConfig,
-		Resources:  reqResouceToClusterResource(req.Resources),
-		NsId:       uuid.New(),
-		Tier:       *req.Tier,
+		Id:          uint64(len(r.GetClusters()) + 1),
+		TenantName:  req.TenantName,
+		ImageTag:    *req.ImageTag,
+		Region:      region,
+		RwConfig:    *req.RwConfig,
+		EtcdConfig:  *req.EtcdConfig,
+		Resources:   reqResouceToClusterResource(req.Resources),
+		NsId:        uuid.New(),
+		Tier:        *req.Tier,
+		ClusterName: req.ClusterName,
 	}
 	cluster := NewClusterState(t)
 	r.AddCluster(cluster)
@@ -122,14 +123,31 @@ var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
 func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
 	return []apigen_mgmt.Tier{
 		{
-			Id:                              ptr.Ptr(apigen_mgmt.Standard),
-			AvailableMetaNodes:              availableComponentTypes,
-			AvailableComputeNodes:           availableComponentTypes,
-			AvailableCompactorNodes:         availableComponentTypes,
-			AvailableEtcdNodes:              availableComponentTypes,
-			AvailableFrontendNodes:          availableComponentTypes,
-			AllowEnableComputeNodeFileCache: true,
-			MaximumEtcdSizeGiB:              20,
+			Id:                      ptr.Ptr(apigen_mgmt.Standard),
+			AvailableMetaNodes:      availableComponentTypes,
+			AvailableComputeNodes:   availableComponentTypes,
+			AvailableCompactorNodes: availableComponentTypes,
+			AvailableEtcdNodes:      availableComponentTypes,
+			AvailableFrontendNodes:  availableComponentTypes,
+			MaximumEtcdSizeGiB:      20,
+		},
+		{
+			Id:                      ptr.Ptr(apigen_mgmt.BYOC),
+			AvailableMetaNodes:      availableComponentTypes,
+			AvailableComputeNodes:   availableComponentTypes,
+			AvailableCompactorNodes: availableComponentTypes,
+			AvailableEtcdNodes:      availableComponentTypes,
+			AvailableFrontendNodes:  availableComponentTypes,
+			MaximumEtcdSizeGiB:      20,
+		},
+		{
+			Id:                      ptr.Ptr(apigen_mgmt.Invited),
+			AvailableMetaNodes:      availableComponentTypes,
+			AvailableComputeNodes:   availableComponentTypes,
+			AvailableCompactorNodes: availableComponentTypes,
+			AvailableEtcdNodes:      availableComponentTypes,
+			AvailableFrontendNodes:  availableComponentTypes,
+			MaximumEtcdSizeGiB:      20,
 		},
 	}, nil
 }
@@ -300,13 +318,32 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 			Compactor: componentReqToComponent(reqResource.Components.Compactor),
 			Frontend:  componentReqToComponent(reqResource.Components.Frontend),
 			Meta:      componentReqToComponent(reqResource.Components.Meta),
-			Etcd:      *componentReqToComponent(&reqResource.Components.Etcd),
 		},
-		EnableComputeFileCache:  reqResource.EnableComputeFileCache,
-		EtcdVolumeSizeGiB:       reqResource.EtcdVolumeSizeGiB,
-		ComputeFileCacheSizeGiB: reqResource.ComputeFileCacheSizeGiB,
+		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
+			SizeGb: reqResource.ComputeFileCacheSizeGiB,
+		},
+		MetaStore: &apigen_mgmt.TenantResourceMetaStore{
+			Type: reqResource.MetaStore.Type,
+			Etcd: etcdRequestToResource(reqResource.MetaStore.Etcd),
+		},
 	}
+}
 
+func etcdRequestToResource(req *apigen_mgmt.TenantResourceRequestMetaStoreEtcd) *apigen_mgmt.MetaStoreEtcd {
+	for _, c := range availableComponentTypes {
+		if c.Id == req.ComponentTypeId {
+			return &apigen_mgmt.MetaStoreEtcd{
+				Resource: apigen_mgmt.ComponentResource{
+					ComponentTypeId: req.ComponentTypeId,
+					Cpu:             c.Cpu,
+					Memory:          c.Memory,
+					Replica:         req.Replica,
+				},
+				SizeGb: req.SizeGb,
+			}
+		}
+	}
+	return nil
 }
 
 func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_mgmt.ComponentResource {

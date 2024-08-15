@@ -23,6 +23,12 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for MetaStoreType.
+const (
+	Etcd       MetaStoreType = "etcd"
+	Postgresql MetaStoreType = "postgresql"
+)
+
 // Defines values for PrivateLinkConnectionState.
 const (
 	ACCEPTED          PrivateLinkConnectionState = "ACCEPTED"
@@ -70,10 +76,23 @@ const (
 	DeveloperBasic TierId = "Developer-Basic"
 	DeveloperFree  TierId = "Developer-Free"
 	DeveloperPlus  TierId = "Developer-Plus"
+	DeveloperTest  TierId = "Developer-Test"
 	Free           TierId = "Free"
 	Invited        TierId = "Invited"
 	Standard       TierId = "Standard"
 	Test           TierId = "Test"
+)
+
+// Defines values for QueryErrLogParamsTarget.
+const (
+	Sink   QueryErrLogParamsTarget = "sink"
+	Source QueryErrLogParamsTarget = "source"
+)
+
+// Defines values for QueryErrLogParamsDirection.
+const (
+	Backward QueryErrLogParamsDirection = "backward"
+	Forward  QueryErrLogParamsDirection = "forward"
 )
 
 // AvailableComponentType defines model for AvailableComponentType.
@@ -82,6 +101,24 @@ type AvailableComponentType struct {
 	Id      string `json:"id"`
 	Maximum int    `json:"maximum"`
 	Memory  string `json:"memory"`
+}
+
+// AvailableMetaStore defines model for AvailableMetaStore.
+type AvailableMetaStore struct {
+	Etcd       *AvailableMetaStoreEtcd       `json:"etcd,omitempty"`
+	Postgresql *AvailableMetaStorePostgreSql `json:"postgresql,omitempty"`
+}
+
+// AvailableMetaStoreEtcd defines model for AvailableMetaStoreEtcd.
+type AvailableMetaStoreEtcd struct {
+	MaximumSizeGiB int                      `json:"maximumSizeGiB"`
+	Nodes          []AvailableComponentType `json:"nodes"`
+}
+
+// AvailableMetaStorePostgreSql defines model for AvailableMetaStorePostgreSql.
+type AvailableMetaStorePostgreSql struct {
+	MaximumSizeGiB int                      `json:"maximumSizeGiB"`
+	Nodes          []AvailableComponentType `json:"nodes"`
 }
 
 // ComponentResource defines model for ComponentResource.
@@ -141,10 +178,31 @@ type Endpoint struct {
 	TenantId     int64  `json:"tenantId"`
 }
 
+// ErrLogQueryResult defines model for ErrLogQueryResult.
+type ErrLogQueryResult struct {
+	Status string     `json:"status"`
+	Values [][]string `json:"values"`
+}
+
 // GetImageTagResponse defines model for GetImageTagResponse.
 type GetImageTagResponse struct {
 	ImageTag string `json:"imageTag"`
 }
+
+// MetaStoreEtcd defines model for MetaStoreEtcd.
+type MetaStoreEtcd struct {
+	Resource ComponentResource `json:"resource"`
+	SizeGb   int               `json:"sizeGb"`
+}
+
+// MetaStorePostgreSql defines model for MetaStorePostgreSql.
+type MetaStorePostgreSql struct {
+	Resource ComponentResource `json:"resource"`
+	SizeGb   int               `json:"sizeGb"`
+}
+
+// MetaStoreType defines model for MetaStoreType.
+type MetaStoreType string
 
 // Page defines model for Page.
 type Page struct {
@@ -197,6 +255,7 @@ type Size struct {
 
 // Tenant defines model for Tenant.
 type Tenant struct {
+	ClusterName    *string            `json:"clusterName,omitempty"`
 	CreatedAt      time.Time          `json:"createdAt"`
 	EtcdConfig     string             `json:"etcd_config"`
 	HealthStatus   TenantHealthStatus `json:"health_status"`
@@ -241,38 +300,71 @@ type TenantRequestRequestBody struct {
 
 // TenantResource defines model for TenantResource.
 type TenantResource struct {
-	Components              TenantResourceComponents `json:"components"`
-	ComputeFileCacheSizeGiB int                      `json:"computeFileCacheSizeGiB"`
-	EnableComputeFileCache  bool                     `json:"enableComputeFileCache"`
-	EtcdVolumeSizeGiB       int                      `json:"etcdVolumeSizeGiB"`
+	Components        TenantResourceComponents   `json:"components"`
+	ComputeCache      TenantResourceComputeCache `json:"computeCache"`
+	EtcdVolumeSizeGiB *int                       `json:"etcdVolumeSizeGiB,omitempty"`
+	MetaStore         *TenantResourceMetaStore   `json:"metaStore,omitempty"`
 }
 
 // TenantResourceComponents defines model for TenantResourceComponents.
 type TenantResourceComponents struct {
 	Compactor  *ComponentResource `json:"compactor,omitempty"`
 	Compute    *ComponentResource `json:"compute,omitempty"`
-	Etcd       ComponentResource  `json:"etcd"`
+	Etcd       *ComponentResource `json:"etcd,omitempty"`
 	Frontend   *ComponentResource `json:"frontend,omitempty"`
 	Meta       *ComponentResource `json:"meta,omitempty"`
 	Standalone *ComponentResource `json:"standalone,omitempty"`
+}
+
+// TenantResourceComputeCache defines model for TenantResourceComputeCache.
+type TenantResourceComputeCache struct {
+	SizeGb int `json:"sizeGb"`
+}
+
+// TenantResourceMetaStore defines model for TenantResourceMetaStore.
+type TenantResourceMetaStore struct {
+	Etcd       *MetaStoreEtcd       `json:"etcd,omitempty"`
+	Postgresql *MetaStorePostgreSql `json:"postgresql,omitempty"`
+	Type       MetaStoreType        `json:"type"`
 }
 
 // TenantResourceRequest defines model for TenantResourceRequest.
 type TenantResourceRequest struct {
 	Components              TenantResourceRequestComponents `json:"components"`
 	ComputeFileCacheSizeGiB int                             `json:"computeFileCacheSizeGiB"`
-	EnableComputeFileCache  bool                            `json:"enableComputeFileCache"`
-	EtcdVolumeSizeGiB       int                             `json:"etcdVolumeSizeGiB"`
+	EtcdVolumeSizeGiB       *int                            `json:"etcdVolumeSizeGiB,omitempty"`
+	MetaStore               *TenantResourceRequestMetaStore `json:"metaStore,omitempty"`
 }
 
 // TenantResourceRequestComponents defines model for TenantResourceRequestComponents.
 type TenantResourceRequestComponents struct {
 	Compactor  *ComponentResourceRequest `json:"compactor,omitempty"`
 	Compute    *ComponentResourceRequest `json:"compute,omitempty"`
-	Etcd       ComponentResourceRequest  `json:"etcd"`
+	Etcd       *ComponentResourceRequest `json:"etcd,omitempty"`
 	Frontend   *ComponentResourceRequest `json:"frontend,omitempty"`
 	Meta       *ComponentResourceRequest `json:"meta,omitempty"`
 	Standalone *ComponentResourceRequest `json:"standalone,omitempty"`
+}
+
+// TenantResourceRequestMetaStore defines model for TenantResourceRequestMetaStore.
+type TenantResourceRequestMetaStore struct {
+	Etcd       *TenantResourceRequestMetaStoreEtcd       `json:"etcd,omitempty"`
+	Postgresql *TenantResourceRequestMetaStorePostgreSql `json:"postgresql,omitempty"`
+	Type       MetaStoreType                             `json:"type"`
+}
+
+// TenantResourceRequestMetaStoreEtcd defines model for TenantResourceRequestMetaStoreEtcd.
+type TenantResourceRequestMetaStoreEtcd struct {
+	ComponentTypeId string `json:"componentTypeId"`
+	Replica         int    `json:"replica"`
+	SizeGb          int    `json:"sizeGb"`
+}
+
+// TenantResourceRequestMetaStorePostgreSql defines model for TenantResourceRequestMetaStorePostgreSql.
+type TenantResourceRequestMetaStorePostgreSql struct {
+	ComponentTypeId string `json:"componentTypeId"`
+	Replica         int    `json:"replica"`
+	SizeGb          int    `json:"sizeGb"`
 }
 
 // TenantSizePage defines model for TenantSizePage.
@@ -285,12 +377,12 @@ type TenantSizePage struct {
 
 // Tier defines model for Tier.
 type Tier struct {
-	AllowEnableComputeNodeFileCache    bool                     `json:"allowEnableComputeNodeFileCache"`
 	AvailableCompactorNodes            []AvailableComponentType `json:"availableCompactorNodes"`
 	AvailableComputeNodes              []AvailableComponentType `json:"availableComputeNodes"`
 	AvailableEtcdNodes                 []AvailableComponentType `json:"availableEtcdNodes"`
 	AvailableFrontendNodes             []AvailableComponentType `json:"availableFrontendNodes"`
 	AvailableMetaNodes                 []AvailableComponentType `json:"availableMetaNodes"`
+	AvailableMetaStore                 *AvailableMetaStore      `json:"availableMetaStore,omitempty"`
 	AvailableStandaloneNodes           []AvailableComponentType `json:"availableStandaloneNodes"`
 	Id                                 *TierId                  `json:"id,omitempty"`
 	MaximumComputeNodeFileCacheSizeGiB int                      `json:"maximumComputeNodeFileCacheSizeGiB"`
@@ -343,6 +435,23 @@ type GetEndpointsParams struct {
 	TenantId   *uint64 `form:"tenantId,omitempty" json:"tenantId,omitempty"`
 }
 
+// QueryErrLogParams defines parameters for QueryErrLog.
+type QueryErrLogParams struct {
+	TenantId  uint64                      `form:"tenantId" json:"tenantId"`
+	Target    QueryErrLogParamsTarget     `form:"target" json:"target"`
+	TargetId  string                      `form:"targetId" json:"targetId"`
+	Start     *time.Time                  `form:"start,omitempty" json:"start,omitempty"`
+	End       *time.Time                  `form:"end,omitempty" json:"end,omitempty"`
+	Direction *QueryErrLogParamsDirection `form:"direction,omitempty" json:"direction,omitempty"`
+	Limit     *uint64                     `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// QueryErrLogParamsTarget defines parameters for QueryErrLog.
+type QueryErrLogParamsTarget string
+
+// QueryErrLogParamsDirection defines parameters for QueryErrLog.
+type QueryErrLogParamsDirection string
+
 // DeleteTenantParams defines parameters for DeleteTenant.
 type DeleteTenantParams struct {
 	TenantId   *uint64 `form:"tenantId,omitempty" json:"tenantId,omitempty"`
@@ -366,6 +475,12 @@ type GetTenantDbusersParams struct {
 	TenantId uint64 `form:"tenantId" json:"tenantId"`
 }
 
+// PutTenantTenantIdConfigEtcdTextBody defines parameters for PutTenantTenantIdConfigEtcd.
+type PutTenantTenantIdConfigEtcdTextBody = string
+
+// PutTenantTenantIdConfigRisingwaveTextBody defines parameters for PutTenantTenantIdConfigRisingwave.
+type PutTenantTenantIdConfigRisingwaveTextBody = string
+
 // PostTenantTenantIdUpdateVersionJSONBody defines parameters for PostTenantTenantIdUpdateVersion.
 type PostTenantTenantIdUpdateVersionJSONBody struct {
 	Version *string `json:"version,omitempty"`
@@ -382,6 +497,12 @@ type PostTenantDbusersJSONRequestBody = CreateDBUserRequestBody
 
 // PutTenantDbusersJSONRequestBody defines body for PutTenantDbusers for application/json ContentType.
 type PutTenantDbusersJSONRequestBody = UpdateDBUserRequestBody
+
+// PutTenantTenantIdConfigEtcdTextRequestBody defines body for PutTenantTenantIdConfigEtcd for text/plain ContentType.
+type PutTenantTenantIdConfigEtcdTextRequestBody = PutTenantTenantIdConfigEtcdTextBody
+
+// PutTenantTenantIdConfigRisingwaveTextRequestBody defines body for PutTenantTenantIdConfigRisingwave for text/plain ContentType.
+type PutTenantTenantIdConfigRisingwaveTextRequestBody = PutTenantTenantIdConfigRisingwaveTextBody
 
 // PostTenantTenantIdPrivatelinksJSONRequestBody defines body for PostTenantTenantIdPrivatelinks for application/json ContentType.
 type PostTenantTenantIdPrivatelinksJSONRequestBody = PostPrivateLinkRequestBody
@@ -471,6 +592,9 @@ type ClientInterface interface {
 	// GetEndpoints request
 	GetEndpoints(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// QueryErrLog request
+	QueryErrLog(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRootca request
 	GetRootca(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -502,8 +626,12 @@ type ClientInterface interface {
 	// PutTenantTenantIdConfigEtcdWithBody request with any body
 	PutTenantTenantIdConfigEtcdWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	PutTenantTenantIdConfigEtcdWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PutTenantTenantIdConfigRisingwaveWithBody request with any body
 	PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutTenantTenantIdConfigRisingwaveWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTenantTenantIdPrivatelinkPrivateLinkId request
 	DeleteTenantTenantIdPrivatelinkPrivateLinkId(ctx context.Context, tenantId uint64, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -540,6 +668,18 @@ type ClientInterface interface {
 
 func (c *Client) GetEndpoints(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetEndpointsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) QueryErrLog(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQueryErrLogRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -682,8 +822,32 @@ func (c *Client) PutTenantTenantIdConfigEtcdWithBody(ctx context.Context, tenant
 	return c.Client.Do(req)
 }
 
+func (c *Client) PutTenantTenantIdConfigEtcdWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantTenantIdConfigEtcdRequestWithTextBody(c.Server, tenantId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithBody(c.Server, tenantId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantTenantIdConfigRisingwaveWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(c.Server, tenantId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -879,6 +1043,139 @@ func NewGetEndpointsRequest(server string, params *GetEndpointsParams) (*http.Re
 		if params.TenantId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, *params.TenantId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQueryErrLogRequest generates requests for QueryErrLog
+func NewQueryErrLogRequest(server string, params *QueryErrLogParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/log/queryError")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, params.TenantId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "target", runtime.ParamLocationQuery, params.Target); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "targetId", runtime.ParamLocationQuery, params.TargetId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -1269,6 +1566,13 @@ func NewGetTenantTagsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewPutTenantTenantIdConfigEtcdRequestWithTextBody calls the generic PutTenantTenantIdConfigEtcd builder with text/plain body
+func NewPutTenantTenantIdConfigEtcdRequestWithTextBody(server string, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyReader = strings.NewReader(string(body))
+	return NewPutTenantTenantIdConfigEtcdRequestWithBody(server, tenantId, "text/plain", bodyReader)
+}
+
 // NewPutTenantTenantIdConfigEtcdRequestWithBody generates requests for PutTenantTenantIdConfigEtcd with any type of body
 func NewPutTenantTenantIdConfigEtcdRequestWithBody(server string, tenantId uint64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -1303,6 +1607,13 @@ func NewPutTenantTenantIdConfigEtcdRequestWithBody(server string, tenantId uint6
 	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
+}
+
+// NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody calls the generic PutTenantTenantIdConfigRisingwave builder with text/plain body
+func NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(server string, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyReader = strings.NewReader(string(body))
+	return NewPutTenantTenantIdConfigRisingwaveRequestWithBody(server, tenantId, "text/plain", bodyReader)
 }
 
 // NewPutTenantTenantIdConfigRisingwaveRequestWithBody generates requests for PutTenantTenantIdConfigRisingwave with any type of body
@@ -1742,6 +2053,9 @@ type ClientWithResponsesInterface interface {
 	// GetEndpointsWithResponse request
 	GetEndpointsWithResponse(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*GetEndpointsResponse, error)
 
+	// QueryErrLogWithResponse request
+	QueryErrLogWithResponse(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*QueryErrLogResponse, error)
+
 	// GetRootcaWithResponse request
 	GetRootcaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRootcaResponse, error)
 
@@ -1773,8 +2087,12 @@ type ClientWithResponsesInterface interface {
 	// PutTenantTenantIdConfigEtcdWithBodyWithResponse request with any body
 	PutTenantTenantIdConfigEtcdWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error)
 
+	PutTenantTenantIdConfigEtcdWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error)
+
 	// PutTenantTenantIdConfigRisingwaveWithBodyWithResponse request with any body
 	PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
+
+	PutTenantTenantIdConfigRisingwaveWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
 
 	// DeleteTenantTenantIdPrivatelinkPrivateLinkIdWithResponse request
 	DeleteTenantTenantIdPrivatelinkPrivateLinkIdWithResponse(ctx context.Context, tenantId uint64, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantTenantIdPrivatelinkPrivateLinkIdResponse, error)
@@ -1826,6 +2144,29 @@ func (r GetEndpointsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetEndpointsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type QueryErrLogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrLogQueryResult
+	JSON400      *BadRequestResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r QueryErrLogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QueryErrLogResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2258,6 +2599,15 @@ func (c *ClientWithResponses) GetEndpointsWithResponse(ctx context.Context, para
 	return ParseGetEndpointsResponse(rsp)
 }
 
+// QueryErrLogWithResponse request returning *QueryErrLogResponse
+func (c *ClientWithResponses) QueryErrLogWithResponse(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*QueryErrLogResponse, error) {
+	rsp, err := c.QueryErrLog(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQueryErrLogResponse(rsp)
+}
+
 // GetRootcaWithResponse request returning *GetRootcaResponse
 func (c *ClientWithResponses) GetRootcaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRootcaResponse, error) {
 	rsp, err := c.GetRootca(ctx, reqEditors...)
@@ -2355,9 +2705,25 @@ func (c *ClientWithResponses) PutTenantTenantIdConfigEtcdWithBodyWithResponse(ct
 	return ParsePutTenantTenantIdConfigEtcdResponse(rsp)
 }
 
+func (c *ClientWithResponses) PutTenantTenantIdConfigEtcdWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error) {
+	rsp, err := c.PutTenantTenantIdConfigEtcdWithTextBody(ctx, tenantId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantTenantIdConfigEtcdResponse(rsp)
+}
+
 // PutTenantTenantIdConfigRisingwaveWithBodyWithResponse request with arbitrary body returning *PutTenantTenantIdConfigRisingwaveResponse
 func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
 	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithBody(ctx, tenantId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantTenantIdConfigRisingwaveResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
+	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithTextBody(ctx, tenantId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2495,6 +2861,39 @@ func ParseGetEndpointsResponse(rsp *http.Response) (*GetEndpointsResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseQueryErrLogResponse parses an HTTP response from a QueryErrLogWithResponse call
+func ParseQueryErrLogResponse(rsp *http.Response) (*QueryErrLogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QueryErrLogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrLogQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 
