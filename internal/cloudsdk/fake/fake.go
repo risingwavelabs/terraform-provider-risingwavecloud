@@ -87,6 +87,11 @@ func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string
 func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
 	debugFuncCaller()
 
+	clusterName := req.ClusterName
+	if clusterName == nil {
+		clusterName = ptr.Ptr("default-control-plane")
+	}
+
 	r := state.GetRegionState(region)
 	t := &apigen_mgmt.Tenant{
 		Id:          uint64(len(r.GetClusters()) + 1),
@@ -98,7 +103,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 		Resources:   reqResouceToClusterResource(req.Resources),
 		NsId:        uuid.New(),
 		Tier:        *req.Tier,
-		ClusterName: req.ClusterName,
+		ClusterName: clusterName,
 	}
 	cluster := NewClusterState(t)
 	r.AddCluster(cluster)
