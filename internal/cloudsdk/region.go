@@ -27,7 +27,6 @@ const (
 	ComponentFrontend  = "frontend"
 	ComponentMeta      = "meta"
 	ComponentEtcd      = "etcd"
-	ComponentPostgres  = "postgres"
 )
 
 var (
@@ -296,8 +295,6 @@ func (c *RegionServiceClient) GetAvailableComponentTypes(ctx context.Context, ta
 		return tier.AvailableMetaNodes, nil
 	case ComponentEtcd:
 		return tier.AvailableMetaStore.Etcd.Nodes, nil
-	case ComponentPostgres:
-		return tier.AvailableMetaStore.Postgresql.Nodes, nil
 	}
 	return nil, errors.Errorf("component %s not found", component)
 }

@@ -193,8 +193,6 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 		return tier.AvailableMetaNodes, nil
 	case cloudsdk.ComponentEtcd:
 		return tier.AvailableMetaStore.Etcd.Nodes, nil
-	case cloudsdk.ComponentPostgres:
-		return tier.AvailableMetaStore.Postgresql.Nodes, nil
 	}
 	return nil, errors.Errorf("component %s not found", component)
 }
