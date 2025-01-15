@@ -130,9 +130,6 @@ var availableMetaStore = &apigen_mgmt.AvailableMetaStore{
 		Nodes:          availableComponentTypes,
 		MaximumSizeGiB: 20,
 	},
-	Postgresql: &apigen_mgmt.AvailableMetaStorePostgreSql{
-		Nodes: availableComponentTypes,
-	},
 }
 
 func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
