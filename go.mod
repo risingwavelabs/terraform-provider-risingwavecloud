@@ -1,8 +1,6 @@
 module github.com/risingwavelabs/terraform-provider-risingwavecloud
 
-go 1.22.7
-
-toolchain go1.23.4
+go 1.23.4
 
 require (
 	github.com/golang/mock v1.6.0
