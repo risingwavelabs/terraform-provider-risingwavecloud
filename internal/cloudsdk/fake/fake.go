@@ -324,7 +324,7 @@ func (acc *FakeCloudClient) DeleteClusterUser(ctx context.Context, nsID uuid.UUI
 }
 
 func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest) apigen_mgmt.TenantResource {
-	return apigen_mgmt.TenantResource{
+	ret := apigen_mgmt.TenantResource{
 		Components: apigen_mgmt.TenantResourceComponents{
 			Compute:   componentReqToComponent(reqResource.Components.Compute),
 			Compactor: componentReqToComponent(reqResource.Components.Compactor),
@@ -336,9 +336,14 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 		},
 		MetaStore: &apigen_mgmt.TenantResourceMetaStore{
 			Type: reqResource.MetaStore.Type,
-			Etcd: etcdRequestToResource(reqResource.MetaStore.Etcd),
 		},
 	}
+
+	if reqResource.MetaStore.Type == apigen_mgmt.Etcd {
+		ret.MetaStore.Etcd = etcdRequestToResource(reqResource.MetaStore.Etcd)
+	}
+
+	return ret
 }
 
 func etcdRequestToResource(req *apigen_mgmt.TenantResourceRequestMetaStoreEtcd) *apigen_mgmt.MetaStoreEtcd {

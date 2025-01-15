@@ -30,13 +30,6 @@ resource "risingwavecloud_cluster" "mycluster" {
         memory  = "4 GB"
         replica = 1
       }
-      etcd_meta_store = {
-        default_node_group = {
-          cpu     = "1"
-          memory  = "4 GB"
-          replica = 1
-        }
-      }
     }
   }
 }

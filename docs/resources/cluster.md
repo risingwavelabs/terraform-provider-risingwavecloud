@@ -42,13 +42,6 @@ description: |-
           memory  = "4 GB"
           replica = 1
         }
-        etcd_meta_store = {
-          default_node_group = {
-            cpu     = "1"
-            memory  = "4 GB"
-            replica = 1
-          }
-        }
       }
     }
   }
@@ -104,13 +97,6 @@ To import a RisingWave cluster, follow the steps below:
           cpu     = "1"
           memory  = "4 GB"
           replica = 1
-        }
-        etcd_meta_store = {
-          default_node_group = {
-            cpu     = "1"
-            memory  = "4 GB"
-            replica = 1
-          }
         }
       }
     }
@@ -233,7 +219,7 @@ Required:
 
 Optional:
 
-- `etcd_meta_store` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store))
+- `etcd_meta_store` (Attributes) The etcd meta store is no longer supported in new RisingWave versions, this field is kept for compatibility, please migrate to PostgreSQL meta store (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store))
 
 <a id="nestedatt--spec--meta--default_node_group"></a>
 ### Nested Schema for `spec.meta.default_node_group`

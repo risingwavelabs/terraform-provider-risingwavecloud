@@ -71,11 +71,11 @@ func TestClusterResource_Standard(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testClusterResourceConfig("v1.8.0", clusterName),
+				Config: testClusterResourceConfig("v2.0.2", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.8.0"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v2.0.2"),
 					func(s *terraform.State) error {
 						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
 						if err != nil {
@@ -88,7 +88,7 @@ func TestClusterResource_Standard(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				Config:       testClusterResourceConfig("v1.8.0", clusterName),
+				Config:       testClusterResourceConfig("v2.0.2", clusterName),
 				ResourceName: "risingwavecloud_cluster.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return clusterID.String(), nil
@@ -98,9 +98,9 @@ func TestClusterResource_Standard(t *testing.T) {
 			},
 			// Update and Read: version
 			{
-				Config: testClusterResourceConfig("v1.9.2", clusterName),
+				Config: testClusterResourceConfig("v2.0.5", clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v1.9.2"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v2.0.5"),
 				),
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
@@ -109,7 +109,6 @@ func TestClusterResource_Standard(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.default_node_group.replica", "2"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.risingwave_config", "[server]\nheartbeat_interval_ms = 997\n"),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.meta.etcd_meta_store.etcd_config", "ETCD_MAX_REQUEST_BYTES: \"100000000\"\n"),
 				),
 			},
 			// Create and Read testing: user
@@ -201,13 +200,6 @@ resource "risingwavecloud_cluster" "test" {
 				memory  = "4 GB"
 				replica = 1
 			}
-			etcd_meta_store = {
-				default_node_group = {
-					cpu     = "1"
-					memory  = "4 GB"
-					replica = 1
-				}
-			}
 		}
 	}
 }
@@ -220,7 +212,7 @@ func testClusterResourceUpdateConfig(name string) string {
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
-	version  = "v1.9.2"
+	version  = "v2.0.5"
 	spec     = {
 		compute = {
 			default_node_group = {
@@ -248,16 +240,6 @@ resource "risingwavecloud_cluster" "test" {
 				cpu     = "1"
 				memory  = "4 GB"
 				replica = 1
-			}
-			etcd_meta_store = {
-				default_node_group = {
-					cpu     = "1"
-					memory  = "4 GB"
-					replica = 1
-				}
-				etcd_config = <<-EOT
-				ETCD_MAX_REQUEST_BYTES: "100000000"
-				EOT
 			}
 		}
 		risingwave_config = <<-EOT

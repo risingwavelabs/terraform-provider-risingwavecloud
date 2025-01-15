@@ -243,7 +243,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 										Computed:            true,
 									},
 								},
-								Optional: true,
+								Optional:    true,
+								Description: "The etcd meta store is no longer supported in new RisingWave versions, this field is kept for compatibility, please migrate to PostgreSQL meta store",
 							},
 						},
 						Required: true,
@@ -367,78 +368,85 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Di
 		})
 	}
 
+	specMetaObj := map[string]attr.Value{
+		"default_node_group": types.ObjectValueMust(
+			defaultNodeGroup,
+			map[string]attr.Value{
+				"cpu":     types.StringValue(cluster.Resources.Components.Meta.Cpu),
+				"memory":  types.StringValue(cluster.Resources.Components.Meta.Memory),
+				"replica": types.Int64Value(int64(cluster.Resources.Components.Meta.Replica)),
+			},
+		),
+	}
+
+	if cluster.Resources.MetaStore != nil && cluster.Resources.MetaStore.Type == apigen_mgmt.Etcd {
+		specMetaObj["etcd_meta_store"] = types.ObjectValueMust(
+			etcdMetaStoreAttrTypes,
+			map[string]attr.Value{
+				"default_node_group": types.ObjectValueMust(defaultNodeGroup, map[string]attr.Value{
+					"cpu":     types.StringValue(cluster.Resources.MetaStore.Etcd.Resource.Cpu),
+					"memory":  types.StringValue(cluster.Resources.MetaStore.Etcd.Resource.Memory),
+					"replica": types.Int64Value(int64(cluster.Resources.MetaStore.Etcd.Resource.Replica)),
+				}),
+				"etcd_config": types.StringValue(cluster.EtcdConfig),
+			},
+		)
+	} else {
+		specMetaObj["etcd_meta_store"] = types.ObjectNull(etcdMetaStoreAttrTypes)
+	}
+
+	specObj := map[string]attr.Value{
+		"risingwave_config": types.StringValue(cluster.RwConfig),
+		"compute": types.ObjectValueMust(
+			computeAttrTypes,
+			map[string]attr.Value{
+				"default_node_group": types.ObjectValueMust(
+					defaultNodeGroup,
+					map[string]attr.Value{
+						"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
+						"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
+						"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
+					},
+				),
+			},
+		),
+		"compactor": types.ObjectValueMust(
+			compactorAttrTypes,
+			map[string]attr.Value{
+				"default_node_group": types.ObjectValueMust(
+					defaultNodeGroup,
+					map[string]attr.Value{
+						"cpu":     types.StringValue(cluster.Resources.Components.Compactor.Cpu),
+						"memory":  types.StringValue(cluster.Resources.Components.Compactor.Memory),
+						"replica": types.Int64Value(int64(cluster.Resources.Components.Compactor.Replica)),
+					},
+				),
+			},
+		),
+		"frontend": types.ObjectValueMust(
+			frontendAttrTypes,
+			map[string]attr.Value{
+				"default_node_group": types.ObjectValueMust(
+					defaultNodeGroup,
+					map[string]attr.Value{
+						"cpu":     types.StringValue(cluster.Resources.Components.Frontend.Cpu),
+						"memory":  types.StringValue(cluster.Resources.Components.Frontend.Memory),
+						"replica": types.Int64Value(int64(cluster.Resources.Components.Frontend.Replica)),
+					},
+				),
+			},
+		),
+		"meta": types.ObjectValueMust(
+			metaAttrTypes,
+			specMetaObj,
+		),
+	}
+
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
-		map[string]attr.Value{
-			"risingwave_config": types.StringValue(cluster.RwConfig),
-			"compute": types.ObjectValueMust(
-				computeAttrTypes,
-				map[string]attr.Value{
-					"default_node_group": types.ObjectValueMust(
-						defaultNodeGroup,
-						map[string]attr.Value{
-							"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
-							"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
-							"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
-						},
-					),
-				},
-			),
-			"compactor": types.ObjectValueMust(
-				compactorAttrTypes,
-				map[string]attr.Value{
-					"default_node_group": types.ObjectValueMust(
-						defaultNodeGroup,
-						map[string]attr.Value{
-							"cpu":     types.StringValue(cluster.Resources.Components.Compactor.Cpu),
-							"memory":  types.StringValue(cluster.Resources.Components.Compactor.Memory),
-							"replica": types.Int64Value(int64(cluster.Resources.Components.Compactor.Replica)),
-						},
-					),
-				},
-			),
-			"frontend": types.ObjectValueMust(
-				frontendAttrTypes,
-				map[string]attr.Value{
-					"default_node_group": types.ObjectValueMust(
-						defaultNodeGroup,
-						map[string]attr.Value{
-							"cpu":     types.StringValue(cluster.Resources.Components.Frontend.Cpu),
-							"memory":  types.StringValue(cluster.Resources.Components.Frontend.Memory),
-							"replica": types.Int64Value(int64(cluster.Resources.Components.Frontend.Replica)),
-						},
-					),
-				},
-			),
-			"meta": types.ObjectValueMust(
-				metaAttrTypes,
-				map[string]attr.Value{
-					"default_node_group": types.ObjectValueMust(
-						defaultNodeGroup,
-						map[string]attr.Value{
-							"cpu":     types.StringValue(cluster.Resources.Components.Meta.Cpu),
-							"memory":  types.StringValue(cluster.Resources.Components.Meta.Memory),
-							"replica": types.Int64Value(int64(cluster.Resources.Components.Meta.Replica)),
-						},
-					),
-					"etcd_meta_store": types.ObjectValueMust(
-						etcdMetaStoreAttrTypes,
-						map[string]attr.Value{
-							"default_node_group": types.ObjectValueMust(
-								defaultNodeGroup,
-								map[string]attr.Value{
-									"cpu":     types.StringValue(cluster.Resources.MetaStore.Etcd.Resource.Cpu),
-									"memory":  types.StringValue(cluster.Resources.MetaStore.Etcd.Resource.Memory),
-									"replica": types.Int64Value(int64(cluster.Resources.MetaStore.Etcd.Resource.Replica)),
-								},
-							),
-							"etcd_config": types.StringValue(cluster.EtcdConfig),
-						},
-					),
-				},
-			),
-		},
+		specObj,
 	)
+
 	return diags
 }
 
@@ -492,14 +500,6 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		diags.Append(etcdMetaStore.DefaultNodeGroup.As(ctx, &etcdDefaultNodeGroup, objectAsOptions)...)
 	}
 
-	if !useEtcdMetaStore {
-		diags.AddError(
-			"Missing meta store",
-			"Meta store is required to setup the cluster.",
-		)
-		return diags
-	}
-
 	if !data.ID.IsUnknown() && !data.ID.IsNull() {
 		nsId, err := uuid.Parse(data.ID.ValueString())
 		if err != nil {
@@ -522,14 +522,12 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	cluster.Tier = apigen_mgmt.TierId(data.Tier.ValueString())
 
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
-	cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
 
 	computeResource := r.nodeGroupModelToComponentResource(ctx, &diags, &computeDefaultNodeGroup, cluster.Region, cluster.Tier, "compute")
 	compactorResource := r.nodeGroupModelToComponentResource(ctx, &diags, &compactorDefaultNodeGroup, cluster.Region, cluster.Tier, "compactor")
 	frontendResource := r.nodeGroupModelToComponentResource(ctx, &diags, &frontendDefaultNodeGroup, cluster.Region, cluster.Tier, "frontend")
 	metaResource := r.nodeGroupModelToComponentResource(ctx, &diags, &metaDefaultNodeGroup, cluster.Region, cluster.Tier, "meta")
-	etcdResuorce := r.nodeGroupModelToComponentResource(ctx, &diags, &etcdDefaultNodeGroup, cluster.Region, cluster.Tier, "etcd")
 
 	if diags.HasError() {
 		return diags
@@ -545,13 +543,18 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
 			SizeGb: DefaultComputeFileCacheSizeGB,
 		},
-		MetaStore: &apigen_mgmt.TenantResourceMetaStore{
+	}
+
+	if useEtcdMetaStore {
+		etcdResuorce := r.nodeGroupModelToComponentResource(ctx, &diags, &etcdDefaultNodeGroup, cluster.Region, cluster.Tier, "etcd")
+		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
 			Type: apigen_mgmt.Etcd,
 			Etcd: &apigen_mgmt.MetaStoreEtcd{
 				Resource: *etcdResuorce,
 				SizeGb:   DefaultEtcdVolumeSizeGB,
 			},
-		},
+		}
+		cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
 	}
 
 	return diags
@@ -651,14 +654,17 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 			},
 		},
 		ComputeFileCacheSizeGiB: cluster.Resources.ComputeCache.SizeGb,
-		MetaStore: &apigen_mgmt.TenantResourceRequestMetaStore{
+	}
+
+	if cluster.Resources.MetaStore != nil && cluster.Resources.MetaStore.Type == apigen_mgmt.Etcd {
+		tenantReq.Resources.MetaStore = &apigen_mgmt.TenantResourceRequestMetaStore{
 			Type: apigen_mgmt.Etcd,
 			Etcd: &apigen_mgmt.TenantResourceRequestMetaStoreEtcd{
 				ComponentTypeId: cluster.Resources.MetaStore.Etcd.Resource.ComponentTypeId,
 				Replica:         cluster.Resources.MetaStore.Etcd.Resource.Replica,
 				SizeGb:          cluster.Resources.MetaStore.Etcd.SizeGb,
 			},
-		},
+		}
 	}
 
 	createdCluster, err := r.client.CreateClusterAwait(ctx, region, tenantReq)
@@ -745,16 +751,16 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 func metaStoreEqual(a, b *apigen_mgmt.TenantResourceMetaStore) bool {
+	if a == nil || b == nil {
+		return true
+	}
+
 	if a.Type != b.Type {
 		return false
 	}
 
 	if a.Type == apigen_mgmt.Etcd {
 		return resourceEqual(&a.Etcd.Resource, &b.Etcd.Resource) && a.Etcd.SizeGb == b.Etcd.SizeGb
-	}
-
-	if a.Type == apigen_mgmt.Postgresql {
-		return resourceEqual(&a.Postgresql.Resource, &b.Postgresql.Resource) && a.Postgresql.SizeGb == b.Postgresql.SizeGb
 	}
 
 	return false
