@@ -125,6 +125,16 @@ var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
 	},
 }
 
+var availableMetaStore = &apigen_mgmt.AvailableMetaStore{
+	Etcd: &apigen_mgmt.AvailableMetaStoreEtcd{
+		Nodes:          availableComponentTypes,
+		MaximumSizeGiB: 20,
+	},
+	Postgresql: &apigen_mgmt.AvailableMetaStorePostgreSql{
+		Nodes: availableComponentTypes,
+	},
+}
+
 func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
 	return []apigen_mgmt.Tier{
 		{
@@ -132,27 +142,24 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
-			AvailableEtcdNodes:      availableComponentTypes,
 			AvailableFrontendNodes:  availableComponentTypes,
-			MaximumEtcdSizeGiB:      20,
+			AvailableMetaStore:      availableMetaStore,
 		},
 		{
 			Id:                      ptr.Ptr(apigen_mgmt.BYOC),
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
-			AvailableEtcdNodes:      availableComponentTypes,
 			AvailableFrontendNodes:  availableComponentTypes,
-			MaximumEtcdSizeGiB:      20,
+			AvailableMetaStore:      availableMetaStore,
 		},
 		{
 			Id:                      ptr.Ptr(apigen_mgmt.Invited),
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
-			AvailableEtcdNodes:      availableComponentTypes,
 			AvailableFrontendNodes:  availableComponentTypes,
-			MaximumEtcdSizeGiB:      20,
+			AvailableMetaStore:      availableMetaStore,
 		},
 	}, nil
 }
@@ -185,7 +192,9 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 	case cloudsdk.ComponentMeta:
 		return tier.AvailableMetaNodes, nil
 	case cloudsdk.ComponentEtcd:
-		return tier.AvailableEtcdNodes, nil
+		return tier.AvailableMetaStore.Etcd.Nodes, nil
+	case cloudsdk.ComponentPostgres:
+		return tier.AvailableMetaStore.Postgresql.Nodes, nil
 	}
 	return nil, errors.Errorf("component %s not found", component)
 }
