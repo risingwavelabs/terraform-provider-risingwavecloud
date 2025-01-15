@@ -25,8 +25,12 @@ const (
 
 // Defines values for MetaStoreType.
 const (
-	Etcd       MetaStoreType = "etcd"
-	Postgresql MetaStoreType = "postgresql"
+	AwsRds      MetaStoreType = "aws_rds"
+	AzrPostgres MetaStoreType = "azr_postgres"
+	Etcd        MetaStoreType = "etcd"
+	GcpCloudsql MetaStoreType = "gcp_cloudsql"
+	Postgresql  MetaStoreType = "postgresql"
+	SharingPg   MetaStoreType = "sharing_pg"
 )
 
 // Defines values for PrivateLinkConnectionState.
@@ -56,26 +60,32 @@ const (
 
 // Defines values for TenantStatus.
 const (
-	ConfigUpdating TenantStatus = "ConfigUpdating"
-	Creating       TenantStatus = "Creating"
-	Deleting       TenantStatus = "Deleting"
-	Expired        TenantStatus = "Expired"
-	Failed         TenantStatus = "Failed"
-	Running        TenantStatus = "Running"
-	Starting       TenantStatus = "Starting"
-	Stopped        TenantStatus = "Stopped"
-	Stopping       TenantStatus = "Stopping"
-	Upgrading      TenantStatus = "Upgrading"
+	ConfigUpdating                       TenantStatus = "ConfigUpdating"
+	Creating                             TenantStatus = "Creating"
+	Deleting                             TenantStatus = "Deleting"
+	Expired                              TenantStatus = "Expired"
+	ExtensionCompactionDisabling         TenantStatus = "ExtensionCompactionDisabling"
+	ExtensionCompactionEnabling          TenantStatus = "ExtensionCompactionEnabling"
+	ExtensionServerlessBackfillDisabling TenantStatus = "ExtensionServerlessBackfillDisabling"
+	ExtensionServerlessBackfillEnabling  TenantStatus = "ExtensionServerlessBackfillEnabling"
+	ExtensionServerlessBackfillUpdate    TenantStatus = "ExtensionServerlessBackfillUpdate"
+	Failed                               TenantStatus = "Failed"
+	MetaMigrating                        TenantStatus = "MetaMigrating"
+	Running                              TenantStatus = "Running"
+	Snapshotting                         TenantStatus = "Snapshotting"
+	Starting                             TenantStatus = "Starting"
+	Stopped                              TenantStatus = "Stopped"
+	Stopping                             TenantStatus = "Stopping"
+	Updating                             TenantStatus = "Updating"
+	Upgrading                            TenantStatus = "Upgrading"
 )
 
 // Defines values for TierId.
 const (
 	BYOC           TierId = "BYOC"
 	Benchmark      TierId = "Benchmark"
-	Developer      TierId = "Developer"
 	DeveloperBasic TierId = "Developer-Basic"
 	DeveloperFree  TierId = "Developer-Free"
-	DeveloperPlus  TierId = "Developer-Plus"
 	DeveloperTest  TierId = "Developer-Test"
 	Free           TierId = "Free"
 	Invited        TierId = "Invited"
@@ -85,8 +95,11 @@ const (
 
 // Defines values for QueryErrLogParamsTarget.
 const (
-	Sink   QueryErrLogParamsTarget = "sink"
-	Source QueryErrLogParamsTarget = "source"
+	Message QueryErrLogParamsTarget = "message"
+	Name    QueryErrLogParamsTarget = "name"
+	Sink    QueryErrLogParamsTarget = "sink"
+	Source  QueryErrLogParamsTarget = "source"
+	Target  QueryErrLogParamsTarget = "target"
 )
 
 // Defines values for QueryErrLogParamsDirection.
@@ -105,8 +118,22 @@ type AvailableComponentType struct {
 
 // AvailableMetaStore defines model for AvailableMetaStore.
 type AvailableMetaStore struct {
-	Etcd       *AvailableMetaStoreEtcd       `json:"etcd,omitempty"`
-	Postgresql *AvailableMetaStorePostgreSql `json:"postgresql,omitempty"`
+	AwsRds      *AvailableMetaStoreAwsRds      `json:"aws_rds,omitempty"`
+	AzrPostgres *AvailableMetaStoreAzrPostgres `json:"azr_postgres,omitempty"`
+	Etcd        *AvailableMetaStoreEtcd        `json:"etcd,omitempty"`
+	GcpCloudsql *AvailableMetaStoreGcpCloudSql `json:"gcp_cloudsql,omitempty"`
+	Postgresql  *AvailableMetaStorePostgreSql  `json:"postgresql,omitempty"`
+	SharingPg   *AvailableMetaStoreSharingPg   `json:"sharing_pg,omitempty"`
+}
+
+// AvailableMetaStoreAwsRds defines model for AvailableMetaStoreAwsRds.
+type AvailableMetaStoreAwsRds struct {
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// AvailableMetaStoreAzrPostgres defines model for AvailableMetaStoreAzrPostgres.
+type AvailableMetaStoreAzrPostgres struct {
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // AvailableMetaStoreEtcd defines model for AvailableMetaStoreEtcd.
@@ -115,10 +142,20 @@ type AvailableMetaStoreEtcd struct {
 	Nodes          []AvailableComponentType `json:"nodes"`
 }
 
+// AvailableMetaStoreGcpCloudSql defines model for AvailableMetaStoreGcpCloudSql.
+type AvailableMetaStoreGcpCloudSql struct {
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // AvailableMetaStorePostgreSql defines model for AvailableMetaStorePostgreSql.
 type AvailableMetaStorePostgreSql struct {
 	MaximumSizeGiB int                      `json:"maximumSizeGiB"`
 	Nodes          []AvailableComponentType `json:"nodes"`
+}
+
+// AvailableMetaStoreSharingPg defines model for AvailableMetaStoreSharingPg.
+type AvailableMetaStoreSharingPg struct {
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // ComponentResource defines model for ComponentResource.
@@ -189,16 +226,39 @@ type GetImageTagResponse struct {
 	ImageTag string `json:"imageTag"`
 }
 
+// MetaStoreAwsRds defines model for MetaStoreAwsRds.
+type MetaStoreAwsRds struct {
+	InstanceClass string `json:"instanceClass"`
+	SizeGb        int    `json:"sizeGb"`
+}
+
+// MetaStoreAzrPostgres defines model for MetaStoreAzrPostgres.
+type MetaStoreAzrPostgres struct {
+	SizeGb int    `json:"sizeGb"`
+	Sku    string `json:"sku"`
+}
+
 // MetaStoreEtcd defines model for MetaStoreEtcd.
 type MetaStoreEtcd struct {
 	Resource ComponentResource `json:"resource"`
 	SizeGb   int               `json:"sizeGb"`
 }
 
+// MetaStoreGcpCloudSql defines model for MetaStoreGcpCloudSql.
+type MetaStoreGcpCloudSql struct {
+	SizeGb int    `json:"sizeGb"`
+	Tier   string `json:"tier"`
+}
+
 // MetaStorePostgreSql defines model for MetaStorePostgreSql.
 type MetaStorePostgreSql struct {
 	Resource ComponentResource `json:"resource"`
 	SizeGb   int               `json:"sizeGb"`
+}
+
+// MetaStoreSharingPg defines model for MetaStoreSharingPg.
+type MetaStoreSharingPg struct {
+	InstanceId string `json:"instanceId"`
 }
 
 // MetaStoreType defines model for MetaStoreType.
@@ -323,9 +383,13 @@ type TenantResourceComputeCache struct {
 
 // TenantResourceMetaStore defines model for TenantResourceMetaStore.
 type TenantResourceMetaStore struct {
-	Etcd       *MetaStoreEtcd       `json:"etcd,omitempty"`
-	Postgresql *MetaStorePostgreSql `json:"postgresql,omitempty"`
-	Type       MetaStoreType        `json:"type"`
+	AwsRds      *MetaStoreAwsRds      `json:"aws_rds,omitempty"`
+	AzrPostgres *MetaStoreAzrPostgres `json:"azr_postgres,omitempty"`
+	Etcd        *MetaStoreEtcd        `json:"etcd,omitempty"`
+	GcpCloudsql *MetaStoreGcpCloudSql `json:"gcp_cloudsql,omitempty"`
+	Postgresql  *MetaStorePostgreSql  `json:"postgresql,omitempty"`
+	SharingPg   *MetaStoreSharingPg   `json:"sharing_pg,omitempty"`
+	Type        MetaStoreType         `json:"type"`
 }
 
 // TenantResourceRequest defines model for TenantResourceRequest.
@@ -348,9 +412,16 @@ type TenantResourceRequestComponents struct {
 
 // TenantResourceRequestMetaStore defines model for TenantResourceRequestMetaStore.
 type TenantResourceRequestMetaStore struct {
+	AwsRds     *TenantResourceRequestMetaStoreAwsRds     `json:"aws_rds,omitempty"`
 	Etcd       *TenantResourceRequestMetaStoreEtcd       `json:"etcd,omitempty"`
 	Postgresql *TenantResourceRequestMetaStorePostgreSql `json:"postgresql,omitempty"`
 	Type       MetaStoreType                             `json:"type"`
+}
+
+// TenantResourceRequestMetaStoreAwsRds defines model for TenantResourceRequestMetaStoreAwsRds.
+type TenantResourceRequestMetaStoreAwsRds struct {
+	InstanceClass string `json:"instanceClass"`
+	SizeGb        int    `json:"sizeGb"`
 }
 
 // TenantResourceRequestMetaStoreEtcd defines model for TenantResourceRequestMetaStoreEtcd.
@@ -379,14 +450,12 @@ type TenantSizePage struct {
 type Tier struct {
 	AvailableCompactorNodes            []AvailableComponentType `json:"availableCompactorNodes"`
 	AvailableComputeNodes              []AvailableComponentType `json:"availableComputeNodes"`
-	AvailableEtcdNodes                 []AvailableComponentType `json:"availableEtcdNodes"`
 	AvailableFrontendNodes             []AvailableComponentType `json:"availableFrontendNodes"`
 	AvailableMetaNodes                 []AvailableComponentType `json:"availableMetaNodes"`
 	AvailableMetaStore                 *AvailableMetaStore      `json:"availableMetaStore,omitempty"`
 	AvailableStandaloneNodes           []AvailableComponentType `json:"availableStandaloneNodes"`
 	Id                                 *TierId                  `json:"id,omitempty"`
 	MaximumComputeNodeFileCacheSizeGiB int                      `json:"maximumComputeNodeFileCacheSizeGiB"`
-	MaximumEtcdSizeGiB                 int                      `json:"maximumEtcdSizeGiB"`
 	RetentionPeriod                    int                      `json:"retentionPeriod"`
 	ValidityPeriod                     int                      `json:"validityPeriod"`
 }
@@ -419,13 +488,13 @@ type DefaultResponse struct {
 	Msg string `json:"msg"`
 }
 
-// NotFoundResponse defines model for NotFoundResponse.
-type NotFoundResponse struct {
+// FailedPreconditionResponse defines model for FailedPreconditionResponse.
+type FailedPreconditionResponse struct {
 	Msg string `json:"msg"`
 }
 
-// ServiceUnavailableResponse defines model for ServiceUnavailableResponse.
-type ServiceUnavailableResponse struct {
+// NotFoundResponse defines model for NotFoundResponse.
+type NotFoundResponse struct {
 	Msg string `json:"msg"`
 }
 
@@ -2245,8 +2314,8 @@ type DeleteTenantDbusersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DefaultResponse
-	JSON404      *DefaultResponse
-	JSON503      *ServiceUnavailableResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2270,7 +2339,6 @@ type GetTenantDbusersResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *DBUsers
 	JSON404      *DefaultResponse
-	JSON503      *ServiceUnavailableResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2293,8 +2361,8 @@ type PostTenantDbusersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DBUser
-	JSON404      *DefaultResponse
-	JSON503      *ServiceUnavailableResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2317,8 +2385,8 @@ type PutTenantDbusersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DefaultResponse
-	JSON404      *DefaultResponse
-	JSON503      *ServiceUnavailableResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -3010,19 +3078,19 @@ func ParseDeleteTenantDbusersResponse(rsp *http.Response) (*DeleteTenantDbusersR
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest DefaultResponse
+		var dest NotFoundResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ServiceUnavailableResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON503 = &dest
 
 	}
 
@@ -3057,13 +3125,6 @@ func ParseGetTenantDbusersResponse(rsp *http.Response) (*GetTenantDbusersRespons
 		}
 		response.JSON404 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ServiceUnavailableResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON503 = &dest
-
 	}
 
 	return response, nil
@@ -3090,19 +3151,19 @@ func ParsePostTenantDbusersResponse(rsp *http.Response) (*PostTenantDbusersRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest DefaultResponse
+		var dest NotFoundResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ServiceUnavailableResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON503 = &dest
 
 	}
 
@@ -3130,19 +3191,19 @@ func ParsePutTenantDbusersResponse(rsp *http.Response) (*PutTenantDbusersRespons
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest DefaultResponse
+		var dest NotFoundResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ServiceUnavailableResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON503 = &dest
 
 	}
 

@@ -294,7 +294,7 @@ func (c *RegionServiceClient) GetAvailableComponentTypes(ctx context.Context, ta
 	case ComponentMeta:
 		return tier.AvailableMetaNodes, nil
 	case ComponentEtcd:
-		return tier.AvailableEtcdNodes, nil
+		return tier.AvailableMetaStore.Etcd.Nodes, nil
 	}
 	return nil, errors.Errorf("component %s not found", component)
 }

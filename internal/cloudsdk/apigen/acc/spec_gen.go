@@ -32,10 +32,8 @@ const (
 const (
 	BYOC           TierId = "BYOC"
 	Benchmark      TierId = "Benchmark"
-	Developer      TierId = "Developer"
 	DeveloperBasic TierId = "Developer-Basic"
 	DeveloperFree  TierId = "Developer-Free"
-	DeveloperPlus  TierId = "Developer-Plus"
 	DeveloperTest  TierId = "Developer-Test"
 	Free           TierId = "Free"
 	Invited        TierId = "Invited"
@@ -88,6 +86,7 @@ type PrivateLinkSizePage struct {
 type Region struct {
 	AdminUrl      string `json:"adminUrl"`
 	Id            uint64 `json:"id"`
+	IsBYOCOnly    bool   `json:"isBYOCOnly"`
 	IsRegionReady bool   `json:"isRegionReady"`
 	PgwebUrl      string `json:"pgwebUrl"`
 	Platform      string `json:"platform"`
@@ -121,6 +120,7 @@ type Tenant struct {
 	Region        string             `json:"region"`
 	TenantName    string             `json:"tenantName"`
 	TierId        TierId             `json:"tierId"`
+	TrialBefore   time.Time          `json:"trialBefore"`
 	UpdatedAt     time.Time          `json:"updatedAt"`
 	UserId        uint64             `json:"userId"`
 }
