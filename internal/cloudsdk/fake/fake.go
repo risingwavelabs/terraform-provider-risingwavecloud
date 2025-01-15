@@ -334,12 +334,9 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
 			SizeGb: reqResource.ComputeFileCacheSizeGiB,
 		},
-		MetaStore: &apigen_mgmt.TenantResourceMetaStore{
-			Type: reqResource.MetaStore.Type,
-		},
 	}
 
-	if reqResource.MetaStore.Type == apigen_mgmt.Etcd {
+	if reqResource.MetaStore != nil && reqResource.MetaStore.Type == apigen_mgmt.Etcd {
 		ret.MetaStore.Etcd = etcdRequestToResource(reqResource.MetaStore.Etcd)
 	}
 
