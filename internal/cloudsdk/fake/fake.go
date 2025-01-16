@@ -132,6 +132,22 @@ var availableMetaStore = &apigen_mgmt.AvailableMetaStore{
 		Nodes:          availableComponentTypes,
 		MaximumSizeGiB: 20,
 	},
+	Postgresql: &apigen_mgmt.AvailableMetaStorePostgreSql{
+		MaximumSizeGiB: 20,
+		Nodes:          availableComponentTypes,
+	},
+	SharingPg: &apigen_mgmt.AvailableMetaStoreSharingPg{
+		Enabled: ptr.Ptr(true),
+	},
+	AwsRds: &apigen_mgmt.AvailableMetaStoreAwsRds{
+		Enabled: ptr.Ptr(true),
+	},
+	AzrPostgres: &apigen_mgmt.AvailableMetaStoreAzrPostgres{
+		Enabled: ptr.Ptr(true),
+	},
+	GcpCloudsql: &apigen_mgmt.AvailableMetaStoreGcpCloudSql{
+		Enabled: ptr.Ptr(true),
+	},
 }
 
 func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
@@ -240,7 +256,11 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 	if semver.Compare(cluster.GetTenant().ImageTag, "v2.1.0") >= 0 {
 		resource := cluster.GetTenant().Resources
 		resource.MetaStore.Etcd = nil
-		resource.MetaStore.Type = apigen_mgmt.Postgresql
+		resource.MetaStore.Type = apigen_mgmt.AwsRds
+		resource.MetaStore.AwsRds = &apigen_mgmt.MetaStoreAwsRds{
+			InstanceClass: "db.t3.micro",
+			SizeGb:        10,
+		}
 		cluster.GetTenant().Resources = resource
 	}
 

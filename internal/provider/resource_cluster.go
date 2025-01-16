@@ -67,6 +67,56 @@ var etcdMetaStoreAttrTypes = map[string]attr.Type{
 	"etcd_config": types.StringType,
 }
 
+type PostgresqlMetaStoreModel struct {
+	Resource types.Object `tfsdk:"resource"`
+	SizeGb   types.Int64  `tfsdk:"size_gb"`
+}
+
+type SharingPgMetaStoreModel struct {
+	InstanceId types.String `tfsdk:"instance_id"`
+}
+
+type AwsRdsMetaStoreModel struct {
+	InstanceClass types.String `tfsdk:"instance_class"`
+	SizeGb        types.Int64  `tfsdk:"size_gb"`
+}
+
+type GcpCloudsqlMetaStoreModel struct {
+	Tier   types.String `tfsdk:"tier"`
+	SizeGb types.Int64  `tfsdk:"size_gb"`
+}
+
+type AzrPostgresMetaStoreModel struct {
+	Sku    types.String `tfsdk:"sku"`
+	SizeGb types.Int64  `tfsdk:"size_gb"`
+}
+
+var metaStorePostgresqlAttrTypes = map[string]attr.Type{
+	"resource": types.ObjectType{
+		AttrTypes: defaultNodeGroup,
+	},
+	"size_gb": types.Int64Type,
+}
+
+var metaStoreAwsRdsAttrTypes = map[string]attr.Type{
+	"instance_class": types.StringType,
+	"size_gb":        types.Int64Type,
+}
+
+var metaStoreGcpCloudsqlAttrTypes = map[string]attr.Type{
+	"tier":    types.StringType,
+	"size_gb": types.Int64Type,
+}
+
+var metaStoreAzrPostgresAttrTypes = map[string]attr.Type{
+	"sku":     types.StringType,
+	"size_gb": types.Int64Type,
+}
+
+var metaStoreSharingPgAttrTypes = map[string]attr.Type{
+	"instance_id": types.StringType,
+}
+
 type ComputeSpecModel struct {
 	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
 }
@@ -85,9 +135,36 @@ type FrontendSpecModel struct {
 
 var frontendAttrTypes = componentAttrTypes
 
+type MetaStoreModel struct {
+	Postgresql  types.Object `tfsdk:"postgresql"`
+	SharingPg   types.Object `tfsdk:"sharing_pg"`
+	AwsRds      types.Object `tfsdk:"aws_rds"`
+	GcpCloudsql types.Object `tfsdk:"gcp_cloudsql"`
+	AzrPostgres types.Object `tfsdk:"azr_postgres"`
+}
+
+var metaStoreAttrTypes = map[string]attr.Type{
+	"postgresql": types.ObjectType{
+		AttrTypes: metaStorePostgresqlAttrTypes,
+	},
+	"sharing_pg": types.ObjectType{
+		AttrTypes: metaStoreSharingPgAttrTypes,
+	},
+	"aws_rds": types.ObjectType{
+		AttrTypes: metaStoreAwsRdsAttrTypes,
+	},
+	"gcp_cloudsql": types.ObjectType{
+		AttrTypes: metaStoreGcpCloudsqlAttrTypes,
+	},
+	"azr_postgres": types.ObjectType{
+		AttrTypes: metaStoreAzrPostgresAttrTypes,
+	},
+}
+
 type MetaSpecModel struct {
 	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
 	EtcdMetaStore    types.Object `tfsdk:"etcd_meta_store"`
+	MetaStore        types.Object `tfsdk:"meta_store"`
 }
 
 var metaAttrTypes = map[string]attr.Type{
@@ -96,6 +173,9 @@ var metaAttrTypes = map[string]attr.Type{
 	},
 	"etcd_meta_store": types.ObjectType{
 		AttrTypes: etcdMetaStoreAttrTypes,
+	},
+	"meta_store": types.ObjectType{
+		AttrTypes: metaStoreAttrTypes,
 	},
 }
 
@@ -246,6 +326,69 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 								Optional:    true,
 								Description: "The etcd meta store is no longer supported in new RisingWave versions, this field is kept for compatibility, please migrate to PostgreSQL meta store",
 							},
+							"meta_store": schema.SingleNestedAttribute{
+								Attributes: map[string]schema.Attribute{
+									"postgresql": schema.SingleNestedAttribute{
+										Attributes: map[string]schema.Attribute{
+											"resource": defauleNodeGroupAttribute,
+											"size_gb": schema.Int64Attribute{
+												MarkdownDescription: "The size of the PostgreSQL instance",
+												Required:            true,
+											},
+										},
+										Optional: true,
+									},
+									"sharing_pg": schema.SingleNestedAttribute{
+										Attributes: map[string]schema.Attribute{
+											"instance_id": schema.StringAttribute{
+												MarkdownDescription: "The instance id of the sharing PostgreSQL instance",
+												Required:            true,
+											},
+										},
+										Optional: true,
+									},
+									"aws_rds": schema.SingleNestedAttribute{
+										Attributes: map[string]schema.Attribute{
+											"instance_class": schema.StringAttribute{
+												MarkdownDescription: "The instance class of the AWS RDS instance",
+												Required:            true,
+											},
+											"size_gb": schema.Int64Attribute{
+												MarkdownDescription: "The size of the AWS RDS instance",
+												Required:            true,
+											},
+										},
+										Optional: true,
+									},
+									"gcp_cloudsql": schema.SingleNestedAttribute{
+										Attributes: map[string]schema.Attribute{
+											"tier": schema.StringAttribute{
+												MarkdownDescription: "The tier of the GCP CloudSQL instance",
+												Required:            true,
+											},
+											"size_gb": schema.Int64Attribute{
+												MarkdownDescription: "The size of the GCP CloudSQL instance",
+												Required:            true,
+											},
+										},
+										Optional: true,
+									},
+									"azr_postgres": schema.SingleNestedAttribute{
+										Attributes: map[string]schema.Attribute{
+											"sku": schema.StringAttribute{
+												MarkdownDescription: "The SKU of the Azure PostgreSQL instance",
+												Required:            true,
+											},
+											"size_gb": schema.Int64Attribute{
+												MarkdownDescription: "The size of the Azure PostgreSQL instance",
+												Required:            true,
+											},
+										},
+										Optional: true,
+									},
+								},
+								Computed: true,
+							},
 						},
 						Required: true,
 					},
@@ -391,7 +534,48 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Di
 				"etcd_config": types.StringValue(cluster.EtcdConfig),
 			},
 		)
-	} else {
+		specMetaObj["meta_store"] = types.ObjectNull(metaStoreAttrTypes)
+	} else if cluster.Resources.MetaStore != nil {
+		metaStoreObj := map[string]attr.Value{
+			"postgresql":   types.ObjectNull(metaStorePostgresqlAttrTypes),
+			"sharing_pg":   types.ObjectNull(metaStoreSharingPgAttrTypes),
+			"aws_rds":      types.ObjectNull(metaStoreAwsRdsAttrTypes),
+			"gcp_cloudsql": types.ObjectNull(metaStoreGcpCloudsqlAttrTypes),
+			"azr_postgres": types.ObjectNull(metaStoreAzrPostgresAttrTypes),
+		}
+
+		switch cluster.Resources.MetaStore.Type {
+		case apigen_mgmt.Postgresql:
+			metaStoreObj["postgresql"] = types.ObjectValueMust(metaStorePostgresqlAttrTypes, map[string]attr.Value{
+				"resource": types.ObjectValueMust(defaultNodeGroup, map[string]attr.Value{
+					"cpu":     types.StringValue(cluster.Resources.MetaStore.Postgresql.Resource.Cpu),
+					"memory":  types.StringValue(cluster.Resources.MetaStore.Postgresql.Resource.Memory),
+					"replica": types.Int64Value(int64(cluster.Resources.MetaStore.Postgresql.Resource.Replica)),
+				}),
+				"size_gb": types.Int64Value(int64(cluster.Resources.MetaStore.Postgresql.SizeGb)),
+			})
+		case apigen_mgmt.SharingPg:
+			metaStoreObj["sharing_pg"] = types.ObjectValueMust(metaStoreSharingPgAttrTypes, map[string]attr.Value{
+				"instance_id": types.StringValue(cluster.Resources.MetaStore.SharingPg.InstanceId),
+			})
+		case apigen_mgmt.AwsRds:
+			metaStoreObj["aws_rds"] = types.ObjectValueMust(metaStoreAwsRdsAttrTypes, map[string]attr.Value{
+				"instance_class": types.StringValue(cluster.Resources.MetaStore.AwsRds.InstanceClass),
+				"size_gb":        types.Int64Value(int64(cluster.Resources.MetaStore.AwsRds.SizeGb)),
+			})
+		case apigen_mgmt.GcpCloudsql:
+			metaStoreObj["gcp_cloudsql"] = types.ObjectValueMust(metaStoreGcpCloudsqlAttrTypes, map[string]attr.Value{
+				"tier":    types.StringValue(cluster.Resources.MetaStore.GcpCloudsql.Tier),
+				"size_gb": types.Int64Value(int64(cluster.Resources.MetaStore.GcpCloudsql.SizeGb)),
+			})
+		case apigen_mgmt.AzrPostgres:
+			metaStoreObj["azr_postgres"] = types.ObjectValueMust(metaStoreAzrPostgresAttrTypes, map[string]attr.Value{
+				"sku":     types.StringValue(cluster.Resources.MetaStore.AzrPostgres.Sku),
+				"size_gb": types.Int64Value(int64(cluster.Resources.MetaStore.AzrPostgres.SizeGb)),
+			})
+		}
+
+		specMetaObj["meta_store"] = types.ObjectValueMust(metaStoreAttrTypes, metaStoreObj)
 		specMetaObj["etcd_meta_store"] = types.ObjectNull(etcdMetaStoreAttrTypes)
 	}
 
@@ -436,10 +620,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Di
 				),
 			},
 		),
-		"meta": types.ObjectValueMust(
-			metaAttrTypes,
-			specMetaObj,
-		),
+		"meta": types.ObjectValueMust(metaAttrTypes, specMetaObj),
 	}
 
 	data.Spec = types.ObjectValueMust(
@@ -469,7 +650,22 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		metaDefaultNodeGroup      NodeGroupModel
 		byoc                      BYOCModel
 
-		useEtcdMetaStore     bool
+		metaStoreSpec      MetaStoreModel
+		postgresqlSpec     PostgresqlMetaStoreModel
+		postgresqlResource NodeGroupModel
+
+		sharingPgSpec   SharingPgMetaStoreModel
+		awsRdsSpec      AwsRdsMetaStoreModel
+		gcpCloudsqlSpec GcpCloudsqlMetaStoreModel
+		azrPostgresSpec AzrPostgresMetaStoreModel
+
+		useEtcdMetaStore        bool
+		usePostgresqlMetaStore  bool
+		useSharingPgMetaStore   bool
+		useAwsRdsMetaStore      bool
+		useGcpCloudsqlMetaStore bool
+		useAzrPostgresMetaStore bool
+
 		etcdMetaStore        EtcdMetaStoreModel
 		etcdDefaultNodeGroup NodeGroupModel
 	)
@@ -498,6 +694,31 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		useEtcdMetaStore = true
 		diags.Append(metaSpec.EtcdMetaStore.As(ctx, &etcdMetaStore, objectAsOptions)...)
 		diags.Append(etcdMetaStore.DefaultNodeGroup.As(ctx, &etcdDefaultNodeGroup, objectAsOptions)...)
+	}
+
+	if !metaSpec.MetaStore.IsNull() {
+		diags.Append(metaSpec.MetaStore.As(ctx, &metaStoreSpec, objectAsOptions)...)
+		if !metaStoreSpec.Postgresql.IsNull() {
+			diags.Append(metaStoreSpec.Postgresql.As(ctx, &postgresqlSpec, objectAsOptions)...)
+			diags.Append(postgresqlSpec.Resource.As(ctx, &postgresqlResource, objectAsOptions)...)
+			usePostgresqlMetaStore = true
+		}
+		if !metaStoreSpec.SharingPg.IsNull() {
+			diags.Append(metaStoreSpec.SharingPg.As(ctx, &sharingPgSpec, objectAsOptions)...)
+			useSharingPgMetaStore = true
+		}
+		if !metaStoreSpec.AwsRds.IsNull() {
+			diags.Append(metaStoreSpec.AwsRds.As(ctx, &awsRdsSpec, objectAsOptions)...)
+			useAwsRdsMetaStore = true
+		}
+		if !metaStoreSpec.GcpCloudsql.IsNull() {
+			diags.Append(metaStoreSpec.GcpCloudsql.As(ctx, &gcpCloudsqlSpec, objectAsOptions)...)
+			useGcpCloudsqlMetaStore = true
+		}
+		if !metaStoreSpec.AzrPostgres.IsNull() {
+			diags.Append(metaStoreSpec.AzrPostgres.As(ctx, &azrPostgresSpec, objectAsOptions)...)
+			useAzrPostgresMetaStore = true
+		}
 	}
 
 	if !data.ID.IsUnknown() && !data.ID.IsNull() {
@@ -555,6 +776,55 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 			},
 		}
 		cluster.EtcdConfig = etcdMetaStore.EtcdConfig.ValueString()
+	}
+
+	if usePostgresqlMetaStore {
+		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
+			Type: apigen_mgmt.Postgresql,
+			Postgresql: &apigen_mgmt.MetaStorePostgreSql{
+				Resource: *r.nodeGroupModelToComponentResource(ctx, &diags, &postgresqlResource, cluster.Region, cluster.Tier, "postgresql"),
+				SizeGb:   int(postgresqlSpec.SizeGb.ValueInt64()),
+			},
+		}
+	}
+
+	if useSharingPgMetaStore {
+		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
+			Type: apigen_mgmt.SharingPg,
+			SharingPg: &apigen_mgmt.MetaStoreSharingPg{
+				InstanceId: sharingPgSpec.InstanceId.ValueString(),
+			},
+		}
+	}
+
+	if useAwsRdsMetaStore {
+		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
+			Type: apigen_mgmt.AwsRds,
+			AwsRds: &apigen_mgmt.MetaStoreAwsRds{
+				InstanceClass: awsRdsSpec.InstanceClass.ValueString(),
+				SizeGb:        int(awsRdsSpec.SizeGb.ValueInt64()),
+			},
+		}
+	}
+
+	if useGcpCloudsqlMetaStore {
+		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
+			Type: apigen_mgmt.GcpCloudsql,
+			GcpCloudsql: &apigen_mgmt.MetaStoreGcpCloudSql{
+				Tier:   gcpCloudsqlSpec.Tier.ValueString(),
+				SizeGb: int(gcpCloudsqlSpec.SizeGb.ValueInt64()),
+			},
+		}
+	}
+
+	if useAzrPostgresMetaStore {
+		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
+			Type: apigen_mgmt.AzrPostgres,
+			AzrPostgres: &apigen_mgmt.MetaStoreAzrPostgres{
+				Sku:    azrPostgresSpec.Sku.ValueString(),
+				SizeGb: int(azrPostgresSpec.SizeGb.ValueInt64()),
+			},
+		}
 	}
 
 	return diags
@@ -865,7 +1135,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !metaStoreEqual(previous.Resources.MetaStore, updated.Resources.MetaStore) {
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
-			fmt.Sprintf("metastore cannot be changed, previous: %v, updated: %v", previous.Resources.Components.Etcd, updated.Resources.Components.Etcd),
+			fmt.Sprintf("metastore cannot be changed, previous: %v, updated: %v", previous.Resources.MetaStore, updated.Resources.MetaStore),
 		)
 	}
 	if resp.Diagnostics.HasError() {
@@ -982,6 +1252,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		)
 		return
 	}
+
 	resp.Diagnostics.Append(clusterToDataModel(now, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
