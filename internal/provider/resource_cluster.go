@@ -324,9 +324,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 									},
 								},
 								Optional:    true,
-								Description: "The etcd meta store is no longer supported in new RisingWave versions, this field is kept for compatibility, please migrate to PostgreSQL meta store",
+								Description: "The etcd meta store is no longer supported in new RisingWave versions, this field is kept for compatibility, please remove it if your RisingWave version is above v2.1.0",
 							},
 							"meta_store": schema.SingleNestedAttribute{
+								Description: "The information of the meta store of the cluster",
 								Attributes: map[string]schema.Attribute{
 									"postgresql": schema.SingleNestedAttribute{
 										Attributes: map[string]schema.Attribute{
