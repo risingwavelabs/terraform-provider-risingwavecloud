@@ -15,6 +15,7 @@ import (
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
+	"golang.org/x/mod/semver"
 )
 
 func UseFakeBackend() bool {
@@ -105,6 +106,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 		Tier:        *req.Tier,
 		ClusterName: clusterName,
 	}
+
 	cluster := NewClusterState(t)
 	r.AddCluster(cluster)
 	return t, nil
@@ -237,6 +239,14 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 	cluster.GetTenant().Resources.Components.Frontend = componentReqToComponent(req.Frontend)
 	cluster.GetTenant().Resources.Components.Meta = componentReqToComponent(req.Meta)
 	r := state.GetRegionState(cluster.GetTenant().Region)
+
+	if semver.Compare(cluster.GetTenant().ImageTag, "v2.1.0") >= 0 {
+		resource := cluster.GetTenant().Resources
+		resource.MetaStore.Etcd = nil
+		resource.MetaStore.Type = apigen_mgmt.Postgresql
+		cluster.GetTenant().Resources = resource
+	}
+
 	r.ReplaceCluster(nsID, cluster)
 	return nil
 }
@@ -337,7 +347,10 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 	}
 
 	if reqResource.MetaStore != nil && reqResource.MetaStore.Type == apigen_mgmt.Etcd {
-		ret.MetaStore.Etcd = etcdRequestToResource(reqResource.MetaStore.Etcd)
+		ret.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
+			Type: reqResource.MetaStore.Type,
+			Etcd: etcdRequestToResource(reqResource.MetaStore.Etcd),
+		}
 	}
 
 	return ret

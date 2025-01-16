@@ -17,6 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	oldVersion = "v2.0.5"
+	newVersion = "v2.1.2"
+)
+
 func getTestNamespace(t *testing.T) string {
 	t.Helper()
 
@@ -71,11 +76,11 @@ func TestClusterResource_Standard(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testClusterResourceConfig("v2.0.2", clusterName),
+				Config: testClusterResourceConfig(oldVersion, clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v2.0.2"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", oldVersion),
 					func(s *terraform.State) error {
 						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
 						if err != nil {
@@ -88,7 +93,7 @@ func TestClusterResource_Standard(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				Config:       testClusterResourceConfig("v2.0.2", clusterName),
+				Config:       testClusterResourceConfig(oldVersion, clusterName),
 				ResourceName: "risingwavecloud_cluster.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return clusterID.String(), nil
@@ -98,9 +103,9 @@ func TestClusterResource_Standard(t *testing.T) {
 			},
 			// Update and Read: version
 			{
-				Config: testClusterResourceConfig("v2.0.5", clusterName),
+				Config: testClusterResourceConfig(newVersion, clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", "v2.0.5"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", newVersion),
 				),
 			},
 			// Update and Read: compactor replica, risingwave_config, etcd_config
@@ -200,6 +205,13 @@ resource "risingwavecloud_cluster" "test" {
 				memory  = "4 GB"
 				replica = 1
 			}
+			etcd_meta_store = {
+				default_node_group = {
+					cpu     = "1"
+					memory  = "4 GB"
+					replica = 1
+				}
+			}
 		}
 	}
 }
@@ -212,7 +224,7 @@ func testClusterResourceUpdateConfig(name string) string {
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
-	version  = "v2.0.5"
+	version  = "%s"
 	spec     = {
 		compute = {
 			default_node_group = {
@@ -248,7 +260,7 @@ resource "risingwavecloud_cluster" "test" {
 		EOT
 	}
 }
-`, name)
+`, name, newVersion)
 }
 
 func testClusterUser(password string) string {
