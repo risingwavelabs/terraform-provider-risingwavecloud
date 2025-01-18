@@ -326,10 +326,6 @@ Optional:
 <a id="nestedatt--spec--meta--meta_store--sharing_pg"></a>
 ### Nested Schema for `spec.meta.meta_store.sharing_pg`
 
-Required:
-
-- `instance_id` (String) The instance id of the sharing PostgreSQL instance
-
 
 
 

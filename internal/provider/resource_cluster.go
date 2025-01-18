@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -72,10 +73,6 @@ type PostgresqlMetaStoreModel struct {
 	SizeGb   types.Int64  `tfsdk:"size_gb"`
 }
 
-type SharingPgMetaStoreModel struct {
-	InstanceId types.String `tfsdk:"instance_id"`
-}
-
 type AwsRdsMetaStoreModel struct {
 	InstanceClass types.String `tfsdk:"instance_class"`
 	SizeGb        types.Int64  `tfsdk:"size_gb"`
@@ -113,10 +110,6 @@ var metaStoreAzrPostgresAttrTypes = map[string]attr.Type{
 	"size_gb": types.Int64Type,
 }
 
-var metaStoreSharingPgAttrTypes = map[string]attr.Type{
-	"instance_id": types.StringType,
-}
-
 type ComputeSpecModel struct {
 	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
 }
@@ -147,9 +140,7 @@ var metaStoreAttrTypes = map[string]attr.Type{
 	"postgresql": types.ObjectType{
 		AttrTypes: metaStorePostgresqlAttrTypes,
 	},
-	"sharing_pg": types.ObjectType{
-		AttrTypes: metaStoreSharingPgAttrTypes,
-	},
+	"sharing_pg": types.ObjectType{},
 	"aws_rds": types.ObjectType{
 		AttrTypes: metaStoreAwsRdsAttrTypes,
 	},
@@ -340,13 +331,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 										Optional: true,
 									},
 									"sharing_pg": schema.SingleNestedAttribute{
-										Attributes: map[string]schema.Attribute{
-											"instance_id": schema.StringAttribute{
-												MarkdownDescription: "The instance id of the sharing PostgreSQL instance",
-												Required:            true,
-											},
-										},
-										Optional: true,
+										Attributes: map[string]schema.Attribute{},
+										Optional:   true,
 									},
 									"aws_rds": schema.SingleNestedAttribute{
 										Attributes: map[string]schema.Attribute{
@@ -539,7 +525,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Di
 	} else if cluster.Resources.MetaStore != nil {
 		metaStoreObj := map[string]attr.Value{
 			"postgresql":   types.ObjectNull(metaStorePostgresqlAttrTypes),
-			"sharing_pg":   types.ObjectNull(metaStoreSharingPgAttrTypes),
+			"sharing_pg":   types.ObjectNull(map[string]attr.Type{}),
 			"aws_rds":      types.ObjectNull(metaStoreAwsRdsAttrTypes),
 			"gcp_cloudsql": types.ObjectNull(metaStoreGcpCloudsqlAttrTypes),
 			"azr_postgres": types.ObjectNull(metaStoreAzrPostgresAttrTypes),
@@ -556,9 +542,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Di
 				"size_gb": types.Int64Value(int64(cluster.Resources.MetaStore.Postgresql.SizeGb)),
 			})
 		case apigen_mgmt.SharingPg:
-			metaStoreObj["sharing_pg"] = types.ObjectValueMust(metaStoreSharingPgAttrTypes, map[string]attr.Value{
-				"instance_id": types.StringValue(cluster.Resources.MetaStore.SharingPg.InstanceId),
-			})
+			metaStoreObj["sharing_pg"] = types.ObjectValueMust(map[string]attr.Type{}, map[string]attr.Value{})
 		case apigen_mgmt.AwsRds:
 			metaStoreObj["aws_rds"] = types.ObjectValueMust(metaStoreAwsRdsAttrTypes, map[string]attr.Value{
 				"instance_class": types.StringValue(cluster.Resources.MetaStore.AwsRds.InstanceClass),
@@ -655,7 +639,6 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		postgresqlSpec     PostgresqlMetaStoreModel
 		postgresqlResource NodeGroupModel
 
-		sharingPgSpec   SharingPgMetaStoreModel
 		awsRdsSpec      AwsRdsMetaStoreModel
 		gcpCloudsqlSpec GcpCloudsqlMetaStoreModel
 		azrPostgresSpec AzrPostgresMetaStoreModel
@@ -705,7 +688,6 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 			usePostgresqlMetaStore = true
 		}
 		if !metaStoreSpec.SharingPg.IsNull() {
-			diags.Append(metaStoreSpec.SharingPg.As(ctx, &sharingPgSpec, objectAsOptions)...)
 			useSharingPgMetaStore = true
 		}
 		if !metaStoreSpec.AwsRds.IsNull() {
@@ -737,6 +719,14 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	if !data.BYOC.IsNull() && !data.BYOC.IsUnknown() {
 		diags.Append(data.BYOC.As(ctx, &byoc, objectAsOptions)...)
 		cluster.ClusterName = ptr.Ptr(byoc.Env.ValueString())
+	}
+
+	if semver.Compare(data.Version.ValueString(), "v2.1.0") >= 0 && useEtcdMetaStore {
+		diags.AddError(
+			"Invalid etcd meta store",
+			"Etcd meta store is not supported for version v2.1.0 and above, please remove the etcd meta store from the spec if you are using version v2.1.0 or above",
+		)
+		return diags
 	}
 
 	cluster.TenantName = data.Name.ValueString()
@@ -791,10 +781,8 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 
 	if useSharingPgMetaStore {
 		cluster.Resources.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
-			Type: apigen_mgmt.SharingPg,
-			SharingPg: &apigen_mgmt.MetaStoreSharingPg{
-				InstanceId: sharingPgSpec.InstanceId.ValueString(),
-			},
+			Type:      apigen_mgmt.SharingPg,
+			SharingPg: &apigen_mgmt.MetaStoreSharingPg{},
 		}
 	}
 

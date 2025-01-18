@@ -76,7 +76,7 @@ func TestClusterResource_Standard(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testClusterResourceConfig(oldVersion, clusterName),
+				Config: testClusterResourceConfig_oldVersion(clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
@@ -93,7 +93,7 @@ func TestClusterResource_Standard(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				Config:       testClusterResourceConfig(oldVersion, clusterName),
+				Config:       testClusterResourceConfig_oldVersion(clusterName),
 				ResourceName: "risingwavecloud_cluster.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return clusterID.String(), nil
@@ -103,7 +103,7 @@ func TestClusterResource_Standard(t *testing.T) {
 			},
 			// Update and Read: version
 			{
-				Config: testClusterResourceConfig(newVersion, clusterName),
+				Config: testClusterResourceConfig_newVersion(clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", newVersion),
 				),
@@ -171,7 +171,7 @@ func TestClusterResource_Standard(t *testing.T) {
 	})
 }
 
-func testClusterResourceConfig(version, name string) string {
+func testClusterResourceConfig_oldVersion(name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
@@ -215,7 +215,47 @@ resource "risingwavecloud_cluster" "test" {
 		}
 	}
 }
-`, name, version)
+`, name, oldVersion)
+}
+
+func testClusterResourceConfig_newVersion(name string) string {
+	return fmt.Sprintf(`
+resource "risingwavecloud_cluster" "test" {
+	region   = "us-east-1"
+	name     = "%s"
+	version  = "%s"
+	spec     = {
+		compute = {
+			default_node_group = {
+				cpu     = "2"
+				memory  = "8 GB"
+				replica = 1
+			}
+		}
+		compactor = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		frontend = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		meta = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+	}
+}
+`, name, newVersion)
 }
 
 // update: compactor replica 1 -> 2, etcd_config, risingwave_config

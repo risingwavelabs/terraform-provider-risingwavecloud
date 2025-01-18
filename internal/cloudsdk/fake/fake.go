@@ -236,6 +236,19 @@ func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, n
 	}
 	cluster.GetTenant().ImageTag = version
 	r := state.GetRegionState(cluster.GetTenant().Region)
+
+	if semver.Compare(cluster.GetTenant().ImageTag, "v2.1.0") >= 0 {
+		resource := cluster.GetTenant().Resources
+		resource.MetaStore.Etcd = nil
+		resource.MetaStore.Type = apigen_mgmt.AwsRds
+		resource.MetaStore.AwsRds = &apigen_mgmt.MetaStoreAwsRds{
+			InstanceClass: "db.t3.micro",
+			SizeGb:        10,
+		}
+		// resource.MetaStore.Type = apigen_mgmt.SharingPg
+		cluster.GetTenant().Resources = resource
+	}
+
 	r.ReplaceCluster(nsID, cluster)
 	return nil
 }
@@ -252,17 +265,6 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 	cluster.GetTenant().Resources.Components.Frontend = componentReqToComponent(req.Frontend)
 	cluster.GetTenant().Resources.Components.Meta = componentReqToComponent(req.Meta)
 	r := state.GetRegionState(cluster.GetTenant().Region)
-
-	if semver.Compare(cluster.GetTenant().ImageTag, "v2.1.0") >= 0 {
-		resource := cluster.GetTenant().Resources
-		resource.MetaStore.Etcd = nil
-		resource.MetaStore.Type = apigen_mgmt.AwsRds
-		resource.MetaStore.AwsRds = &apigen_mgmt.MetaStoreAwsRds{
-			InstanceClass: "db.t3.micro",
-			SizeGb:        10,
-		}
-		cluster.GetTenant().Resources = resource
-	}
 
 	r.ReplaceCluster(nsID, cluster)
 	return nil
