@@ -37,7 +37,7 @@ description: |-
   # Create a RisingWave Cluster
   resource "risingwavecloud_cluster" "mycluster" {
     name    = "mycluster"
-    version = "v1.7.1"
+    version = "v2.1.2"
     region  = "us-east-1"
     spec = {
       risingwave_config = ""
@@ -57,12 +57,6 @@ description: |-
         default_node_group = {
           cpu    = "0.5"
           memory = "2 GB"
-        }
-        etcd_meta_store = {
-          default_node_group = {
-            cpu    = "0.5"
-            memory = "2 GB"
-          }
         }
       }
       frontend = {
@@ -128,7 +122,7 @@ provider "risingwavecloud" {
 # Create a RisingWave Cluster
 resource "risingwavecloud_cluster" "mycluster" {
   name    = "mycluster"
-  version = "v1.7.1"
+  version = "v2.1.2"
   region  = "us-east-1"
   spec = {
     risingwave_config = ""
@@ -148,12 +142,6 @@ resource "risingwavecloud_cluster" "mycluster" {
       default_node_group = {
         cpu    = "0.5"
         memory = "2 GB"
-      }
-      etcd_meta_store = {
-        default_node_group = {
-          cpu    = "0.5"
-          memory = "2 GB"
-        }
       }
     }
     frontend = {
