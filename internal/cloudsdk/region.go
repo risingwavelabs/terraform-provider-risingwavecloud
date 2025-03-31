@@ -121,7 +121,7 @@ func (c *RegionServiceClient) waitClusterRunning(ctx context.Context, id uint64)
 }
 
 // this is used only when the cluster ID is unknown.
-func (c *RegionServiceClient) waitClusterByName(ctx context.Context, name string, target apigen_mgmt.TenantStatus) error {
+func (c *RegionServiceClient) waitClusterStatusByName(ctx context.Context, name string, target apigen_mgmt.TenantStatus) error {
 	var currentStatus apigen_mgmt.TenantStatus
 	if err := wait.Poll(ctx, func() (bool, error) {
 		cluster, err := c.GetClusterByName(ctx, name)
@@ -132,6 +132,22 @@ func (c *RegionServiceClient) waitClusterByName(ctx context.Context, name string
 		return currentStatus == target, nil
 	}, PollingTenantCreation); err != nil {
 		return errors.Wrapf(err, "failed to wait for the cluster, current status: %s, target status: %s", currentStatus, target)
+	}
+	return nil
+}
+
+// this is used only when the cluster ID is unknown.
+func (c *RegionServiceClient) waitClusterHealthStatusByName(ctx context.Context, name string, target apigen_mgmt.TenantHealthStatus) error {
+	var currentStatus apigen_mgmt.TenantHealthStatus
+	if err := wait.Poll(ctx, func() (bool, error) {
+		cluster, err := c.GetClusterByName(ctx, name)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to get the cluster info")
+		}
+		currentStatus = cluster.HealthStatus
+		return currentStatus == target, nil
+	}, PollingTenantCreation); err != nil {
+		return errors.Wrapf(err, "failed to wait for the cluster, current health status: %s, target health status: %s", currentStatus, target)
 	}
 	return nil
 }
@@ -180,7 +196,10 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	}
 
 	// wait for the tenant to be ready
-	if err := c.waitClusterByName(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
+	if err := c.waitClusterStatusByName(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
+		return nil, err
+	}
+	if err := c.waitClusterHealthStatusByName(ctx, req.TenantName, apigen_mgmt.Healthy); err != nil {
 		return nil, err
 	}
 
