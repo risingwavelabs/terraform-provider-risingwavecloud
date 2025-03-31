@@ -147,7 +147,7 @@ func (c *RegionServiceClient) GetClusterByName(ctx context.Context, name string)
 	if res.StatusCode() == http.StatusNotFound {
 		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", name)
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
 		return nil, err
 	}
 	return res.JSON200, nil
@@ -346,7 +346,7 @@ func (c *RegionServiceClient) GetClusterUsers(ctx context.Context, id uint64) ([
 	if res.StatusCode() == http.StatusNotFound {
 		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %d not found", id)
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
 		return nil, err
 	}
 	var rtn []apigen_mgmt.DBUser
@@ -364,7 +364,7 @@ func (c *RegionServiceClient) CreateCluserUser(ctx context.Context, params apige
 	if res.StatusCode() == http.StatusNotFound {
 		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %d not found", params.TenantId)
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
 		return nil, err
 	}
 	return res.JSON200, nil
@@ -379,7 +379,7 @@ func (c *RegionServiceClient) UpdateClusterUserPassword(ctx context.Context, id 
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to update cluster user password")
 	}
-	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK)
+	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body))
 }
 
 func (c *RegionServiceClient) DeleteClusterUser(ctx context.Context, id uint64, username string) error {
@@ -393,7 +393,7 @@ func (c *RegionServiceClient) DeleteClusterUser(ctx context.Context, id uint64, 
 	if res.StatusCode() == http.StatusNotFound {
 		return nil
 	}
-	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK)
+	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body))
 }
 
 func (c *RegionServiceClient) GetPrivateLink(ctx context.Context, id uint64, privateLinkID uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
@@ -404,7 +404,7 @@ func (c *RegionServiceClient) GetPrivateLink(ctx context.Context, id uint64, pri
 	if res.StatusCode() == http.StatusNotFound {
 		return nil, ErrPrivateLinkNotFound
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
 		return nil, err
 	}
 	return res.JSON200, nil
@@ -415,7 +415,7 @@ func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, id uin
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call API to create private link")
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
 		return nil, err
 	}
 	var info = res.JSON202
@@ -453,7 +453,7 @@ func (c *RegionServiceClient) DeletePrivateLinkAwait(ctx context.Context, id uin
 	if res.StatusCode() == http.StatusNotFound {
 		return nil
 	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted); err != nil {
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
 		return err
 	}
 	return wait.Poll(ctx, func() (bool, error) {

@@ -99,6 +99,7 @@ const (
 	Name    QueryErrLogParamsTarget = "name"
 	Sink    QueryErrLogParamsTarget = "sink"
 	Source  QueryErrLogParamsTarget = "source"
+	Table   QueryErrLogParamsTarget = "table"
 	Target  QueryErrLogParamsTarget = "target"
 )
 
@@ -174,11 +175,12 @@ type ComponentResourceRequest struct {
 
 // CreateDBUserRequestBody defines model for CreateDBUserRequestBody.
 type CreateDBUserRequestBody struct {
-	Createdb  bool   `json:"createdb"`
-	Password  string `json:"password"`
-	Superuser bool   `json:"superuser"`
-	TenantId  uint64 `json:"tenantId"`
-	Username  string `json:"username"`
+	Createdb   bool   `json:"createdb"`
+	Createuser *bool  `json:"createuser,omitempty"`
+	Password   string `json:"password"`
+	Superuser  bool   `json:"superuser"`
+	TenantId   uint64 `json:"tenantId"`
+	Username   string `json:"username"`
 }
 
 // CreateTenantResponseBody defines model for CreateTenantResponseBody.
@@ -189,10 +191,12 @@ type CreateTenantResponseBody struct {
 
 // DBUser defines model for DBUser.
 type DBUser struct {
-	Usecreatedb bool   `json:"usecreatedb"`
-	Username    string `json:"username"`
-	Usesuper    bool   `json:"usesuper"`
-	Usesysid    uint64 `json:"usesysid"`
+	Canlogin      bool   `json:"canlogin"`
+	Usecreatedb   bool   `json:"usecreatedb"`
+	Usecreateuser bool   `json:"usecreateuser"`
+	Username      string `json:"username"`
+	Usesuper      bool   `json:"usesuper"`
+	Usesysid      uint64 `json:"usesysid"`
 }
 
 // DBUserArray defines model for DBUserArray.
@@ -388,6 +392,7 @@ type TenantResourceMetaStore struct {
 	Etcd        *MetaStoreEtcd        `json:"etcd,omitempty"`
 	GcpCloudsql *MetaStoreGcpCloudSql `json:"gcp_cloudsql,omitempty"`
 	Postgresql  *MetaStorePostgreSql  `json:"postgresql,omitempty"`
+	Rwu         string                `json:"rwu"`
 	SharingPg   *MetaStoreSharingPg   `json:"sharing_pg,omitempty"`
 	Type        MetaStoreType         `json:"type"`
 }
