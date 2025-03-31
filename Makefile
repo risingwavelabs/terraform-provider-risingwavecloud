@@ -4,7 +4,7 @@ MODULE=github.com/risingwavelabs/terraform-provider-risingwavecloud
 ############################################################
 ### Go Lint 
 ############################################################
-GOLANGCI_LINT_VERSION=v1.56.1
+GOLANGCI_LINT_VERSION=v1.64.8
 install-golangci-lint:
 	DIR=$(PROJECT_DIR)/bin VERSION=${GOLANGCI_LINT_VERSION} ./scripts/install-golangci-lint.sh
 
