@@ -130,6 +130,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 
 ### Read-Only
 
+- `encoded_id` (String) The encoded ID of the cluster. This field is only used in BYOC clusters.
 - `id` (String) The NsID (namespace id) of the cluster.
 - `tier` (String) The tier of your RisingWave cluster. When creating a new cluster, the value is `standard`.
 
@@ -335,4 +336,5 @@ Optional:
 
 Required:
 
+- `encoded_id` (String) The encoded ID of the BYOC cluster. This field is only used in BYOC clusters.
 - `env` (String) The environment of BYOC clusters. This field is only used in BYOC clusters.
