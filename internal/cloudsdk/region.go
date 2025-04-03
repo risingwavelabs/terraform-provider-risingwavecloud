@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrClusterNotFound     = errors.New("cluster not found")
+	ErrBYOCClusterNotFound = errors.New("BYOC cluster not found")
 	ErrClusterUserNotFound = errors.New("cluster user not found")
 	ErrPrivateLinkNotFound = errors.New("private link not found")
 )
@@ -88,6 +89,8 @@ type RegionServiceClientInterface interface {
 	CreatePrivateLinkAwait(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
 
 	DeletePrivateLinkAwait(ctx context.Context, id uint64, privateLinkID uuid.UUID) error
+
+	GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmt.ManagedCluster, error)
 }
 
 type RegionServiceClient struct {
@@ -113,9 +116,9 @@ func (c *RegionServiceClient) waitClusterRunning(ctx context.Context, id uint64)
 			return false, errors.Wrap(err, "failed to get the cluster info")
 		}
 		currentStatus = cluster.Status
-		return currentStatus == apigen_mgmt.Running, nil
+		return currentStatus == apigen_mgmt.TenantStatusRunning, nil
 	}, PollingTenantCreation); err != nil {
-		return errors.Wrapf(err, "failed to wait for the cluster, current status: %s, target status: %s", currentStatus, apigen_mgmt.Running)
+		return errors.Wrapf(err, "failed to wait for the cluster, current status: %s, target status: %s", currentStatus, apigen_mgmt.TenantStatusRunning)
 	}
 	return nil
 }
@@ -196,7 +199,7 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	}
 
 	// wait for the tenant to be ready
-	if err := c.waitClusterStatusByName(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
+	if err := c.waitClusterStatusByName(ctx, req.TenantName, apigen_mgmt.TenantStatusRunning); err != nil {
 		return nil, err
 	}
 	if err := c.waitClusterHealthStatusByName(ctx, req.TenantName, apigen_mgmt.Healthy); err != nil {
@@ -485,4 +488,18 @@ func (c *RegionServiceClient) DeletePrivateLinkAwait(ctx context.Context, id uin
 		}
 		return false, nil
 	}, PollingPrivateLinkDeletion)
+}
+
+func (c *RegionServiceClient) GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmt.ManagedCluster, error) {
+	res, err := c.mgmtClient.GetByocClusterNameWithResponse(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get BYOC cluster")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrBYOCClusterNotFound, "BYOC cluster %s not found", name)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
 }
