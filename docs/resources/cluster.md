@@ -336,5 +336,8 @@ Optional:
 
 Required:
 
-- `encoded_id` (String) The encoded ID of the BYOC cluster. This field is only used in BYOC clusters.
 - `env` (String) The environment of BYOC clusters. This field is only used in BYOC clusters.
+
+Read-Only:
+
+- `encoded_id` (String) The encoded ID of the BYOC cluster. This field is only used in BYOC clusters.

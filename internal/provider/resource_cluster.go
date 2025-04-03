@@ -290,7 +290,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 					"encoded_id": schema.StringAttribute{
 						MarkdownDescription: "The encoded ID of the BYOC cluster. " +
 							"This field is only used in BYOC clusters.",
-						Required: true,
+						Computed: true,
 					},
 				},
 			},
