@@ -361,7 +361,7 @@ func (c *CloudClient) GetPrivateLinks(ctx context.Context) ([]PrivateLinkInfo, e
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to call API get private links")
 		}
-		if err = apigen.ExpectStatusCodeWithMessage(res, http.StatusOK); err != nil {
+		if err = apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
 			return nil, err
 		}
 		offset = res.JSON200.Offset
