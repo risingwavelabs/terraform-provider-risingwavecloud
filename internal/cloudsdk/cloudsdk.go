@@ -83,6 +83,8 @@ type CloudClientInterface interface {
 	// DeletePrivateLinkAwait deletes the private link and waits for the deletion to complete. it
 	// returns nil if the private link is deleted successfully or not found.
 	DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error
+
+	GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmt.ManagedCluster, error)
 }
 
 type CloudClient struct {
@@ -451,4 +453,12 @@ func (c *CloudClient) GetPrivateLinkByName(ctx context.Context, connectionName s
 		}
 	}
 	return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link %s", connectionName)
+}
+
+func (c *CloudClient) GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmt.ManagedCluster, error) {
+	rs, err := c.getRegionClient(region)
+	if err != nil {
+		return nil, err
+	}
+	return rs.GetBYOCCluster(ctx, name)
 }

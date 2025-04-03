@@ -23,6 +23,18 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for ClusterStatus.
+const (
+	ClusterStatusDeleted                 ClusterStatus = "Deleted"
+	ClusterStatusFailed                  ClusterStatus = "Failed"
+	ClusterStatusPendingResourceDeletion ClusterStatus = "PendingResourceDeletion"
+	ClusterStatusProvisioned             ClusterStatus = "Provisioned"
+	ClusterStatusReady                   ClusterStatus = "Ready"
+	ClusterStatusTerminating             ClusterStatus = "Terminating"
+	ClusterStatusUninitialized           ClusterStatus = "Uninitialized"
+	ClusterStatusUpdating                ClusterStatus = "Updating"
+)
+
 // Defines values for MetaStoreType.
 const (
 	AwsRds      MetaStoreType = "aws_rds"
@@ -60,24 +72,24 @@ const (
 
 // Defines values for TenantStatus.
 const (
-	ConfigUpdating                       TenantStatus = "ConfigUpdating"
-	Creating                             TenantStatus = "Creating"
-	Deleting                             TenantStatus = "Deleting"
-	Expired                              TenantStatus = "Expired"
-	ExtensionCompactionDisabling         TenantStatus = "ExtensionCompactionDisabling"
-	ExtensionCompactionEnabling          TenantStatus = "ExtensionCompactionEnabling"
-	ExtensionServerlessBackfillDisabling TenantStatus = "ExtensionServerlessBackfillDisabling"
-	ExtensionServerlessBackfillEnabling  TenantStatus = "ExtensionServerlessBackfillEnabling"
-	ExtensionServerlessBackfillUpdate    TenantStatus = "ExtensionServerlessBackfillUpdate"
-	Failed                               TenantStatus = "Failed"
-	MetaMigrating                        TenantStatus = "MetaMigrating"
-	Running                              TenantStatus = "Running"
-	Snapshotting                         TenantStatus = "Snapshotting"
-	Starting                             TenantStatus = "Starting"
-	Stopped                              TenantStatus = "Stopped"
-	Stopping                             TenantStatus = "Stopping"
-	Updating                             TenantStatus = "Updating"
-	Upgrading                            TenantStatus = "Upgrading"
+	TenantStatusConfigUpdating                       TenantStatus = "ConfigUpdating"
+	TenantStatusCreating                             TenantStatus = "Creating"
+	TenantStatusDeleting                             TenantStatus = "Deleting"
+	TenantStatusExpired                              TenantStatus = "Expired"
+	TenantStatusExtensionCompactionDisabling         TenantStatus = "ExtensionCompactionDisabling"
+	TenantStatusExtensionCompactionEnabling          TenantStatus = "ExtensionCompactionEnabling"
+	TenantStatusExtensionServerlessBackfillDisabling TenantStatus = "ExtensionServerlessBackfillDisabling"
+	TenantStatusExtensionServerlessBackfillEnabling  TenantStatus = "ExtensionServerlessBackfillEnabling"
+	TenantStatusExtensionServerlessBackfillUpdate    TenantStatus = "ExtensionServerlessBackfillUpdate"
+	TenantStatusFailed                               TenantStatus = "Failed"
+	TenantStatusMetaMigrating                        TenantStatus = "MetaMigrating"
+	TenantStatusRunning                              TenantStatus = "Running"
+	TenantStatusSnapshotting                         TenantStatus = "Snapshotting"
+	TenantStatusStarting                             TenantStatus = "Starting"
+	TenantStatusStopped                              TenantStatus = "Stopped"
+	TenantStatusStopping                             TenantStatus = "Stopping"
+	TenantStatusUpdating                             TenantStatus = "Updating"
+	TenantStatusUpgrading                            TenantStatus = "Upgrading"
 )
 
 // Defines values for TierId.
@@ -159,6 +171,9 @@ type AvailableMetaStoreSharingPg struct {
 	Enabled *bool `json:"enabled,omitempty"`
 }
 
+// ClusterStatus defines model for ClusterStatus.
+type ClusterStatus string
+
 // ComponentResource defines model for ComponentResource.
 type ComponentResource struct {
 	ComponentTypeId string `json:"componentTypeId"`
@@ -228,6 +243,19 @@ type ErrLogQueryResult struct {
 // GetImageTagResponse defines model for GetImageTagResponse.
 type GetImageTagResponse struct {
 	ImageTag string `json:"imageTag"`
+}
+
+// ManagedCluster defines model for ManagedCluster.
+type ManagedCluster struct {
+	ClusterServiceAccount string             `json:"cluster_service_account"`
+	Id                    uint64             `json:"id"`
+	MasterUrl             string             `json:"master_url"`
+	Name                  string             `json:"name"`
+	Org                   openapi_types.UUID `json:"org"`
+	ServingType           string             `json:"serving_type"`
+	Settings              map[string]string  `json:"settings"`
+	Status                ClusterStatus      `json:"status"`
+	Token                 string             `json:"token"`
 }
 
 // MetaStoreAwsRds defines model for MetaStoreAwsRds.
@@ -663,6 +691,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetByocClusterName request
+	GetByocClusterName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEndpoints request
 	GetEndpoints(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -738,6 +769,18 @@ type ClientInterface interface {
 
 	// GetTiers request
 	GetTiers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetByocClusterName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByocClusterNameRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetEndpoints(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1074,6 +1117,40 @@ func (c *Client) GetTiers(ctx context.Context, reqEditors ...RequestEditorFn) (*
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetByocClusterNameRequest generates requests for GetByocClusterName
+func NewGetByocClusterNameRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-cluster/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetEndpointsRequest generates requests for GetEndpoints
@@ -2124,6 +2201,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetByocClusterNameWithResponse request
+	GetByocClusterNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByocClusterNameResponse, error)
+
 	// GetEndpointsWithResponse request
 	GetEndpointsWithResponse(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*GetEndpointsResponse, error)
 
@@ -2199,6 +2279,29 @@ type ClientWithResponsesInterface interface {
 
 	// GetTiersWithResponse request
 	GetTiersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTiersResponse, error)
+}
+
+type GetByocClusterNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON404      *DefaultResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByocClusterNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByocClusterNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetEndpointsResponse struct {
@@ -2663,6 +2766,15 @@ func (r GetTiersResponse) StatusCode() int {
 	return 0
 }
 
+// GetByocClusterNameWithResponse request returning *GetByocClusterNameResponse
+func (c *ClientWithResponses) GetByocClusterNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByocClusterNameResponse, error) {
+	rsp, err := c.GetByocClusterName(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByocClusterNameResponse(rsp)
+}
+
 // GetEndpointsWithResponse request returning *GetEndpointsResponse
 func (c *ClientWithResponses) GetEndpointsWithResponse(ctx context.Context, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*GetEndpointsResponse, error) {
 	rsp, err := c.GetEndpoints(ctx, params, reqEditors...)
@@ -2905,6 +3017,39 @@ func (c *ClientWithResponses) GetTiersWithResponse(ctx context.Context, reqEdito
 		return nil, err
 	}
 	return ParseGetTiersResponse(rsp)
+}
+
+// ParseGetByocClusterNameResponse parses an HTTP response from a GetByocClusterNameWithResponse call
+func ParseGetByocClusterNameResponse(rsp *http.Response) (*GetByocClusterNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByocClusterNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetEndpointsResponse parses an HTTP response from a GetEndpointsWithResponse call

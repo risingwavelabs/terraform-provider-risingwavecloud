@@ -498,3 +498,15 @@ func (acc *FakeCloudClient) GetPrivateLinkByName(ctx context.Context, connection
 
 	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", connectionName)
 }
+
+func (acc *FakeCloudClient) GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmt.ManagedCluster, error) {
+	debugFuncCaller()
+
+	return &apigen_mgmt.ManagedCluster{
+		Id:   101,
+		Name: name,
+		Settings: map[string]string{
+			"uuid": uuid.Nil.String(),
+		},
+	}, nil
+}
