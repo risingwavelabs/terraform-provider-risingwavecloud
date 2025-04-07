@@ -139,6 +139,21 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetAvailableComponentTypes(arg0,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableComponentTypes", reflect.TypeOf((*MockCloudClientInterface)(nil).GetAvailableComponentTypes), arg0, arg1, arg2, arg3)
 }
 
+// GetBYOCCluster mocks base method.
+func (m *MockCloudClientInterface) GetBYOCCluster(arg0 context.Context, arg1, arg2 string) (*apigen.ManagedCluster, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBYOCCluster", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*apigen.ManagedCluster)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBYOCCluster indicates an expected call of GetBYOCCluster.
+func (mr *MockCloudClientInterfaceMockRecorder) GetBYOCCluster(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBYOCCluster", reflect.TypeOf((*MockCloudClientInterface)(nil).GetBYOCCluster), arg0, arg1, arg2)
+}
+
 // GetClusterByNsID mocks base method.
 func (m *MockCloudClientInterface) GetClusterByNsID(arg0 context.Context, arg1 uuid.UUID) (*apigen.Tenant, error) {
 	m.ctrl.T.Helper()

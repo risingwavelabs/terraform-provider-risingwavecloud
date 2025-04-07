@@ -90,7 +90,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 		DoAndReturn(func(ctx context.Context, getter DataGetter, target interface{}) diag.Diagnostics {
 			p, ok := target.(*ClusterModel)
 			assert.True(t, ok)
-			clusterToDataModel(tenant, p)
+			clusterToDataModel(tenant, nil, p)
 			return nil
 		})
 	dataHelper.EXPECT().

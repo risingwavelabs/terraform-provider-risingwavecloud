@@ -21,6 +21,7 @@ import (
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/rwcloud"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/wait"
 )
 
@@ -195,7 +196,8 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 }
 
 type BYOCModel struct {
-	Env types.String `tfsdk:"env"`
+	Env       types.String `tfsdk:"env"`
+	EncodedID types.String `tfsdk:"encoded_id"`
 }
 
 var byocAttrTypes = map[string]attr.Type{
@@ -203,13 +205,14 @@ var byocAttrTypes = map[string]attr.Type{
 }
 
 type ClusterModel struct {
-	ID      types.String `tfsdk:"id"`
-	Tier    types.String `tfsdk:"tier"`
-	Region  types.String `tfsdk:"region"`
-	Name    types.String `tfsdk:"name"`
-	Version types.String `tfsdk:"version"`
-	BYOC    types.Object `tfsdk:"byoc"`
-	Spec    types.Object `tfsdk:"spec"`
+	ID        types.String `tfsdk:"id"`
+	EncodedID types.String `tfsdk:"encoded_id"`
+	Tier      types.String `tfsdk:"tier"`
+	Region    types.String `tfsdk:"region"`
+	Name      types.String `tfsdk:"name"`
+	Version   types.String `tfsdk:"version"`
+	BYOC      types.Object `tfsdk:"byoc"`
+	Spec      types.Object `tfsdk:"spec"`
 }
 
 type NodeGroupModel struct {
@@ -252,6 +255,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The NsID (namespace id) of the cluster.",
 				Computed:            true,
 			},
+			"encoded_id": schema.StringAttribute{
+				MarkdownDescription: "The encoded ID of the cluster. " +
+					"This field is only used in BYOC clusters.",
+				Computed: true,
+			},
 			"tier": schema.StringAttribute{
 				MarkdownDescription: "The tier of your RisingWave cluster. When creating a new cluster, the value is `standard`.",
 				Computed:            true,
@@ -278,6 +286,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						MarkdownDescription: "The environment of BYOC clusters. " +
 							"This field is only used in BYOC clusters.",
 						Required: true,
+					},
+					"encoded_id": schema.StringAttribute{
+						MarkdownDescription: "The encoded ID of the BYOC cluster. " +
+							"This field is only used in BYOC clusters.",
+						Computed: true,
 					},
 				},
 			},
@@ -476,12 +489,13 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 	}
 }
 
-func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Diagnostics {
+func clusterToDataModel(cluster *apigen_mgmt.Tenant, byocCluster *apigen_mgmt.ManagedCluster, data *ClusterModel) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	data.Name = types.StringValue(cluster.TenantName)
 	data.Version = types.StringValue(cluster.ImageTag)
 	data.ID = types.StringValue(cluster.NsId.String())
+	data.EncodedID = types.StringValue(rwcloud.BuildEncodedClusterID(cluster.NsId, cluster.TenantName))
 	data.Region = types.StringValue(cluster.Region)
 	data.Tier = types.StringValue(string(cluster.Tier))
 
@@ -493,8 +507,16 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, data *ClusterModel) diag.Di
 			)
 			return diags
 		}
+		byocEnvUUID, err := uuid.Parse(byocCluster.Settings["uuid"])
+		if err != nil {
+			diags.AddError(
+				"Invalid BYOC env uuid",
+				err.Error(),
+			)
+		}
 		data.BYOC = types.ObjectValueMust(byocAttrTypes, map[string]attr.Value{
-			"env": types.StringValue(*cluster.ClusterName),
+			"env":        types.StringValue(*cluster.ClusterName),
+			"encoded_id": types.StringValue(rwcloud.ToBase32(byocEnvUUID)),
 		})
 	}
 
@@ -942,7 +964,22 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(clusterToDataModel(createdCluster, &data)...)
+	var byocCluster *apigen_mgmt.ManagedCluster
+	if cluster.ClusterName != nil {
+		byocCluster, err = r.client.GetBYOCCluster(ctx, region, *cluster.ClusterName)
+		if err != nil {
+			if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
+				byocCluster = nil
+			} else {
+				resp.Diagnostics.AddError(
+					"Unable to read BYOC cluster",
+					err.Error(),
+				)
+			}
+		}
+	}
+
+	resp.Diagnostics.Append(clusterToDataModel(createdCluster, byocCluster, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -999,8 +1036,22 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		)
 		return
 	}
+	var byocCluster *apigen_mgmt.ManagedCluster
+	if cluster.ClusterName != nil {
+		byocCluster, err = r.client.GetBYOCCluster(ctx, cluster.Region, *cluster.ClusterName)
+		if err != nil {
+			if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
+				byocCluster = nil
+			} else {
+				resp.Diagnostics.AddError(
+					"Unable to read BYOC cluster",
+					err.Error(),
+				)
+			}
+		}
+	}
 
-	resp.Diagnostics.Append(clusterToDataModel(cluster, &data)...)
+	resp.Diagnostics.Append(clusterToDataModel(cluster, byocCluster, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -1241,8 +1292,22 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		)
 		return
 	}
+	var byocCluster *apigen_mgmt.ManagedCluster
+	if now.ClusterName != nil {
+		byocCluster, err = r.client.GetBYOCCluster(ctx, now.Region, *now.ClusterName)
+		if err != nil {
+			if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
+				byocCluster = nil
+			} else {
+				resp.Diagnostics.AddError(
+					"Unable to read BYOC cluster",
+					err.Error(),
+				)
+			}
+		}
+	}
 
-	resp.Diagnostics.Append(clusterToDataModel(now, &data)...)
+	resp.Diagnostics.Append(clusterToDataModel(now, byocCluster, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

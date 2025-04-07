@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrClusterNotFound     = errors.New("cluster not found")
+	ErrBYOCClusterNotFound = errors.New("BYOC cluster not found")
 	ErrClusterUserNotFound = errors.New("cluster user not found")
 	ErrPrivateLinkNotFound = errors.New("private link not found")
 )
@@ -88,6 +89,8 @@ type RegionServiceClientInterface interface {
 	CreatePrivateLinkAwait(ctx context.Context, id uint64, req apigen_mgmt.PostPrivateLinkRequestBody) (*apigen_mgmt.PrivateLink, error)
 
 	DeletePrivateLinkAwait(ctx context.Context, id uint64, privateLinkID uuid.UUID) error
+
+	GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmt.ManagedCluster, error)
 }
 
 type RegionServiceClient struct {
@@ -485,4 +488,18 @@ func (c *RegionServiceClient) DeletePrivateLinkAwait(ctx context.Context, id uin
 		}
 		return false, nil
 	}, PollingPrivateLinkDeletion)
+}
+
+func (c *RegionServiceClient) GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmt.ManagedCluster, error) {
+	res, err := c.mgmtClient.GetByocClusterNameWithResponse(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get BYOC cluster")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrBYOCClusterNotFound, "BYOC cluster %s not found", name)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
 }
