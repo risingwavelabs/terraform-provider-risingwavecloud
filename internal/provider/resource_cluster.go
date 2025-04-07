@@ -869,7 +869,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	} else {
 		// a healthy cluster already exists
-		if c.Status != apigen_mgmt.Failed {
+		if c.Status != apigen_mgmt.TenantStatusFailed {
 			resp.Diagnostics.AddError(
 				"Cluster already exists",
 				fmt.Sprintf("Cluster with the name %s already exists in the region %s", c.TenantName, region),
