@@ -105,17 +105,17 @@ func (c *RegionServiceClient) IsTenantNameExist(ctx context.Context, tenantName 
 	return true, nil
 }
 
-func (c *RegionServiceClient) waitClusterRunning(ctx context.Context, id uint64) error {
-	var currentStatus apigen_mgmt.TenantStatus
+func (c *RegionServiceClient) waitClusterHealthy(ctx context.Context, id uint64) error {
+	var currHealth apigen_mgmt.TenantHealthStatus
 	if err := wait.Poll(ctx, func() (bool, error) {
 		cluster, err := c.GetClusterByID(ctx, id)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to get the cluster info")
 		}
-		currentStatus = cluster.Status
-		return currentStatus == apigen_mgmt.Running, nil
+		currHealth = cluster.HealthStatus
+		return currHealth == apigen_mgmt.Healthy, nil
 	}, PollingTenantCreation); err != nil {
-		return errors.Wrapf(err, "failed to wait for the cluster, current status: %s, target status: %s", currentStatus, apigen_mgmt.Running)
+		return errors.Wrapf(err, "failed to wait for the cluster, current health status: %s, target health status: %s", currHealth, apigen_mgmt.Healthy)
 	}
 	return nil
 }
@@ -196,7 +196,7 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	}
 
 	// wait for the tenant to be ready
-	if err := c.waitClusterStatusByName(ctx, req.TenantName, apigen_mgmt.Running); err != nil {
+	if err := c.waitClusterStatusByName(ctx, req.TenantName, apigen_mgmt.TenantStatusRunning); err != nil {
 		return nil, err
 	}
 	if err := c.waitClusterHealthStatusByName(ctx, req.TenantName, apigen_mgmt.Healthy); err != nil {
@@ -254,7 +254,7 @@ func (c *RegionServiceClient) UpdateClusterImageAwait(ctx context.Context, id ui
 	}
 
 	// wait for the tenant to be ready
-	return c.waitClusterRunning(ctx, id)
+	return c.waitClusterHealthy(ctx, id)
 }
 
 func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, id uint64, req apigen_mgmt.PostTenantResourcesRequestBody) error {
@@ -271,7 +271,7 @@ func (c *RegionServiceClient) UpdateClusterResourcesAwait(ctx context.Context, i
 	}
 
 	// wait for the tenant resource updated.
-	return c.waitClusterRunning(ctx, id)
+	return c.waitClusterHealthy(ctx, id)
 }
 
 func (c *RegionServiceClient) GetTiers(ctx context.Context) ([]apigen_mgmt.Tier, error) {
@@ -335,7 +335,7 @@ func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, i
 	}
 
 	// wait for the tenant to be ready
-	return c.waitClusterRunning(ctx, id)
+	return c.waitClusterHealthy(ctx, id)
 }
 
 func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, id uint64, etcdConfig string) error {
@@ -352,7 +352,7 @@ func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, id uint
 	}
 
 	// wait for the tenant to be ready
-	return c.waitClusterRunning(ctx, id)
+	return c.waitClusterHealthy(ctx, id)
 }
 
 func (c *RegionServiceClient) GetClusterUsers(ctx context.Context, id uint64) ([]apigen_mgmt.DBUser, error) {

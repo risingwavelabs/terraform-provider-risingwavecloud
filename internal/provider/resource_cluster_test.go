@@ -78,7 +78,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 		region   = "us-west-2"
 		imageTag = "v1.10.0"
 		tier     = apigen_mgmt.Standard
-		tenant   = createSimpleTestCluster(t, name, region, imageTag, tier, apigen_mgmt.Failed)
+		tenant   = createSimpleTestCluster(t, name, region, imageTag, tier, apigen_mgmt.TenantStatusFailed)
 	)
 
 	client := cloudsdk_mock.NewMockCloudClientInterface(ctrl)
@@ -125,7 +125,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 		CreateClusterAwait(ctx, region, gomock.Any()).
 		DoAndReturn(func(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
 			rtn := *tenant
-			rtn.Status = apigen_mgmt.Running
+			rtn.Status = apigen_mgmt.TenantStatusRunning
 			return &rtn, nil
 		})
 
