@@ -201,7 +201,8 @@ type BYOCModel struct {
 }
 
 var byocAttrTypes = map[string]attr.Type{
-	"env": types.StringType,
+	"env":        types.StringType,
+	"encoded_id": types.StringType,
 }
 
 type ClusterModel struct {
