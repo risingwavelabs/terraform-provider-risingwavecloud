@@ -120,7 +120,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 ### Required
 
 - `name` (String) The name of the cluster.
-- `region` (String)
+- `region` (String) The region of the cluster.
 - `spec` (Attributes) The resource specification of the cluster (see [below for nested schema](#nestedatt--spec))
 
 ### Optional
