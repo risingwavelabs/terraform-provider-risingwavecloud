@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
-	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
+	apigen_mgmtv1 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/rwcloud"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/wait"
 )
@@ -283,8 +283,8 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 }
 
 func (r *ClusterResource) nodeGroupModelToComponentResource(
-	ctx context.Context, diags *diag.Diagnostics, nodeGroup *NodeGroupModel, region string, tier apigen_mgmt.TierId, component string,
-) *apigen_mgmt.ComponentResource {
+	ctx context.Context, diags *diag.Diagnostics, nodeGroup *NodeGroupModel, region string, tier apigen_mgmtv2.TierId, component string,
+) *apigen_mgmtv2.ComponentResource {
 
 	var (
 		reqCPU     = nodeGroup.CPU.ValueString()
@@ -292,7 +292,7 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 		reqReplica = nodeGroup.Replica.ValueInt64()
 	)
 
-	availableTypes, err := r.client.GetAvailableComponentTypes(ctx, region, tier, component)
+	availableTypes, err := r.client.GetAvailableComponentTypes(ctx, region, apigen_mgmtv1.TierId(tier), component)
 	if err != nil {
 		diags.AddError(
 			"Failed to get available component types",
@@ -301,7 +301,7 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 		return nil
 	}
 
-	var candidates []apigen_mgmt.AvailableComponentType
+	var candidates []apigen_mgmtv1.AvailableComponentType
 	for _, availableType := range availableTypes {
 		if availableType.Cpu == reqCPU && availableType.Memory == reqMem {
 			candidates = append(candidates, availableType)
@@ -322,7 +322,7 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 	}
 
 	maximumReplica := 0
-	chosenType := apigen_mgmt.AvailableComponentType{}
+	chosenType := apigen_mgmtv1.AvailableComponentType{}
 	for _, candidate := range candidates {
 		if candidate.Maximum > maximumReplica {
 			maximumReplica = candidate.Maximum
@@ -337,7 +337,7 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 		return nil
 	}
 
-	return &apigen_mgmt.ComponentResource{
+	return &apigen_mgmtv2.ComponentResource{
 		ComponentTypeId: chosenType.Id,
 		Replica:         int(reqReplica),
 		Cpu:             chosenType.Cpu,
@@ -345,7 +345,7 @@ func (r *ClusterResource) nodeGroupModelToComponentResource(
 	}
 }
 
-func clusterToDataModel(cluster *apigen_mgmt.Tenant, byocCluster *apigen_mgmt.ManagedCluster, data *ClusterModel) diag.Diagnostics {
+func clusterToDataModel(cluster *apigen_mgmtv2.Tenant, byocCluster *apigen_mgmtv2.ManagedCluster, data *ClusterModel) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	data.Name = types.StringValue(cluster.TenantName)
@@ -355,8 +355,8 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, byocCluster *apigen_mgmt.Ma
 	data.Region = types.StringValue(cluster.Region)
 	data.Tier = types.StringValue(string(cluster.Tier))
 
-	if cluster.Tier == apigen_mgmt.BYOC {
-		if cluster.ClusterName == nil {
+	if cluster.Tier == apigen_mgmtv2.BYOC {
+		if cluster.ClusterName == "" {
 			diags.AddError(
 				"Missing BYOC env name",
 				"The clusterName field is missing when the tier is BYOC",
@@ -371,7 +371,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, byocCluster *apigen_mgmt.Ma
 			)
 		}
 		data.BYOC = types.ObjectValueMust(byocAttrTypes, map[string]attr.Value{
-			"env":        types.StringValue(*cluster.ClusterName),
+			"env":        types.StringValue(cluster.ClusterName),
 			"encoded_id": types.StringValue(rwcloud.ToBase32(byocEnvUUID)),
 		})
 	}
@@ -447,7 +447,7 @@ func clusterToDataModel(cluster *apigen_mgmt.Tenant, byocCluster *apigen_mgmt.Ma
 	return diags
 }
 
-func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen_mgmt.Tenant) diag.Diagnostics {
+func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterModel, cluster *apigen_mgmtv2.Tenant) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	objectAsOptions := basetypes.ObjectAsOptions{
 		UnhandledUnknownAsEmpty: true,
@@ -500,12 +500,11 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 
 	if !data.BYOC.IsNull() && !data.BYOC.IsUnknown() {
 		diags.Append(data.BYOC.As(ctx, &byoc, objectAsOptions)...)
-		cluster.ClusterName = ptr.Ptr(byoc.Env.ValueString())
+		cluster.ClusterName = byoc.Env.ValueString()
 	}
-
 	cluster.TenantName = data.Name.ValueString()
 	cluster.ImageTag = data.Version.ValueString()
-	cluster.Tier = apigen_mgmt.TierId(data.Tier.ValueString())
+	cluster.Tier = apigen_mgmtv2.TierId(data.Tier.ValueString())
 
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
@@ -519,14 +518,14 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		return diags
 	}
 
-	cluster.Resources = apigen_mgmt.TenantResource{
-		Components: apigen_mgmt.TenantResourceComponents{
+	cluster.Resources = apigen_mgmtv2.TenantResource{
+		Components: apigen_mgmtv2.TenantResourceComponents{
 			Compactor: compactorResource,
 			Compute:   computeResource,
 			Frontend:  frontendResource,
 			Meta:      metaResource,
 		},
-		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
+		ComputeCache: apigen_mgmtv2.TenantResourceComputeCache{
 			SizeGb: DefaultComputeFileCacheSizeGB,
 		},
 	}
@@ -546,7 +545,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		region = data.Region.ValueString()
 	)
 
-	var cluster apigen_mgmt.Tenant
+	var cluster apigen_mgmtv2.Tenant
 
 	if len(region) == 0 {
 		resp.Diagnostics.AddError(
@@ -558,19 +557,18 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	if data.Tier.IsNull() || data.Tier.IsUnknown() {
 		if data.BYOC.IsNull() || data.BYOC.IsUnknown() {
-			data.Tier = types.StringValue(string(apigen_mgmt.Standard))
+			data.Tier = types.StringValue(string(apigen_mgmtv2.Standard))
 		} else {
-			data.Tier = types.StringValue(string(apigen_mgmt.BYOC))
+			data.Tier = types.StringValue(string(apigen_mgmtv2.BYOC))
 		}
 	}
 
 	resp.Diagnostics.Append(r.dataModelToCluster(ctx, &data, &cluster)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	c, err := r.client.GetClusterByRegionAndName(ctx, region, cluster.TenantName)
+	c, err := r.client.GetClusterByRegionAndName(ctx, cluster.Region, cluster.TenantName)
 	if err != nil {
 		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
 			// no previous cluster found, continue the creation
@@ -584,7 +582,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	} else {
 		// a healthy cluster already exists
-		if c.Status != apigen_mgmt.TenantStatusFailed {
+		if c.Status != apigen_mgmtv2.Failed {
 			resp.Diagnostics.AddError(
 				"Cluster already exists",
 				fmt.Sprintf("Cluster with the name %s already exists in the region %s", c.TenantName, region),
@@ -601,32 +599,34 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	}
 
-	var tenantReq = apigen_mgmt.TenantRequestRequestBody{}
-	tenantReq.ClusterName = cluster.ClusterName
+	var tenantReq = apigen_mgmtv2.TenantRequestRequestBody{}
+	if cluster.ClusterName != "" {
+		tenantReq.ClusterName = &cluster.ClusterName
+	}
 	tenantReq.TenantName = cluster.TenantName
 	tenantReq.ImageTag = &cluster.ImageTag
 	tenantReq.Tier = &cluster.Tier
 	tenantReq.RwConfig = &cluster.RwConfig
-	tenantReq.Resources = &apigen_mgmt.TenantResourceRequest{
-		Components: apigen_mgmt.TenantResourceRequestComponents{
-			Compute: &apigen_mgmt.ComponentResourceRequest{
+	tenantReq.Resources = &apigen_mgmtv2.TenantResourceRequest{
+		Components: apigen_mgmtv2.TenantResourceRequestComponents{
+			Compute: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: cluster.Resources.Components.Compute.ComponentTypeId,
 				Replica:         cluster.Resources.Components.Compute.Replica,
 			},
-			Frontend: &apigen_mgmt.ComponentResourceRequest{
+			Frontend: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: cluster.Resources.Components.Frontend.ComponentTypeId,
 				Replica:         cluster.Resources.Components.Frontend.Replica,
 			},
-			Meta: &apigen_mgmt.ComponentResourceRequest{
+			Meta: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: cluster.Resources.Components.Meta.ComponentTypeId,
 				Replica:         cluster.Resources.Components.Meta.Replica,
 			},
-			Compactor: &apigen_mgmt.ComponentResourceRequest{
+			Compactor: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: cluster.Resources.Components.Compactor.ComponentTypeId,
 				Replica:         cluster.Resources.Components.Compactor.Replica,
 			},
 		},
-		ComputeFileCacheSizeGiB: cluster.Resources.ComputeCache.SizeGb,
+		ComputeCache: &cluster.Resources.ComputeCache,
 	}
 
 	createdCluster, err := r.client.CreateClusterAwait(ctx, region, tenantReq)
@@ -645,18 +645,16 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	var byocCluster *apigen_mgmt.ManagedCluster
-	if cluster.ClusterName != nil {
-		byocCluster, err = r.client.GetBYOCCluster(ctx, region, *cluster.ClusterName)
-		if err != nil {
-			if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
-				byocCluster = nil
-			} else {
-				resp.Diagnostics.AddError(
-					"Unable to read BYOC cluster",
-					err.Error(),
-				)
-			}
+	var byocCluster *apigen_mgmtv2.ManagedCluster
+	byocCluster, err = r.client.GetBYOCCluster(ctx, region, cluster.ClusterName)
+	if err != nil {
+		if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
+			byocCluster = nil
+		} else {
+			resp.Diagnostics.AddError(
+				"Unable to read BYOC cluster",
+				err.Error(),
+			)
 		}
 	}
 
@@ -710,16 +708,16 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	if cluster.Tier != apigen_mgmt.Standard && cluster.Tier != apigen_mgmt.Invited && cluster.Tier != apigen_mgmt.BYOC {
+	if cluster.Tier != apigen_mgmtv2.Standard && cluster.Tier != apigen_mgmtv2.Invited && cluster.Tier != apigen_mgmtv2.BYOC {
 		resp.Diagnostics.AddError(
 			"Invalid tier",
 			"Supported tiers are: Standard, Invited, BYOC",
 		)
 		return
 	}
-	var byocCluster *apigen_mgmt.ManagedCluster
-	if cluster.ClusterName != nil {
-		byocCluster, err = r.client.GetBYOCCluster(ctx, cluster.Region, *cluster.ClusterName)
+	var byocCluster *apigen_mgmtv2.ManagedCluster
+	if cluster.ClusterName != "" {
+		byocCluster, err = r.client.GetBYOCCluster(ctx, cluster.Region, cluster.ClusterName)
 		if err != nil {
 			if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
 				byocCluster = nil
@@ -741,7 +739,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func metaStoreEqual(a, b *apigen_mgmt.TenantResourceMetaStore) bool {
+func metaStoreEqual(a, b *apigen_mgmtv2.TenantResourceMetaStore) bool {
 	if a == nil || b == nil {
 		return true
 	}
@@ -753,7 +751,7 @@ func metaStoreEqual(a, b *apigen_mgmt.TenantResourceMetaStore) bool {
 	return false
 }
 
-func resourceEqual(a, b *apigen_mgmt.ComponentResource) bool {
+func resourceEqual(a, b *apigen_mgmtv2.ComponentResource) bool {
 	return a.Cpu == b.Cpu &&
 		a.Memory == b.Memory &&
 		a.Replica == b.Replica
@@ -795,7 +793,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	var updated = apigen_mgmt.Tenant{}
+	var updated = apigen_mgmtv2.Tenant{}
 
 	// assign computed fields to updated
 	data.ID = types.StringValue(previous.NsId.String())
@@ -815,23 +813,11 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// only check clusterName for BYOC
-	if previous.Tier == apigen_mgmt.BYOC {
-		if previous.ClusterName == nil && updated.ClusterName != nil {
+	if previous.Tier == apigen_mgmtv2.BYOC {
+		if previous.ClusterName != updated.ClusterName {
 			resp.Diagnostics.AddError(
 				"Cannot update immutable field",
-				fmt.Sprintf("Cluster name cannot be changed, previous is not set, now is %s", *updated.ClusterName),
-			)
-		}
-		if previous.ClusterName != nil && updated.ClusterName == nil {
-			resp.Diagnostics.AddError(
-				"Cannot update immutable field",
-				fmt.Sprintf("Cluster name cannot be changed, previous is %s, now is not set", *previous.ClusterName),
-			)
-		}
-		if (previous.ClusterName != nil && updated.ClusterName != nil) && (*previous.ClusterName != *updated.ClusterName) {
-			resp.Diagnostics.AddError(
-				"Cannot update immutable field",
-				fmt.Sprintf("Cluster name cannot be changed, previous: %s, updated: %s", *previous.ClusterName, *updated.ClusterName),
+				fmt.Sprintf("Cluster name cannot be changed, previous: %s, updated: %s", previous.ClusterName, updated.ClusterName),
 			)
 		}
 	}
@@ -906,20 +892,20 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		resourceEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta)) {
 
 		tflog.Info(ctx, fmt.Sprintf("updating resources, cluster: %s", previous.TenantName))
-		if err := r.client.UpdateClusterResourcesByNsIDAwait(ctx, nsID, apigen_mgmt.PostTenantResourcesRequestBody{
-			Compute: &apigen_mgmt.ComponentResourceRequest{
+		if err := r.client.UpdateClusterResourcesByNsIDAwait(ctx, nsID, apigen_mgmtv2.PostTenantResourcesRequestBody{
+			Compute: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: updated.Resources.Components.Compute.ComponentTypeId,
 				Replica:         updated.Resources.Components.Compute.Replica,
 			},
-			Compactor: &apigen_mgmt.ComponentResourceRequest{
+			Compactor: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: updated.Resources.Components.Compactor.ComponentTypeId,
 				Replica:         updated.Resources.Components.Compactor.Replica,
 			},
-			Frontend: &apigen_mgmt.ComponentResourceRequest{
+			Frontend: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: updated.Resources.Components.Frontend.ComponentTypeId,
 				Replica:         updated.Resources.Components.Frontend.Replica,
 			},
-			Meta: &apigen_mgmt.ComponentResourceRequest{
+			Meta: &apigen_mgmtv2.ComponentResourceRequest{
 				ComponentTypeId: updated.Resources.Components.Meta.ComponentTypeId,
 				Replica:         updated.Resources.Components.Meta.Replica,
 			},
@@ -949,18 +935,16 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		)
 		return
 	}
-	var byocCluster *apigen_mgmt.ManagedCluster
-	if now.ClusterName != nil {
-		byocCluster, err = r.client.GetBYOCCluster(ctx, now.Region, *now.ClusterName)
-		if err != nil {
-			if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
-				byocCluster = nil
-			} else {
-				resp.Diagnostics.AddError(
-					"Unable to read BYOC cluster",
-					err.Error(),
-				)
-			}
+	var byocCluster *apigen_mgmtv2.ManagedCluster
+	byocCluster, err = r.client.GetBYOCCluster(ctx, now.Region, now.ClusterName)
+	if err != nil {
+		if errors.Is(err, cloudsdk.ErrBYOCClusterNotFound) {
+			byocCluster = nil
+		} else {
+			resp.Diagnostics.AddError(
+				"Unable to read BYOC cluster",
+				err.Error(),
+			)
 		}
 	}
 

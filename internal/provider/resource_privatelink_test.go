@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	cloudsdk_mock "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,11 +27,11 @@ func TestPrivateLinkCreate_previous_creation_failed(t *testing.T) {
 		plID           = uuid.Must(uuid.NewRandom())
 		plInfo         = &cloudsdk.PrivateLinkInfo{
 			ClusterNsID: clusterID,
-			PrivateLink: &apigen_mgmt.PrivateLink{
+			PrivateLink: &apigen_mgmtv2.PrivateLink{
 				Id:             plID,
 				ConnectionName: connectionName,
 				Target:         &plTarget,
-				Status:         apigen_mgmt.ERROR,
+				Status:         apigen_mgmtv2.ERROR,
 			},
 		}
 	)
@@ -59,13 +59,13 @@ func TestPrivateLinkCreate_previous_creation_failed(t *testing.T) {
 		Return(nil)
 
 	client.EXPECT().
-		CreatePrivateLinkAwait(ctx, clusterID, apigen_mgmt.PostPrivateLinkRequestBody{
+		CreatePrivateLinkAwait(ctx, clusterID, apigen_mgmtv2.PostPrivateLinkRequestBody{
 			ConnectionName: connectionName,
 			Target:         plTarget,
 		}).
-		DoAndReturn(func(ctx context.Context, nsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+		DoAndReturn(func(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
 			rtn := *plInfo
-			rtn.PrivateLink.Status = apigen_mgmt.CREATED
+			rtn.PrivateLink.Status = apigen_mgmtv2.CREATED
 			return &rtn, nil
 		})
 

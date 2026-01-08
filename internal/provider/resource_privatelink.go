@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/defaults"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/wait"
 )
@@ -131,7 +131,7 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 			return
 		}
 	} else {
-		if pl.PrivateLink.Status != apigen.ERROR {
+		if pl.PrivateLink.Status != apigen_mgmtv2.ERROR {
 			resp.Diagnostics.AddError(
 				"Private Link already exists",
 				fmt.Sprintf("Private Link with the same connection name '%s' already exists", connectionName),
@@ -145,7 +145,7 @@ func (r *PrivateLinkResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
-	pl, err = r.client.CreatePrivateLinkAwait(ctx, nsID, apigen.PostPrivateLinkRequestBody{
+	pl, err = r.client.CreatePrivateLinkAwait(ctx, nsID, apigen_mgmtv2.PostPrivateLinkRequestBody{
 		ConnectionName: connectionName,
 		Target:         target,
 	})

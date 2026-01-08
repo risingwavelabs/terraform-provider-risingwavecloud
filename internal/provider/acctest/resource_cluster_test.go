@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/provider"
 	"github.com/stretchr/testify/require"

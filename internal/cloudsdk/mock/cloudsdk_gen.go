@@ -11,7 +11,8 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 	cloudsdk "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
+	apigen0 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 )
 
 // MockCloudClientInterface is a mock of CloudClientInterface interface.
@@ -38,10 +39,10 @@ func (m *MockCloudClientInterface) EXPECT() *MockCloudClientInterfaceMockRecorde
 }
 
 // CreateCluserUser mocks base method.
-func (m *MockCloudClientInterface) CreateCluserUser(arg0 context.Context, arg1 uuid.UUID, arg2, arg3 string, arg4, arg5 bool) (*apigen.DBUser, error) {
+func (m *MockCloudClientInterface) CreateCluserUser(arg0 context.Context, arg1 uuid.UUID, arg2, arg3 string, arg4, arg5 bool) (*apigen0.DBUser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateCluserUser", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(*apigen.DBUser)
+	ret0, _ := ret[0].(*apigen0.DBUser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -53,10 +54,10 @@ func (mr *MockCloudClientInterfaceMockRecorder) CreateCluserUser(arg0, arg1, arg
 }
 
 // CreateClusterAwait mocks base method.
-func (m *MockCloudClientInterface) CreateClusterAwait(arg0 context.Context, arg1 string, arg2 apigen.TenantRequestRequestBody) (*apigen.Tenant, error) {
+func (m *MockCloudClientInterface) CreateClusterAwait(arg0 context.Context, arg1 string, arg2 apigen0.TenantRequestRequestBody) (*apigen0.Tenant, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateClusterAwait", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*apigen.Tenant)
+	ret0, _ := ret[0].(*apigen0.Tenant)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -68,7 +69,7 @@ func (mr *MockCloudClientInterfaceMockRecorder) CreateClusterAwait(arg0, arg1, a
 }
 
 // CreatePrivateLinkAwait mocks base method.
-func (m *MockCloudClientInterface) CreatePrivateLinkAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+func (m *MockCloudClientInterface) CreatePrivateLinkAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePrivateLinkAwait", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*cloudsdk.PrivateLinkInfo)
@@ -140,10 +141,10 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetAvailableComponentTypes(arg0,
 }
 
 // GetBYOCCluster mocks base method.
-func (m *MockCloudClientInterface) GetBYOCCluster(arg0 context.Context, arg1, arg2 string) (*apigen.ManagedCluster, error) {
+func (m *MockCloudClientInterface) GetBYOCCluster(arg0 context.Context, arg1, arg2 string) (*apigen0.ManagedCluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBYOCCluster", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*apigen.ManagedCluster)
+	ret0, _ := ret[0].(*apigen0.ManagedCluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -155,10 +156,10 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetBYOCCluster(arg0, arg1, arg2 
 }
 
 // GetClusterByNsID mocks base method.
-func (m *MockCloudClientInterface) GetClusterByNsID(arg0 context.Context, arg1 uuid.UUID) (*apigen.Tenant, error) {
+func (m *MockCloudClientInterface) GetClusterByNsID(arg0 context.Context, arg1 uuid.UUID) (*apigen0.Tenant, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetClusterByNsID", arg0, arg1)
-	ret0, _ := ret[0].(*apigen.Tenant)
+	ret0, _ := ret[0].(*apigen0.Tenant)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -170,10 +171,10 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetClusterByNsID(arg0, arg1 inte
 }
 
 // GetClusterByRegionAndName mocks base method.
-func (m *MockCloudClientInterface) GetClusterByRegionAndName(arg0 context.Context, arg1, arg2 string) (*apigen.Tenant, error) {
+func (m *MockCloudClientInterface) GetClusterByRegionAndName(arg0 context.Context, arg1, arg2 string) (*apigen0.Tenant, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetClusterByRegionAndName", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*apigen.Tenant)
+	ret0, _ := ret[0].(*apigen0.Tenant)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -185,10 +186,10 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetClusterByRegionAndName(arg0, 
 }
 
 // GetClusterUser mocks base method.
-func (m *MockCloudClientInterface) GetClusterUser(arg0 context.Context, arg1 uuid.UUID, arg2 string) (*apigen.DBUser, error) {
+func (m *MockCloudClientInterface) GetClusterUser(arg0 context.Context, arg1 uuid.UUID, arg2 string) (*apigen0.DBUser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetClusterUser", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*apigen.DBUser)
+	ret0, _ := ret[0].(*apigen0.DBUser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -259,21 +260,6 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetTiers(arg0, arg1 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTiers", reflect.TypeOf((*MockCloudClientInterface)(nil).GetTiers), arg0, arg1)
 }
 
-// IsTenantNameExist mocks base method.
-func (m *MockCloudClientInterface) IsTenantNameExist(arg0 context.Context, arg1, arg2 string) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsTenantNameExist", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsTenantNameExist indicates an expected call of IsTenantNameExist.
-func (mr *MockCloudClientInterfaceMockRecorder) IsTenantNameExist(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsTenantNameExist", reflect.TypeOf((*MockCloudClientInterface)(nil).IsTenantNameExist), arg0, arg1, arg2)
-}
-
 // Ping mocks base method.
 func (m *MockCloudClientInterface) Ping(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -303,7 +289,7 @@ func (mr *MockCloudClientInterfaceMockRecorder) UpdateClusterImageByNsIDAwait(ar
 }
 
 // UpdateClusterResourcesByNsIDAwait mocks base method.
-func (m *MockCloudClientInterface) UpdateClusterResourcesByNsIDAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen.PostTenantResourcesRequestBody) error {
+func (m *MockCloudClientInterface) UpdateClusterResourcesByNsIDAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.PostTenantResourcesRequestBody) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateClusterResourcesByNsIDAwait", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

@@ -10,8 +10,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen"
-	apigen_acc "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/acc"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_acc "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/acc/v1"
+	apigen_mgmtv1 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 )
 
@@ -35,31 +36,29 @@ type CloudClientInterface interface {
 
 	/* Cluster */
 
-	GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error)
+	GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.Tenant, error)
 
-	IsTenantNameExist(ctx context.Context, region string, tenantName string) (bool, error)
+	GetClusterByRegionAndName(ctx context.Context, region string, name string) (*apigen_mgmtv2.Tenant, error)
 
-	CreateClusterAwait(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error)
+	CreateClusterAwait(ctx context.Context, region string, req apigen_mgmtv2.TenantRequestRequestBody) (*apigen_mgmtv2.Tenant, error)
 
-	GetTiers(ctx context.Context, region string) ([]apigen_mgmt.Tier, error)
+	GetTiers(ctx context.Context, region string) ([]apigen_mgmtv1.Tier, error)
 
-	GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error)
+	GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmtv1.TierId, component string) ([]apigen_mgmtv1.AvailableComponentType, error)
 
 	DeleteClusterByNsIDAwait(ctx context.Context, nsID uuid.UUID) error
 
 	UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uuid.UUID, version string) error
 
-	UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmt.PostTenantResourcesRequestBody) error
+	UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostTenantResourcesRequestBody) error
 
 	UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, rwConfig string) error
 
-	GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error)
-
 	/* Cluster User */
 
-	GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error)
+	GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmtv2.DBUser, error)
 
-	CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error)
+	CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmtv2.DBUser, error)
 
 	UpdateClusterUserPassword(ctx context.Context, clusterNsID uuid.UUID, username, password string) error
 
@@ -76,13 +75,13 @@ type CloudClientInterface interface {
 	GetPrivateLinkByName(ctx context.Context, connectionName string) (*PrivateLinkInfo, error)
 
 	// CreatePrivateLinkAwait creates the private link and waits for the creation to complete.
-	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
+	CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error)
 
 	// DeletePrivateLinkAwait deletes the private link and waits for the deletion to complete. it
 	// returns nil if the private link is deleted successfully or not found.
 	DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error
 
-	GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmt.ManagedCluster, error)
+	GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmtv2.ManagedCluster, error)
 }
 
 type CloudClient struct {
@@ -125,7 +124,7 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVe
 
 	regionMap := make(map[string]RegionServiceClientInterface)
 	for _, region := range regions {
-		rs, err := createRegionServiceClient(region.Url, requestEditor)
+		rs, err := createRegionServiceClient(region.Url, region.UrlV2, requestEditor)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get region service client")
 		}
@@ -140,13 +139,20 @@ func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVe
 	}, nil
 }
 
-func createRegionServiceClient(url string, reqEditor func(ctx context.Context, req *http.Request) error) (RegionServiceClientInterface, error) {
-	mgmtClient, err := apigen_mgmt.NewClientWithResponses(url, apigen_mgmt.WithRequestEditorFn(reqEditor))
+func createRegionServiceClient(urlV1, urlV2 string, reqEditor func(ctx context.Context, req *http.Request) error) (RegionServiceClientInterface, error) {
+	mgmtV1Client, err := apigen_mgmtv1.NewClientWithResponses(urlV1, apigen_mgmtv1.WithRequestEditorFn(reqEditor))
 	if err != nil {
 		return nil, err
 	}
+
+	mgmtV2Client, err := apigen_mgmtv2.NewClientWithResponses(urlV2, apigen_mgmtv2.WithRequestEditorFn(reqEditor))
+	if err != nil {
+		return nil, err
+	}
+
 	return &RegionServiceClient{
-		mgmtClient,
+		mgmtV1Client: mgmtV1Client,
+		mgmtV2Client: mgmtV2Client,
 	}, nil
 }
 
@@ -181,22 +187,13 @@ func (c *CloudClient) getClusterInfoAndRegionClient(ctx context.Context, nsID uu
 	return cluster, rs, nil
 }
 
-func (c *CloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error) {
+func (c *CloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.Tenant, error) {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, nsID)
 	if err != nil {
 		return nil, err
 	}
 
-	return rs.GetClusterByID(ctx, info.Id)
-}
-
-func (c *CloudClient) IsTenantNameExist(ctx context.Context, region string, tenantName string) (bool, error) {
-	rs, err := c.getRegionClient(region)
-	if err != nil {
-		return false, err
-	}
-
-	return rs.IsTenantNameExist(ctx, tenantName)
+	return rs.GetClusterByNsID(ctx, info.NsId)
 }
 
 func (c *CloudClient) Ping(ctx context.Context) error {
@@ -213,7 +210,7 @@ func (c *CloudClient) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (c *CloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
+func (c *CloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmtv2.TenantRequestRequestBody) (*apigen_mgmtv2.Tenant, error) {
 	rs, err := c.getRegionClient(region)
 	if err != nil {
 		return nil, err
@@ -222,7 +219,7 @@ func (c *CloudClient) CreateClusterAwait(ctx context.Context, region string, req
 	return rs.CreateClusterAwait(ctx, req)
 }
 
-func (c *CloudClient) GetTiers(ctx context.Context, region string) ([]apigen_mgmt.Tier, error) {
+func (c *CloudClient) GetTiers(ctx context.Context, region string) ([]apigen_mgmtv1.Tier, error) {
 	rs, err := c.getRegionClient(region)
 	if err != nil {
 		return nil, err
@@ -231,7 +228,7 @@ func (c *CloudClient) GetTiers(ctx context.Context, region string) ([]apigen_mgm
 	return rs.GetTiers(ctx)
 }
 
-func (c *CloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
+func (c *CloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmtv1.TierId, component string) ([]apigen_mgmtv1.AvailableComponentType, error) {
 	rs, err := c.getRegionClient(region)
 	if err != nil {
 		return nil, err
@@ -246,7 +243,7 @@ func (c *CloudClient) DeleteClusterByNsIDAwait(ctx context.Context, nsID uuid.UU
 		return err
 	}
 
-	return rs.DeleteClusterAwait(ctx, info.Id)
+	return rs.DeleteClusterAwait(ctx, info.NsId)
 }
 
 func (c *CloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uuid.UUID, version string) error {
@@ -255,16 +252,16 @@ func (c *CloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uu
 		return err
 	}
 
-	return rs.UpdateClusterImageAwait(ctx, info.Id, version)
+	return rs.UpdateClusterImageAwait(ctx, info.NsId, version)
 }
 
-func (c *CloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmt.PostTenantResourcesRequestBody) error {
+func (c *CloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostTenantResourcesRequestBody) error {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, nsID)
 	if err != nil {
 		return err
 	}
 
-	return rs.UpdateClusterResourcesAwait(ctx, info.Id, req)
+	return rs.UpdateClusterResourcesAwait(ctx, info.NsId, req)
 }
 
 func (c *CloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, rwConfig string) error {
@@ -273,15 +270,15 @@ func (c *CloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsI
 		return err
 	}
 
-	return rs.UpdateRisingWaveConfigAwait(ctx, info.Id, rwConfig)
+	return rs.UpdateRisingWaveConfigAwait(ctx, info.NsId, rwConfig)
 }
 
-func (c *CloudClient) GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error) {
+func (c *CloudClient) GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmtv2.DBUser, error) {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
 		return nil, err
 	}
-	users, err := rs.GetClusterUsers(ctx, info.Id)
+	users, err := rs.GetClusterUsers(ctx, info.NsId)
 	if err != nil {
 		if errors.Is(err, ErrClusterNotFound) {
 			return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s", clusterNsID.String())
@@ -296,13 +293,12 @@ func (c *CloudClient) GetClusterUser(ctx context.Context, clusterNsID uuid.UUID,
 	return nil, errors.Errorf("user %s not found in cluster %s", username, clusterNsID.String())
 }
 
-func (c *CloudClient) CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error) {
+func (c *CloudClient) CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmtv2.DBUser, error) {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
 		return nil, err
 	}
-	u, err := rs.CreateCluserUser(ctx, apigen_mgmt.CreateDBUserRequestBody{
-		TenantId:  info.Id,
+	u, err := rs.CreateCluserUser(ctx, info.NsId, apigen_mgmtv2.CreateDBUserRequestBody{
 		Username:  username,
 		Password:  password,
 		Createdb:  createDB,
@@ -322,7 +318,7 @@ func (c *CloudClient) UpdateClusterUserPassword(ctx context.Context, clusterNsID
 	if err != nil {
 		return err
 	}
-	return rs.UpdateClusterUserPassword(ctx, info.Id, username, password)
+	return rs.UpdateClusterUserPassword(ctx, info.NsId, username, password)
 }
 
 func (c *CloudClient) DeleteClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) error {
@@ -330,12 +326,12 @@ func (c *CloudClient) DeleteClusterUser(ctx context.Context, clusterNsID uuid.UU
 	if err != nil {
 		return err
 	}
-	return rs.DeleteClusterUser(ctx, info.Id, username)
+	return rs.DeleteClusterUser(ctx, info.NsId, username)
 }
 
 type PrivateLinkInfo struct {
 	ClusterNsID uuid.UUID
-	PrivateLink *apigen_mgmt.PrivateLink
+	PrivateLink *apigen_mgmtv2.PrivateLink
 }
 
 func (c *CloudClient) GetPrivateLinks(ctx context.Context) ([]PrivateLinkInfo, error) {
@@ -369,11 +365,11 @@ func (c *CloudClient) GetPrivateLinks(ctx context.Context) ([]PrivateLinkInfo, e
 		if err != nil {
 			return nil, err
 		}
-		pl, err := rs.GetPrivateLink(ctx, accpl.TenantId, accpl.Id)
+		pl, err := rs.GetPrivateLink(ctx, accpl.TenantNsId, accpl.Id)
 		if err != nil {
 			return nil, err
 		}
-		cluster, err := rs.GetClusterByID(ctx, accpl.TenantId)
+		cluster, err := rs.GetClusterByNsID(ctx, accpl.TenantNsId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get cluster through id %d provided by private link with ID %s", accpl.TenantId, pl.Id.String())
 		}
@@ -386,7 +382,6 @@ func (c *CloudClient) GetPrivateLinks(ctx context.Context) ([]PrivateLinkInfo, e
 }
 
 func (c *CloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*PrivateLinkInfo, error) {
-
 	pls, err := c.GetPrivateLinks(ctx)
 	if err != nil {
 		return nil, err
@@ -400,12 +395,12 @@ func (c *CloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUI
 	return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link %s", privateLinkID.String())
 }
 
-func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error) {
+func (c *CloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PostPrivateLinkRequestBody) (*PrivateLinkInfo, error) {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
 		return nil, err
 	}
-	pl, err := rs.CreatePrivateLinkAwait(ctx, info.Id, req)
+	pl, err := rs.CreatePrivateLinkAwait(ctx, info.NsId, req)
 	if err != nil {
 		return nil, err
 	}
@@ -420,15 +415,21 @@ func (c *CloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterNsID uu
 	if err != nil {
 		return err
 	}
-	return rs.DeletePrivateLinkAwait(ctx, info.Id, privateLinkID)
+	return rs.DeletePrivateLinkAwait(ctx, info.NsId, privateLinkID)
 }
 
-func (c *CloudClient) GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error) {
+func (c *CloudClient) GetClusterByRegionAndName(ctx context.Context, region string, name string) (*apigen_mgmtv2.Tenant, error) {
 	rs, err := c.getRegionClient(region)
 	if err != nil {
 		return nil, err
 	}
-	return rs.GetClusterByName(ctx, name)
+
+	tenantV1, err := rs.GetClusterByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return rs.GetClusterByNsID(ctx, tenantV1.NsId)
 }
 
 func (c *CloudClient) GetPrivateLinkByName(ctx context.Context, connectionName string) (*PrivateLinkInfo, error) {
@@ -444,7 +445,7 @@ func (c *CloudClient) GetPrivateLinkByName(ctx context.Context, connectionName s
 	return nil, errors.Wrapf(ErrPrivateLinkNotFound, "private link %s", connectionName)
 }
 
-func (c *CloudClient) GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmt.ManagedCluster, error) {
+func (c *CloudClient) GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmtv2.ManagedCluster, error) {
 	rs, err := c.getRegionClient(region)
 	if err != nil {
 		return nil, err
