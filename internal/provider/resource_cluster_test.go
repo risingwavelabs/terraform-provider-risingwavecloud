@@ -52,18 +52,6 @@ func createSimpleTestCluster(t *testing.T, name, region, imageTag string, tier a
 					Replica:         1,
 				},
 			},
-			MetaStore: &apigen_mgmt.TenantResourceMetaStore{
-				Type: apigen_mgmt.Etcd,
-				Etcd: &apigen_mgmt.MetaStoreEtcd{
-					Resource: apigen_mgmt.ComponentResource{
-						ComponentTypeId: "p-1c4g",
-						Cpu:             "1",
-						Memory:          "4 GB",
-						Replica:         1,
-					},
-					SizeGb: 10,
-				},
-			},
 		},
 	}
 }

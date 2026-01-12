@@ -53,8 +53,6 @@ type CloudClientInterface interface {
 
 	UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, rwConfig string) error
 
-	UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error
-
 	GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error)
 
 	/* Cluster User */
@@ -276,15 +274,6 @@ func (c *CloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Context, nsI
 	}
 
 	return rs.UpdateRisingWaveConfigAwait(ctx, info.Id, rwConfig)
-}
-
-func (c *CloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error {
-	info, rs, err := c.getClusterInfoAndRegionClient(ctx, nsID)
-	if err != nil {
-		return err
-	}
-
-	return rs.UpdateEtcdConfigAwait(ctx, info.Id, etcdConfig)
 }
 
 func (c *CloudClient) GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error) {

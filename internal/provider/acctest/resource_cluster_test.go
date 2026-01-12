@@ -61,7 +61,6 @@ func initCloudSDK(t *testing.T) cloudsdk.CloudClientInterface {
 }
 
 func TestClusterResource_Standard(t *testing.T) {
-
 	clusterName := fmt.Sprintf("tf%sacc", getTestNamespace(t))
 	fmt.Println(clusterName)
 	cloud := initCloudSDK(t)
@@ -108,7 +107,7 @@ func TestClusterResource_Standard(t *testing.T) {
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", newVersion),
 				),
 			},
-			// Update and Read: compactor replica, risingwave_config, etcd_config
+			// Update and Read: compactor replica, risingwave_config
 			{
 				Config: testClusterResourceUpdateConfig(clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -205,13 +204,6 @@ resource "risingwavecloud_cluster" "test" {
 				memory  = "4 GB"
 				replica = 1
 			}
-			etcd_meta_store = {
-				default_node_group = {
-					cpu     = "1"
-					memory  = "4 GB"
-					replica = 1
-				}
-			}
 		}
 	}
 }
@@ -258,7 +250,7 @@ resource "risingwavecloud_cluster" "test" {
 `, name, newVersion)
 }
 
-// update: compactor replica 1 -> 2, etcd_config, risingwave_config
+// update: compactor replica 1 -> 2, risingwave_config
 func testClusterResourceUpdateConfig(name string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {

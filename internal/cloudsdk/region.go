@@ -27,7 +27,6 @@ const (
 	ComponentCompactor  = "compactor"
 	ComponentFrontend   = "frontend"
 	ComponentMeta       = "meta"
-	ComponentEtcd       = "etcd"
 	ComponentPostgresql = "postgresql"
 )
 
@@ -73,8 +72,6 @@ type RegionServiceClientInterface interface {
 	GetAvailableComponentTypes(ctx context.Context, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error)
 
 	UpdateRisingWaveConfigAwait(ctx context.Context, id uint64, rwConfig string) error
-
-	UpdateEtcdConfigAwait(ctx context.Context, id uint64, etcdConfig string) error
 
 	GetClusterUsers(ctx context.Context, id uint64) ([]apigen_mgmt.DBUser, error)
 
@@ -316,8 +313,6 @@ func (c *RegionServiceClient) GetAvailableComponentTypes(ctx context.Context, ta
 		return tier.AvailableFrontendNodes, nil
 	case ComponentMeta:
 		return tier.AvailableMetaNodes, nil
-	case ComponentEtcd:
-		return tier.AvailableMetaStore.Etcd.Nodes, nil
 	case ComponentPostgresql:
 		return tier.AvailableMetaStore.Postgresql.Nodes, nil
 	}
@@ -330,23 +325,6 @@ func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, i
 		return errors.Wrap(err, "failed to get cluster info")
 	}
 	res, err := c.mgmtClient.PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx, cluster.Id, "text/plain", strings.NewReader(rwConfig))
-	if err != nil {
-		return errors.Wrap(err, "failed to call API to update cluster config")
-	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
-		return err
-	}
-
-	// wait for the tenant to be ready
-	return c.waitClusterHealthy(ctx, id)
-}
-
-func (c *RegionServiceClient) UpdateEtcdConfigAwait(ctx context.Context, id uint64, etcdConfig string) error {
-	cluster, err := c.GetClusterByID(ctx, id)
-	if err != nil {
-		return errors.Wrap(err, "failed to get cluster info")
-	}
-	res, err := c.mgmtClient.PutTenantTenantIdConfigEtcdWithBodyWithResponse(ctx, cluster.Id, "text/plain", strings.NewReader(etcdConfig))
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to update cluster config")
 	}

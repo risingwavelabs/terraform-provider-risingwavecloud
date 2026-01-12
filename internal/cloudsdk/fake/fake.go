@@ -15,7 +15,6 @@ import (
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
-	"golang.org/x/mod/semver"
 )
 
 func UseFakeBackend() bool {
@@ -100,7 +99,6 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 		ImageTag:    *req.ImageTag,
 		Region:      region,
 		RwConfig:    *req.RwConfig,
-		EtcdConfig:  *req.EtcdConfig,
 		Resources:   reqResouceToClusterResource(req.Resources),
 		NsId:        uuid.New(),
 		Tier:        *req.Tier,
@@ -128,10 +126,6 @@ var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
 }
 
 var availableMetaStore = &apigen_mgmt.AvailableMetaStore{
-	Etcd: &apigen_mgmt.AvailableMetaStoreEtcd{
-		Nodes:          availableComponentTypes,
-		MaximumSizeGiB: 20,
-	},
 	Postgresql: &apigen_mgmt.AvailableMetaStorePostgreSql{
 		MaximumSizeGiB: 20,
 		Nodes:          availableComponentTypes,
@@ -206,8 +200,6 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 		return tier.AvailableFrontendNodes, nil
 	case cloudsdk.ComponentMeta:
 		return tier.AvailableMetaNodes, nil
-	case cloudsdk.ComponentEtcd:
-		return tier.AvailableMetaStore.Etcd.Nodes, nil
 	}
 	return nil, errors.Errorf("component %s not found", component)
 }
@@ -236,18 +228,6 @@ func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, n
 	}
 	cluster.GetTenant().ImageTag = version
 	r := state.GetRegionState(cluster.GetTenant().Region)
-
-	if semver.Compare(cluster.GetTenant().ImageTag, "v2.1.0") >= 0 {
-		resource := cluster.GetTenant().Resources
-		resource.MetaStore.Etcd = nil
-		resource.MetaStore.Type = apigen_mgmt.AwsRds
-		resource.MetaStore.AwsRds = &apigen_mgmt.MetaStoreAwsRds{
-			InstanceClass: "db.t3.micro",
-			SizeGb:        10,
-		}
-		// resource.MetaStore.Type = apigen_mgmt.SharingPg
-		cluster.GetTenant().Resources = resource
-	}
 
 	r.ReplaceCluster(nsID, cluster)
 	return nil
@@ -278,19 +258,6 @@ func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Contex
 		return err
 	}
 	cluster.GetTenant().RwConfig = rwConfig
-	r := state.GetRegionState(cluster.GetTenant().Region)
-	r.ReplaceCluster(nsID, cluster)
-	return nil
-}
-
-func (acc *FakeCloudClient) UpdateEtcdConfigByNsIDAwait(ctx context.Context, nsID uuid.UUID, etcdConfig string) error {
-	debugFuncCaller()
-
-	cluster, err := state.GetClusterByNsID(nsID)
-	if err != nil {
-		return err
-	}
-	cluster.GetTenant().EtcdConfig = etcdConfig
 	r := state.GetRegionState(cluster.GetTenant().Region)
 	r.ReplaceCluster(nsID, cluster)
 	return nil
@@ -365,31 +332,7 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 		},
 	}
 
-	if reqResource.MetaStore != nil && reqResource.MetaStore.Type == apigen_mgmt.Etcd {
-		ret.MetaStore = &apigen_mgmt.TenantResourceMetaStore{
-			Type: reqResource.MetaStore.Type,
-			Etcd: etcdRequestToResource(reqResource.MetaStore.Etcd),
-		}
-	}
-
 	return ret
-}
-
-func etcdRequestToResource(req *apigen_mgmt.TenantResourceRequestMetaStoreEtcd) *apigen_mgmt.MetaStoreEtcd {
-	for _, c := range availableComponentTypes {
-		if c.Id == req.ComponentTypeId {
-			return &apigen_mgmt.MetaStoreEtcd{
-				Resource: apigen_mgmt.ComponentResource{
-					ComponentTypeId: req.ComponentTypeId,
-					Cpu:             c.Cpu,
-					Memory:          c.Memory,
-					Replica:         req.Replica,
-				},
-				SizeGb: req.SizeGb,
-			}
-		}
-	}
-	return nil
 }
 
 func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_mgmt.ComponentResource {

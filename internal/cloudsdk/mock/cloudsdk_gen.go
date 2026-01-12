@@ -330,20 +330,6 @@ func (mr *MockCloudClientInterfaceMockRecorder) UpdateClusterUserPassword(arg0, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateClusterUserPassword", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateClusterUserPassword), arg0, arg1, arg2, arg3)
 }
 
-// UpdateEtcdConfigByNsIDAwait mocks base method.
-func (m *MockCloudClientInterface) UpdateEtcdConfigByNsIDAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateEtcdConfigByNsIDAwait", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateEtcdConfigByNsIDAwait indicates an expected call of UpdateEtcdConfigByNsIDAwait.
-func (mr *MockCloudClientInterfaceMockRecorder) UpdateEtcdConfigByNsIDAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEtcdConfigByNsIDAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateEtcdConfigByNsIDAwait), arg0, arg1, arg2)
-}
-
 // UpdateRisingWaveConfigByNsIDAwait mocks base method.
 func (m *MockCloudClientInterface) UpdateRisingWaveConfigByNsIDAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
 	m.ctrl.T.Helper()
