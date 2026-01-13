@@ -507,8 +507,6 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	cluster.ImageTag = data.Version.ValueString()
 	cluster.Tier = apigen_mgmt.TierId(data.Tier.ValueString())
 
-	fmt.Println(spec.RisingWaveConfig.ValueString())
-	fmt.Println(spec)
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
 
