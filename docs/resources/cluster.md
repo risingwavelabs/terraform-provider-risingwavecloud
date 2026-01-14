@@ -218,14 +218,6 @@ Required:
 
 - `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--default_node_group))
 
-Optional:
-
-- `etcd_meta_store` (Attributes) The etcd meta store is no longer supported in new RisingWave versions, this field is kept for compatibility, please remove it if your RisingWave version is above v2.1.0 (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store))
-
-Read-Only:
-
-- `meta_store` (Attributes) The information of the meta store of the cluster (see [below for nested schema](#nestedatt--spec--meta--meta_store))
-
 <a id="nestedatt--spec--meta--default_node_group"></a>
 ### Nested Schema for `spec.meta.default_node_group`
 
@@ -237,96 +229,6 @@ Required:
 Optional:
 
 - `replica` (Number) The number of nodes
-
-
-<a id="nestedatt--spec--meta--etcd_meta_store"></a>
-### Nested Schema for `spec.meta.etcd_meta_store`
-
-Required:
-
-- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--etcd_meta_store--default_node_group))
-
-Optional:
-
-- `etcd_config` (String) The environment variable list of the etcd configuration
-
-<a id="nestedatt--spec--meta--etcd_meta_store--default_node_group"></a>
-### Nested Schema for `spec.meta.etcd_meta_store.default_node_group`
-
-Required:
-
-- `cpu` (String) The CPU of the node
-- `memory` (String) The memory size in of the node
-
-Optional:
-
-- `replica` (Number) The number of nodes
-
-
-
-<a id="nestedatt--spec--meta--meta_store"></a>
-### Nested Schema for `spec.meta.meta_store`
-
-Optional:
-
-- `aws_rds` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--meta_store--aws_rds))
-- `azr_postgres` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--meta_store--azr_postgres))
-- `gcp_cloudsql` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--meta_store--gcp_cloudsql))
-- `postgresql` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--meta_store--postgresql))
-- `sharing_pg` (Attributes) (see [below for nested schema](#nestedatt--spec--meta--meta_store--sharing_pg))
-
-<a id="nestedatt--spec--meta--meta_store--aws_rds"></a>
-### Nested Schema for `spec.meta.meta_store.aws_rds`
-
-Required:
-
-- `instance_class` (String) The instance class of the AWS RDS instance
-- `size_gb` (Number) The size of the AWS RDS instance
-
-
-<a id="nestedatt--spec--meta--meta_store--azr_postgres"></a>
-### Nested Schema for `spec.meta.meta_store.azr_postgres`
-
-Required:
-
-- `size_gb` (Number) The size of the Azure PostgreSQL instance
-- `sku` (String) The SKU of the Azure PostgreSQL instance
-
-
-<a id="nestedatt--spec--meta--meta_store--gcp_cloudsql"></a>
-### Nested Schema for `spec.meta.meta_store.gcp_cloudsql`
-
-Required:
-
-- `size_gb` (Number) The size of the GCP CloudSQL instance
-- `tier` (String) The tier of the GCP CloudSQL instance
-
-
-<a id="nestedatt--spec--meta--meta_store--postgresql"></a>
-### Nested Schema for `spec.meta.meta_store.postgresql`
-
-Required:
-
-- `resource` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--meta--meta_store--postgresql--resource))
-- `size_gb` (Number) The size of the PostgreSQL instance
-
-<a id="nestedatt--spec--meta--meta_store--postgresql--resource"></a>
-### Nested Schema for `spec.meta.meta_store.postgresql.resource`
-
-Required:
-
-- `cpu` (String) The CPU of the node
-- `memory` (String) The memory size in of the node
-
-Optional:
-
-- `replica` (Number) The number of nodes
-
-
-
-<a id="nestedatt--spec--meta--meta_store--sharing_pg"></a>
-### Nested Schema for `spec.meta.meta_store.sharing_pg`
-
 
 
 
