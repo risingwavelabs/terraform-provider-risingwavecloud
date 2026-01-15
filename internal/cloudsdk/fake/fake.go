@@ -13,7 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_mgmtv1 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 )
 
@@ -50,7 +51,7 @@ func (acc *FakeCloudClient) Ping(context.Context) error {
 	return nil
 }
 
-func (acc *FakeCloudClient) GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmt.Tenant, error) {
+func (acc *FakeCloudClient) GetClusterByRegionAndName(ctx context.Context, region, name string) (*apigen_mgmtv2.Tenant, error) {
 	debugFuncCaller()
 
 	r := state.GetRegionState(region)
@@ -62,7 +63,7 @@ func (acc *FakeCloudClient) GetClusterByRegionAndName(ctx context.Context, regio
 	return nil, errors.Wrapf(cloudsdk.ErrClusterNotFound, "cluster %s not found", name)
 }
 
-func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmt.Tenant, error) {
+func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.Tenant, error) {
 	debugFuncCaller()
 
 	cluster, err := state.GetClusterByNsID(nsID)
@@ -72,19 +73,7 @@ func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID
 	return cluster.tenant, nil
 }
 
-func (acc *FakeCloudClient) IsTenantNameExist(ctx context.Context, region string, tenantName string) (bool, error) {
-	debugFuncCaller()
-
-	r := state.GetRegionState(region)
-	for _, c := range r.GetClusters() {
-		if c.GetTenant().TenantName == tenantName {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmt.TenantRequestRequestBody) (*apigen_mgmt.Tenant, error) {
+func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmtv2.TenantRequestRequestBody) (*apigen_mgmtv2.Tenant, error) {
 	debugFuncCaller()
 
 	clusterName := req.ClusterName
@@ -93,7 +82,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 	}
 
 	r := state.GetRegionState(region)
-	t := &apigen_mgmt.Tenant{
+	t := &apigen_mgmtv2.Tenant{
 		Id:          uint64(len(r.GetClusters()) + 1),
 		TenantName:  req.TenantName,
 		ImageTag:    *req.ImageTag,
@@ -102,7 +91,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 		Resources:   reqResouceToClusterResource(req.Resources),
 		NsId:        uuid.New(),
 		Tier:        *req.Tier,
-		ClusterName: clusterName,
+		ClusterName: *clusterName,
 	}
 
 	cluster := NewClusterState(t)
@@ -110,7 +99,7 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 	return t, nil
 }
 
-var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
+var availableComponentTypes = []apigen_mgmtv1.AvailableComponentType{
 	{
 		Id:      "p-1c4g",
 		Cpu:     "1",
@@ -125,29 +114,29 @@ var availableComponentTypes = []apigen_mgmt.AvailableComponentType{
 	},
 }
 
-var availableMetaStore = &apigen_mgmt.AvailableMetaStore{
-	Postgresql: &apigen_mgmt.AvailableMetaStorePostgreSql{
+var availableMetaStore = &apigen_mgmtv1.AvailableMetaStore{
+	Postgresql: &apigen_mgmtv1.AvailableMetaStorePostgreSql{
 		MaximumSizeGiB: 20,
 		Nodes:          availableComponentTypes,
 	},
-	SharingPg: &apigen_mgmt.AvailableMetaStoreSharingPg{
+	SharingPg: &apigen_mgmtv1.AvailableMetaStoreSharingPg{
 		Enabled: ptr.Ptr(true),
 	},
-	AwsRds: &apigen_mgmt.AvailableMetaStoreAwsRds{
+	AwsRds: &apigen_mgmtv1.AvailableMetaStoreAwsRds{
 		Enabled: ptr.Ptr(true),
 	},
-	AzrPostgres: &apigen_mgmt.AvailableMetaStoreAzrPostgres{
+	AzrPostgres: &apigen_mgmtv1.AvailableMetaStoreAzrPostgres{
 		Enabled: ptr.Ptr(true),
 	},
-	GcpCloudsql: &apigen_mgmt.AvailableMetaStoreGcpCloudSql{
+	GcpCloudsql: &apigen_mgmtv1.AvailableMetaStoreGcpCloudSql{
 		Enabled: ptr.Ptr(true),
 	},
 }
 
-func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmt.Tier, error) {
-	return []apigen_mgmt.Tier{
+func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmtv1.Tier, error) {
+	return []apigen_mgmtv1.Tier{
 		{
-			Id:                      ptr.Ptr(apigen_mgmt.Standard),
+			Id:                      ptr.Ptr(apigen_mgmtv1.Standard),
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
@@ -155,7 +144,7 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 			AvailableMetaStore:      availableMetaStore,
 		},
 		{
-			Id:                      ptr.Ptr(apigen_mgmt.BYOC),
+			Id:                      ptr.Ptr(apigen_mgmtv1.BYOC),
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
@@ -163,7 +152,7 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 			AvailableMetaStore:      availableMetaStore,
 		},
 		{
-			Id:                      ptr.Ptr(apigen_mgmt.Invited),
+			Id:                      ptr.Ptr(apigen_mgmtv1.Invited),
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
@@ -173,12 +162,12 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 	}, nil
 }
 
-func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmt.TierId, component string) ([]apigen_mgmt.AvailableComponentType, error) {
+func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, region string, targetTier apigen_mgmtv1.TierId, component string) ([]apigen_mgmtv1.AvailableComponentType, error) {
 	tiers, err := acc.GetTiers(ctx, region)
 	if err != nil {
 		return nil, err
 	}
-	var tier *apigen_mgmt.Tier
+	var tier *apigen_mgmtv1.Tier
 	for _, t := range tiers {
 		if t.Id == nil {
 			continue
@@ -233,7 +222,7 @@ func (acc *FakeCloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, n
 	return nil
 }
 
-func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmt.PostTenantResourcesRequestBody) error {
+func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostTenantResourcesRequestBody) error {
 	debugFuncCaller()
 
 	cluster, err := state.GetClusterByNsID(nsID)
@@ -263,7 +252,7 @@ func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Contex
 	return nil
 }
 
-func (acc *FakeCloudClient) GetClusterUser(ctx context.Context, nsID uuid.UUID, username string) (*apigen_mgmt.DBUser, error) {
+func (acc *FakeCloudClient) GetClusterUser(ctx context.Context, nsID uuid.UUID, username string) (*apigen_mgmtv2.DBUser, error) {
 	debugFuncCaller()
 
 	c, err := state.GetClusterByNsID(nsID)
@@ -274,7 +263,7 @@ func (acc *FakeCloudClient) GetClusterUser(ctx context.Context, nsID uuid.UUID, 
 	return c.GetClusterUser(username)
 }
 
-func (acc *FakeCloudClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmt.DBUser, error) {
+func (acc *FakeCloudClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmtv2.DBUser, error) {
 	debugFuncCaller()
 
 	c, err := state.GetClusterByNsID(nsID)
@@ -282,7 +271,7 @@ func (acc *FakeCloudClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID
 		return nil, err
 	}
 
-	dbuser := &apigen_mgmt.DBUser{
+	dbuser := &apigen_mgmtv2.DBUser{
 		Usecreatedb: createDB,
 		Username:    username,
 		Usesysid:    uint64((time.Now().Unix() << 10) + int64(rand.Int31n(1024))),
@@ -319,15 +308,15 @@ func (acc *FakeCloudClient) DeleteClusterUser(ctx context.Context, nsID uuid.UUI
 	return nil
 }
 
-func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest) apigen_mgmt.TenantResource {
-	ret := apigen_mgmt.TenantResource{
-		Components: apigen_mgmt.TenantResourceComponents{
+func reqResouceToClusterResource(reqResource *apigen_mgmtv2.TenantResourceRequest) apigen_mgmtv2.TenantResource {
+	ret := apigen_mgmtv2.TenantResource{
+		Components: apigen_mgmtv2.TenantResourceComponents{
 			Compute:   componentReqToComponent(reqResource.Components.Compute),
 			Compactor: componentReqToComponent(reqResource.Components.Compactor),
 			Frontend:  componentReqToComponent(reqResource.Components.Frontend),
 			Meta:      componentReqToComponent(reqResource.Components.Meta),
 		},
-		ComputeCache: apigen_mgmt.TenantResourceComputeCache{
+		ComputeCache: apigen_mgmtv2.TenantResourceComputeCache{
 			SizeGb: reqResource.ComputeFileCacheSizeGiB,
 		},
 	}
@@ -335,10 +324,10 @@ func reqResouceToClusterResource(reqResource *apigen_mgmt.TenantResourceRequest)
 	return ret
 }
 
-func componentReqToComponent(req *apigen_mgmt.ComponentResourceRequest) *apigen_mgmt.ComponentResource {
+func componentReqToComponent(req *apigen_mgmtv2.ComponentResourceRequest) *apigen_mgmtv2.ComponentResource {
 	for _, c := range availableComponentTypes {
 		if c.Id == req.ComponentTypeId {
-			return &apigen_mgmt.ComponentResource{
+			return &apigen_mgmtv2.ComponentResource{
 				ComponentTypeId: req.ComponentTypeId,
 				Replica:         req.Replica,
 				Cpu:             c.Cpu,
@@ -384,7 +373,7 @@ func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, privateLinkID uu
 	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", privateLinkID)
 }
 
-func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmt.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
+func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
 	debugFuncCaller()
 
 	c, err := state.GetClusterByNsID(clusterNsID)
@@ -392,13 +381,13 @@ func (acc *FakeCloudClient) CreatePrivateLinkAwait(ctx context.Context, clusterN
 		return nil, err
 	}
 
-	pl := &apigen_mgmt.PrivateLink{
+	pl := &apigen_mgmtv2.PrivateLink{
 		Id:              uuid.New(),
 		ConnectionName:  req.ConnectionName,
 		Target:          &req.Target,
 		Endpoint:        ptr.Ptr("vpce-fakestatetest"),
-		Status:          apigen_mgmt.CREATED,
-		ConnectionState: apigen_mgmt.ACCEPTED,
+		Status:          apigen_mgmtv2.CREATED,
+		ConnectionState: apigen_mgmtv2.ACCEPTED,
 		TenantId:        int64(c.GetTenant().Id),
 	}
 
@@ -442,10 +431,10 @@ func (acc *FakeCloudClient) GetPrivateLinkByName(ctx context.Context, connection
 	return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "private link %s not found", connectionName)
 }
 
-func (acc *FakeCloudClient) GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmt.ManagedCluster, error) {
+func (acc *FakeCloudClient) GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmtv2.ManagedCluster, error) {
 	debugFuncCaller()
 
-	return &apigen_mgmt.ManagedCluster{
+	return &apigen_mgmtv2.ManagedCluster{
 		Id:   101,
 		Name: name,
 		Settings: map[string]string{

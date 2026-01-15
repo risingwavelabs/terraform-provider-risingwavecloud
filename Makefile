@@ -31,9 +31,10 @@ prune-spec:
 	@rm -f $(APIGEN_DIR)/**/*_gen.go
 
 gen-spec: install-oapi-codegen prune-spec
-	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/mgmt/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v1/mgmt.yaml
-	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/acc/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v1/acc.yaml
-
+	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/mgmt/v1/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v1/mgmt.yaml
+	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/acc/v1/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v1/acc.yaml
+	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/mgmt/v2/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v2/mgmt.yaml
+	$(OAPI_CODEGEN_BIN) -generate types,client -o $(APIGEN_DIR)/acc/v2/spec_gen.go -package apigen $(PROJECT_DIR)/risingwave-cloud-openapi/v2/acc.yaml
 
 
 ############################################################

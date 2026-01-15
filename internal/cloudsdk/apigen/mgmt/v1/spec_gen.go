@@ -72,37 +72,46 @@ const (
 
 // Defines values for TenantStatus.
 const (
-	TenantStatusConfigUpdating                       TenantStatus = "ConfigUpdating"
-	TenantStatusCreating                             TenantStatus = "Creating"
-	TenantStatusDeleting                             TenantStatus = "Deleting"
-	TenantStatusExpired                              TenantStatus = "Expired"
-	TenantStatusExtensionCompactionDisabling         TenantStatus = "ExtensionCompactionDisabling"
-	TenantStatusExtensionCompactionEnabling          TenantStatus = "ExtensionCompactionEnabling"
-	TenantStatusExtensionServerlessBackfillDisabling TenantStatus = "ExtensionServerlessBackfillDisabling"
-	TenantStatusExtensionServerlessBackfillEnabling  TenantStatus = "ExtensionServerlessBackfillEnabling"
-	TenantStatusExtensionServerlessBackfillUpdate    TenantStatus = "ExtensionServerlessBackfillUpdate"
-	TenantStatusFailed                               TenantStatus = "Failed"
-	TenantStatusMetaMigrating                        TenantStatus = "MetaMigrating"
-	TenantStatusRunning                              TenantStatus = "Running"
-	TenantStatusSnapshotting                         TenantStatus = "Snapshotting"
-	TenantStatusStarting                             TenantStatus = "Starting"
-	TenantStatusStopped                              TenantStatus = "Stopped"
-	TenantStatusStopping                             TenantStatus = "Stopping"
-	TenantStatusUpdating                             TenantStatus = "Updating"
-	TenantStatusUpgrading                            TenantStatus = "Upgrading"
+	TenantStatusConfigUpdating         TenantStatus = "ConfigUpdating"
+	TenantStatusCreating               TenantStatus = "Creating"
+	TenantStatusDeleting               TenantStatus = "Deleting"
+	TenantStatusExpired                TenantStatus = "Expired"
+	TenantStatusExtensionDisabling     TenantStatus = "ExtensionDisabling"
+	TenantStatusExtensionEnabling      TenantStatus = "ExtensionEnabling"
+	TenantStatusExtensionUpdating      TenantStatus = "ExtensionUpdating"
+	TenantStatusFailed                 TenantStatus = "Failed"
+	TenantStatusMetaMigrating          TenantStatus = "MetaMigrating"
+	TenantStatusQuiesced               TenantStatus = "Quiesced"
+	TenantStatusResourceGroupsUpdating TenantStatus = "ResourceGroupsUpdating"
+	TenantStatusRestoring              TenantStatus = "Restoring"
+	TenantStatusRunning                TenantStatus = "Running"
+	TenantStatusSnapshotting           TenantStatus = "Snapshotting"
+	TenantStatusStarting               TenantStatus = "Starting"
+	TenantStatusStopped                TenantStatus = "Stopped"
+	TenantStatusStopping               TenantStatus = "Stopping"
+	TenantStatusUpdating               TenantStatus = "Updating"
+	TenantStatusUpgrading              TenantStatus = "Upgrading"
+)
+
+// Defines values for TenantUsageType.
+const (
+	TenantUsageTypeGeneral  TenantUsageType = "general"
+	TenantUsageTypePipeline TenantUsageType = "pipeline"
+)
+
+// Defines values for TenantRequestRequestBodyUsageType.
+const (
+	TenantRequestRequestBodyUsageTypeGeneral  TenantRequestRequestBodyUsageType = "general"
+	TenantRequestRequestBodyUsageTypePipeline TenantRequestRequestBodyUsageType = "pipeline"
 )
 
 // Defines values for TierId.
 const (
-	BYOC           TierId = "BYOC"
-	Benchmark      TierId = "Benchmark"
-	DeveloperBasic TierId = "Developer-Basic"
-	DeveloperFree  TierId = "Developer-Free"
-	DeveloperTest  TierId = "Developer-Test"
-	Free           TierId = "Free"
-	Invited        TierId = "Invited"
-	Standard       TierId = "Standard"
-	Test           TierId = "Test"
+	BYOC      TierId = "BYOC"
+	Benchmark TierId = "Benchmark"
+	Invited   TierId = "Invited"
+	Standard  TierId = "Standard"
+	Test      TierId = "Test"
 )
 
 // Defines values for QueryErrLogParamsTarget.
@@ -245,6 +254,28 @@ type GetImageTagResponse struct {
 	ImageTag string `json:"imageTag"`
 }
 
+// MaintenanceWindow defines model for MaintenanceWindow.
+type MaintenanceWindow struct {
+	DisableUntil          *time.Time            `json:"disableUntil"`
+	MaintenanceWindowTime MaintenanceWindowTime `json:"maintenanceWindowTime"`
+	ManualOnly            *bool                 `json:"manualOnly,omitempty"`
+}
+
+// MaintenanceWindowTime defines model for MaintenanceWindowTime.
+type MaintenanceWindowTime struct {
+	// Day Day of week (0=Sunday, 6=Saturday)
+	Day int `json:"day"`
+
+	// DurationMins Duration in minutes
+	DurationMins int `json:"durationMins"`
+
+	// Hour Hour in 24-hour format (0-23)
+	Hour int `json:"hour"`
+
+	// Minute Minute (0-59)
+	Minute int `json:"minute"`
+}
+
 // ManagedCluster defines model for ManagedCluster.
 type ManagedCluster struct {
 	ClusterServiceAccount string             `json:"cluster_service_account"`
@@ -347,23 +378,26 @@ type Size struct {
 
 // Tenant defines model for Tenant.
 type Tenant struct {
-	ClusterName    *string            `json:"clusterName,omitempty"`
-	CreatedAt      time.Time          `json:"createdAt"`
-	EtcdConfig     string             `json:"etcd_config"`
-	HealthStatus   TenantHealthStatus `json:"health_status"`
-	Id             uint64             `json:"id"`
-	ImageTag       string             `json:"imageTag"`
-	LatestImageTag string             `json:"latestImageTag"`
-	NsId           openapi_types.UUID `json:"nsId"`
-	OrgId          openapi_types.UUID `json:"orgId"`
-	Region         string             `json:"region"`
-	Resources      TenantResource     `json:"resources"`
-	RwConfig       string             `json:"rw_config"`
-	Status         TenantStatus       `json:"status"`
-	TenantName     string             `json:"tenantName"`
-	Tier           TierId             `json:"tier"`
-	UpdatedAt      time.Time          `json:"updatedAt"`
-	UserId         uint64             `json:"userId"`
+	ClusterId            uint64             `json:"clusterId"`
+	ClusterName          string             `json:"clusterName"`
+	CreatedAt            time.Time          `json:"createdAt"`
+	HealthStatus         TenantHealthStatus `json:"health_status"`
+	Id                   uint64             `json:"id"`
+	ImageTag             string             `json:"imageTag"`
+	LatestImageTag       string             `json:"latestImageTag"`
+	NsId                 openapi_types.UUID `json:"nsId"`
+	OrgId                openapi_types.UUID `json:"orgId"`
+	Region               string             `json:"region"`
+	ResourceNamespace    string             `json:"resourceNamespace"`
+	Resources            TenantResource     `json:"resources"`
+	RwConfig             string             `json:"rw_config"`
+	Status               TenantStatus       `json:"status"`
+	TenantName           string             `json:"tenantName"`
+	Tier                 TierId             `json:"tier"`
+	UpcomingSnapshotTime *time.Time         `json:"upcomingSnapshotTime,omitempty"`
+	UpdatedAt            time.Time          `json:"updatedAt"`
+	UsageType            TenantUsageType    `json:"usageType"`
+	UserId               uint64             `json:"userId"`
 }
 
 // TenantHealthStatus defines model for Tenant.HealthStatus.
@@ -372,37 +406,44 @@ type TenantHealthStatus string
 // TenantStatus defines model for Tenant.Status.
 type TenantStatus string
 
+// TenantUsageType defines model for Tenant.UsageType.
+type TenantUsageType string
+
 // TenantArray defines model for TenantArray.
 type TenantArray = []Tenant
 
 // TenantRequestRequestBody defines model for TenantRequestRequestBody.
 type TenantRequestRequestBody struct {
-	ClusterName *string                `json:"clusterName,omitempty"`
-	ConfigId    *openapi_types.UUID    `json:"configId,omitempty"`
-	EtcdConfig  *string                `json:"etcdConfig,omitempty"`
-	ImageTag    *string                `json:"imageTag,omitempty"`
-	Resources   *TenantResourceRequest `json:"resources,omitempty"`
+	ClusterName       *string                `json:"clusterName,omitempty"`
+	ConfigId          *openapi_types.UUID    `json:"configId,omitempty"`
+	EtcdConfig        *string                `json:"etcdConfig,omitempty"`
+	ImageTag          *string                `json:"imageTag,omitempty"`
+	MaintenanceWindow *MaintenanceWindow     `json:"maintenanceWindow,omitempty"`
+	Resources         *TenantResourceRequest `json:"resources,omitempty"`
 
 	// RwConfig if config ID is not provided, use this config. currently used in tf plugin
-	RwConfig   *string `json:"rwConfig,omitempty"`
-	Sku        *string `json:"sku,omitempty"`
-	TenantName string  `json:"tenantName"`
-	Tier       *TierId `json:"tier,omitempty"`
+	RwConfig   *string                            `json:"rwConfig,omitempty"`
+	Sku        *string                            `json:"sku,omitempty"`
+	TenantName string                             `json:"tenantName"`
+	Tier       *TierId                            `json:"tier,omitempty"`
+	UsageType  *TenantRequestRequestBodyUsageType `json:"usageType,omitempty"`
 }
+
+// TenantRequestRequestBodyUsageType defines model for TenantRequestRequestBody.UsageType.
+type TenantRequestRequestBodyUsageType string
 
 // TenantResource defines model for TenantResource.
 type TenantResource struct {
-	Components        TenantResourceComponents   `json:"components"`
-	ComputeCache      TenantResourceComputeCache `json:"computeCache"`
-	EtcdVolumeSizeGiB *int                       `json:"etcdVolumeSizeGiB,omitempty"`
-	MetaStore         *TenantResourceMetaStore   `json:"metaStore,omitempty"`
+	Components     TenantResourceComponents   `json:"components"`
+	ComputeCache   TenantResourceComputeCache `json:"computeCache"`
+	MetaStore      *TenantResourceMetaStore   `json:"metaStore,omitempty"`
+	ResourceGroups *TenantResourceGroupArray  `json:"resourceGroups,omitempty"`
 }
 
 // TenantResourceComponents defines model for TenantResourceComponents.
 type TenantResourceComponents struct {
 	Compactor  *ComponentResource `json:"compactor,omitempty"`
 	Compute    *ComponentResource `json:"compute,omitempty"`
-	Etcd       *ComponentResource `json:"etcd,omitempty"`
 	Frontend   *ComponentResource `json:"frontend,omitempty"`
 	Meta       *ComponentResource `json:"meta,omitempty"`
 	Standalone *ComponentResource `json:"standalone,omitempty"`
@@ -412,6 +453,16 @@ type TenantResourceComponents struct {
 type TenantResourceComputeCache struct {
 	SizeGb int `json:"sizeGb"`
 }
+
+// TenantResourceGroup defines model for TenantResourceGroup.
+type TenantResourceGroup struct {
+	ComputeCache TenantResourceComputeCache `json:"computeCache"`
+	Name         string                     `json:"name"`
+	Resource     ComponentResource          `json:"resource"`
+}
+
+// TenantResourceGroupArray defines model for TenantResourceGroupArray.
+type TenantResourceGroupArray = []TenantResourceGroup
 
 // TenantResourceMetaStore defines model for TenantResourceMetaStore.
 type TenantResourceMetaStore struct {
@@ -577,9 +628,6 @@ type GetTenantDbusersParams struct {
 	TenantId uint64 `form:"tenantId" json:"tenantId"`
 }
 
-// PutTenantTenantIdConfigEtcdTextBody defines parameters for PutTenantTenantIdConfigEtcd.
-type PutTenantTenantIdConfigEtcdTextBody = string
-
 // PutTenantTenantIdConfigRisingwaveTextBody defines parameters for PutTenantTenantIdConfigRisingwave.
 type PutTenantTenantIdConfigRisingwaveTextBody = string
 
@@ -599,9 +647,6 @@ type PostTenantDbusersJSONRequestBody = CreateDBUserRequestBody
 
 // PutTenantDbusersJSONRequestBody defines body for PutTenantDbusers for application/json ContentType.
 type PutTenantDbusersJSONRequestBody = UpdateDBUserRequestBody
-
-// PutTenantTenantIdConfigEtcdTextRequestBody defines body for PutTenantTenantIdConfigEtcd for text/plain ContentType.
-type PutTenantTenantIdConfigEtcdTextRequestBody = PutTenantTenantIdConfigEtcdTextBody
 
 // PutTenantTenantIdConfigRisingwaveTextRequestBody defines body for PutTenantTenantIdConfigRisingwave for text/plain ContentType.
 type PutTenantTenantIdConfigRisingwaveTextRequestBody = PutTenantTenantIdConfigRisingwaveTextBody
@@ -728,11 +773,6 @@ type ClientInterface interface {
 	// GetTenantTags request
 	GetTenantTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutTenantTenantIdConfigEtcdWithBody request with any body
-	PutTenantTenantIdConfigEtcdWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PutTenantTenantIdConfigEtcdWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// PutTenantTenantIdConfigRisingwaveWithBody request with any body
 	PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -766,6 +806,9 @@ type ClientInterface interface {
 	PostTenantsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostTenants(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsTenantIdUnquiesce request
+	PostTenantsTenantIdUnquiesce(ctx context.Context, tenantId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTiers request
 	GetTiers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -927,30 +970,6 @@ func (c *Client) GetTenantTags(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutTenantTenantIdConfigEtcdWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutTenantTenantIdConfigEtcdRequestWithBody(c.Server, tenantId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutTenantTenantIdConfigEtcdWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutTenantTenantIdConfigEtcdRequestWithTextBody(c.Server, tenantId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithBody(c.Server, tenantId, contentType, body)
 	if err != nil {
@@ -1097,6 +1116,18 @@ func (c *Client) PostTenantsWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) PostTenants(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostTenantsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsTenantIdUnquiesce(ctx context.Context, tenantId uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsTenantIdUnquiesceRequest(c.Server, tenantId)
 	if err != nil {
 		return nil, err
 	}
@@ -1717,49 +1748,6 @@ func NewGetTenantTagsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewPutTenantTenantIdConfigEtcdRequestWithTextBody calls the generic PutTenantTenantIdConfigEtcd builder with text/plain body
-func NewPutTenantTenantIdConfigEtcdRequestWithTextBody(server string, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	bodyReader = strings.NewReader(string(body))
-	return NewPutTenantTenantIdConfigEtcdRequestWithBody(server, tenantId, "text/plain", bodyReader)
-}
-
-// NewPutTenantTenantIdConfigEtcdRequestWithBody generates requests for PutTenantTenantIdConfigEtcd with any type of body
-func NewPutTenantTenantIdConfigEtcdRequestWithBody(server string, tenantId uint64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/%s/config/etcd", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody calls the generic PutTenantTenantIdConfigRisingwave builder with text/plain body
 func NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(server string, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -2131,6 +2119,40 @@ func NewPostTenantsRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
+// NewPostTenantsTenantIdUnquiesceRequest generates requests for PostTenantsTenantIdUnquiesce
+func NewPostTenantsTenantIdUnquiesceRequest(server string, tenantId uint64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/unquiesce", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetTiersRequest generates requests for GetTiers
 func NewGetTiersRequest(server string) (*http.Request, error) {
 	var err error
@@ -2238,11 +2260,6 @@ type ClientWithResponsesInterface interface {
 	// GetTenantTagsWithResponse request
 	GetTenantTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTenantTagsResponse, error)
 
-	// PutTenantTenantIdConfigEtcdWithBodyWithResponse request with any body
-	PutTenantTenantIdConfigEtcdWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error)
-
-	PutTenantTenantIdConfigEtcdWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error)
-
 	// PutTenantTenantIdConfigRisingwaveWithBodyWithResponse request with any body
 	PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
 
@@ -2276,6 +2293,9 @@ type ClientWithResponsesInterface interface {
 	PostTenantsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsResponse, error)
 
 	PostTenantsWithResponse(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsResponse, error)
+
+	// PostTenantsTenantIdUnquiesceWithResponse request
+	PostTenantsTenantIdUnquiesceWithResponse(ctx context.Context, tenantId uint64, reqEditors ...RequestEditorFn) (*PostTenantsTenantIdUnquiesceResponse, error)
 
 	// GetTiersWithResponse request
 	GetTiersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTiersResponse, error)
@@ -2535,29 +2555,6 @@ func (r GetTenantTagsResponse) StatusCode() int {
 	return 0
 }
 
-type PutTenantTenantIdConfigEtcdResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON404      *NotFoundResponse
-	JSON409      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PutTenantTenantIdConfigEtcdResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutTenantTenantIdConfigEtcdResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type PutTenantTenantIdConfigRisingwaveResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2744,6 +2741,27 @@ func (r PostTenantsResponse) StatusCode() int {
 	return 0
 }
 
+type PostTenantsTenantIdUnquiesceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsTenantIdUnquiesceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsTenantIdUnquiesceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTiersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2881,23 +2899,6 @@ func (c *ClientWithResponses) GetTenantTagsWithResponse(ctx context.Context, req
 	return ParseGetTenantTagsResponse(rsp)
 }
 
-// PutTenantTenantIdConfigEtcdWithBodyWithResponse request with arbitrary body returning *PutTenantTenantIdConfigEtcdResponse
-func (c *ClientWithResponses) PutTenantTenantIdConfigEtcdWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error) {
-	rsp, err := c.PutTenantTenantIdConfigEtcdWithBody(ctx, tenantId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutTenantTenantIdConfigEtcdResponse(rsp)
-}
-
-func (c *ClientWithResponses) PutTenantTenantIdConfigEtcdWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigEtcdTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigEtcdResponse, error) {
-	rsp, err := c.PutTenantTenantIdConfigEtcdWithTextBody(ctx, tenantId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutTenantTenantIdConfigEtcdResponse(rsp)
-}
-
 // PutTenantTenantIdConfigRisingwaveWithBodyWithResponse request with arbitrary body returning *PutTenantTenantIdConfigRisingwaveResponse
 func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
 	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithBody(ctx, tenantId, contentType, body, reqEditors...)
@@ -3008,6 +3009,15 @@ func (c *ClientWithResponses) PostTenantsWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParsePostTenantsResponse(rsp)
+}
+
+// PostTenantsTenantIdUnquiesceWithResponse request returning *PostTenantsTenantIdUnquiesceResponse
+func (c *ClientWithResponses) PostTenantsTenantIdUnquiesceWithResponse(ctx context.Context, tenantId uint64, reqEditors ...RequestEditorFn) (*PostTenantsTenantIdUnquiesceResponse, error) {
+	rsp, err := c.PostTenantsTenantIdUnquiesce(ctx, tenantId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsTenantIdUnquiesceResponse(rsp)
 }
 
 // GetTiersWithResponse request returning *GetTiersResponse
@@ -3386,39 +3396,6 @@ func ParseGetTenantTagsResponse(rsp *http.Response) (*GetTenantTagsResponse, err
 	return response, nil
 }
 
-// ParsePutTenantTenantIdConfigEtcdResponse parses an HTTP response from a PutTenantTenantIdConfigEtcdWithResponse call
-func ParsePutTenantTenantIdConfigEtcdResponse(rsp *http.Response) (*PutTenantTenantIdConfigEtcdResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutTenantTenantIdConfigEtcdResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParsePutTenantTenantIdConfigRisingwaveResponse parses an HTTP response from a PutTenantTenantIdConfigRisingwaveWithResponse call
 func ParsePutTenantTenantIdConfigRisingwaveResponse(rsp *http.Response) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -3692,6 +3669,22 @@ func ParsePostTenantsResponse(rsp *http.Response) (*PostTenantsResponse, error) 
 		}
 		response.JSON422 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsTenantIdUnquiesceResponse parses an HTTP response from a PostTenantsTenantIdUnquiesceWithResponse call
+func ParsePostTenantsTenantIdUnquiesceResponse(rsp *http.Response) (*PostTenantsTenantIdUnquiesceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsTenantIdUnquiesceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil

@@ -6,37 +6,37 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen_mgmt "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 )
 
 type ClusterState struct {
 	mu sync.RWMutex
 
-	tenant *apigen_mgmt.Tenant
+	tenant *apigen_mgmtv2.Tenant
 
 	// username -> user
-	users map[string]*apigen_mgmt.DBUser
+	users map[string]*apigen_mgmtv2.DBUser
 
 	// private link ID -> private link
-	privateLinks map[string]*apigen_mgmt.PrivateLink
+	privateLinks map[string]*apigen_mgmtv2.PrivateLink
 }
 
-func NewClusterState(tenant *apigen_mgmt.Tenant) *ClusterState {
+func NewClusterState(tenant *apigen_mgmtv2.Tenant) *ClusterState {
 	return &ClusterState{
 		tenant:       tenant,
-		users:        map[string]*apigen_mgmt.DBUser{},
-		privateLinks: map[string]*apigen_mgmt.PrivateLink{},
+		users:        map[string]*apigen_mgmtv2.DBUser{},
+		privateLinks: map[string]*apigen_mgmtv2.PrivateLink{},
 	}
 }
 
-func (c *ClusterState) GetPrivateLinks() map[string]*apigen_mgmt.PrivateLink {
+func (c *ClusterState) GetPrivateLinks() map[string]*apigen_mgmtv2.PrivateLink {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	return c.privateLinks
 }
 
-func (c *ClusterState) AddClusterUser(user *apigen_mgmt.DBUser) {
+func (c *ClusterState) AddClusterUser(user *apigen_mgmtv2.DBUser) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -50,7 +50,7 @@ func (c *ClusterState) DeleteClusterUser(username string) {
 	delete(c.users, username)
 }
 
-func (c *ClusterState) GetClusterUser(username string) (*apigen_mgmt.DBUser, error) {
+func (c *ClusterState) GetClusterUser(username string) (*apigen_mgmtv2.DBUser, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -61,14 +61,14 @@ func (c *ClusterState) GetClusterUser(username string) (*apigen_mgmt.DBUser, err
 	return u, nil
 }
 
-func (c *ClusterState) GetTenant() *apigen_mgmt.Tenant {
+func (c *ClusterState) GetTenant() *apigen_mgmtv2.Tenant {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	return c.tenant
 }
 
-func (c *ClusterState) AddPrivateLink(privateLink *apigen_mgmt.PrivateLink) {
+func (c *ClusterState) AddPrivateLink(privateLink *apigen_mgmtv2.PrivateLink) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -82,7 +82,7 @@ func (c *ClusterState) DeletePrivateLink(id uuid.UUID) {
 	delete(c.privateLinks, id.String())
 }
 
-func (c *ClusterState) GetPrivateLink(id uuid.UUID) (*apigen_mgmt.PrivateLink, error) {
+func (c *ClusterState) GetPrivateLink(id uuid.UUID) (*apigen_mgmtv2.PrivateLink, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 

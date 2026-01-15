@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
-	apigen "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt"
+	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 )
 
 // Assert provider defined types fully satisfy framework interfaces.
@@ -173,7 +173,7 @@ func parseClusterUserIdentifier(clusterUserResourceID string, diags *diag.Diagno
 
 // clusterUserToDataModel converts the user from the API to the data model.
 // it does not overwrite the password as we cannot know the password through API.
-func clusterUserToDataModel(clusterNsID uuid.UUID, user *apigen.DBUser, data *ClusterUserModel) {
+func clusterUserToDataModel(clusterNsID uuid.UUID, user *apigen_mgmtv2.DBUser, data *ClusterUserModel) {
 	data.ID = types.StringValue(fmt.Sprintf("%s.%s", clusterNsID.String(), user.Username))
 	data.ClusterID = types.StringValue(clusterNsID.String())
 	data.CreateDB = types.BoolValue(user.Usecreatedb)

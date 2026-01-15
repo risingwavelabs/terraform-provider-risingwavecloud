@@ -30,15 +30,11 @@ const (
 
 // Defines values for TierId.
 const (
-	BYOC           TierId = "BYOC"
-	Benchmark      TierId = "Benchmark"
-	DeveloperBasic TierId = "Developer-Basic"
-	DeveloperFree  TierId = "Developer-Free"
-	DeveloperTest  TierId = "Developer-Test"
-	Free           TierId = "Free"
-	Invited        TierId = "Invited"
-	Standard       TierId = "Standard"
-	Test           TierId = "Test"
+	BYOC      TierId = "BYOC"
+	Benchmark TierId = "Benchmark"
+	Invited   TierId = "Invited"
+	Standard  TierId = "Standard"
+	Test      TierId = "Test"
 )
 
 // ControlClaims defines model for ControlClaims.
@@ -69,6 +65,7 @@ type PrivateLink struct {
 	Region         string             `json:"region"`
 	Target         *string            `json:"target,omitempty"`
 	TenantId       uint64             `json:"tenantId"`
+	TenantNsId     openapi_types.UUID `json:"tenantNsId"`
 }
 
 // PrivateLinkArray defines model for PrivateLinkArray.
