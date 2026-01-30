@@ -90,6 +90,7 @@ type ClusterSpecModel struct {
 	CompactorSpec    types.Object `tfsdk:"compactor"`
 	FrontendSpec     types.Object `tfsdk:"frontend"`
 	MetaSpec         types.Object `tfsdk:"meta"`
+	MetaStoreType    types.String `tfsdk:"metastore_type"`
 	RisingWaveConfig types.String `tfsdk:"risingwave_config"`
 }
 
@@ -106,6 +107,7 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 	"meta": types.ObjectType{
 		AttrTypes: metaAttrTypes,
 	},
+	"metastore_type":    types.StringType,
 	"risingwave_config": types.StringType,
 }
 
@@ -254,6 +256,14 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						Default:             stringdefault.StaticString(""),
 						Computed:            true,
 					},
+					"metastore_type": schema.StringAttribute{
+						MarkdownDescription: "The metastore type of the cluster.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 				},
 				Required:            true,
 				MarkdownDescription: "The resource specification of the cluster",
@@ -386,8 +396,14 @@ func clusterToDataModel(cluster *apigen_mgmtv2.Tenant, byocCluster *apigen_mgmtv
 		}
 	}
 
+	metastoreTypeValue := types.StringNull()
+	if cluster.Resources.MetaStore != nil && cluster.Resources.MetaStore.Type != "" {
+		metastoreTypeValue = types.StringValue(string(cluster.Resources.MetaStore.Type))
+	}
+
 	specObj := map[string]attr.Value{
 		"risingwave_config": risingwaveConfigValue,
+		"metastore_type":    metastoreTypeValue,
 		"compute": types.ObjectValueMust(
 			computeAttrTypes,
 			map[string]attr.Value{
@@ -530,6 +546,15 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 		},
 	}
 
+	if !spec.MetaStoreType.IsNull() && !spec.MetaStoreType.IsUnknown() {
+		metaStoreType := spec.MetaStoreType.ValueString()
+		if metaStoreType != "" {
+			cluster.Resources.MetaStore = &apigen_mgmtv2.TenantResourceMetaStore{
+				Type: apigen_mgmtv2.MetaStoreType(metaStoreType),
+			}
+		}
+	}
+
 	return diags
 }
 
@@ -627,6 +652,11 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 			},
 		},
 		ComputeCache: &cluster.Resources.ComputeCache,
+	}
+	if cluster.Resources.MetaStore != nil {
+		tenantReq.Resources.MetaStore = &apigen_mgmtv2.TenantResourceRequestMetaStore{
+			Type: cluster.Resources.MetaStore.Type,
+		}
 	}
 
 	createdCluster, err := r.client.CreateClusterAwait(ctx, region, tenantReq)
@@ -748,7 +778,7 @@ func metaStoreEqual(a, b *apigen_mgmtv2.TenantResourceMetaStore) bool {
 		return false
 	}
 
-	return false
+	return true
 }
 
 func resourceEqual(a, b *apigen_mgmtv2.ComponentResource) bool {

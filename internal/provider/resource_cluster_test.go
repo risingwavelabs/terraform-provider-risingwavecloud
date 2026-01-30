@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmtv1 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
 	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	cloudsdk_mock "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/mock"
@@ -57,6 +58,59 @@ func createSimpleTestCluster(t *testing.T, name, region, imageTag string, tier a
 	}
 }
 
+func TestMetaStoreEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a    *apigen_mgmtv2.TenantResourceMetaStore
+		b    *apigen_mgmtv2.TenantResourceMetaStore
+		want bool
+	}{
+		{
+			name: "both nil",
+			a:    nil,
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "a nil b non-nil",
+			a:    nil,
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			want: true,
+		},
+		{
+			name: "a non-nil b nil",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "same type",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			want: true,
+		},
+		{
+			name: "same type different rwu",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds, Rwu: "2"},
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds, Rwu: ""},
+			want: true,
+		},
+		{
+			name: "different type",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.Etcd},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := metaStoreEqual(tt.a, tt.b)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestClusterCreate_previous_creation_failed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -67,6 +121,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 		region   = "us-west-2"
 		imageTag = "v1.10.0"
 		tier     = apigen_mgmtv2.Standard
+		tierV1   = apigen_mgmtv1.TierId(tier)
 		tenant   = createSimpleTestCluster(t, name, region, imageTag, tier, apigen_mgmtv2.Failed)
 	)
 
@@ -98,7 +153,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 
 	client.
 		EXPECT().
-		GetAvailableComponentTypes(ctx, region, tier, gomock.Any()).
+		GetAvailableComponentTypes(ctx, region, tierV1, gomock.Any()).
 		Return([]apigen_mgmtv1.AvailableComponentType{
 			{
 				Id:      "p-1c4g",
@@ -107,7 +162,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 				Memory:  "4 GB",
 			},
 		}, nil).
-		Times(5)
+		Times(4)
 
 	client.
 		EXPECT().
@@ -117,6 +172,11 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 			rtn.Status = apigen_mgmtv2.Running
 			return &rtn, nil
 		})
+
+	client.
+		EXPECT().
+		GetBYOCCluster(ctx, region, "").
+		Return(nil, cloudsdk.ErrBYOCClusterNotFound)
 
 	p := &ClusterResource{
 		client:     client,

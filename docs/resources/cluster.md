@@ -146,6 +146,7 @@ Required:
 
 Optional:
 
+- `metastore_type` (String) The metastore type of the cluster.
 - `risingwave_config` (String) The toml format of the RisingWave configuration of the cluster
 
 <a id="nestedatt--spec--compactor"></a>

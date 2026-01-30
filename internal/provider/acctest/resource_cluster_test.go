@@ -205,6 +205,7 @@ resource "risingwavecloud_cluster" "test" {
 				replica = 1
 			}
 		}
+		metastore_type = "postgresql"
 	}
 }
 `, name, oldVersion)
@@ -245,6 +246,7 @@ resource "risingwavecloud_cluster" "test" {
 				replica = 1
 			}
 		}
+		metastore_type = "postgresql"
 	}
 }
 `, name, newVersion)
@@ -286,6 +288,7 @@ resource "risingwavecloud_cluster" "test" {
 				replica = 1
 			}
 		}
+		metastore_type = "postgresql"
 		risingwave_config = <<-EOT
 		[server]
 		heartbeat_interval_ms = 997
