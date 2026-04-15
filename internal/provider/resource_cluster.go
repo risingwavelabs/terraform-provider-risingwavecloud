@@ -744,11 +744,7 @@ func metaStoreEqual(a, b *apigen_mgmtv2.TenantResourceMetaStore) bool {
 		return true
 	}
 
-	if a.Type != b.Type {
-		return false
-	}
-
-	return false
+	return a.Type == b.Type
 }
 
 func resourceEqual(a, b *apigen_mgmtv2.ComponentResource) bool {

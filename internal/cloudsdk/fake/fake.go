@@ -82,13 +82,22 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 	}
 
 	r := state.GetRegionState(region)
+	resources := reqResouceToClusterResource(req.Resources)
+	resources.MetaStore = &apigen_mgmtv2.TenantResourceMetaStore{
+		Type: apigen_mgmtv2.AwsRds,
+		AwsRds: &apigen_mgmtv2.MetaStoreAwsRds{
+			InstanceClass: "db.t3.micro",
+			SizeGb:        20,
+		},
+		Rwu: "2",
+	}
 	t := &apigen_mgmtv2.Tenant{
 		Id:          uint64(len(r.GetClusters()) + 1),
 		TenantName:  req.TenantName,
 		ImageTag:    *req.ImageTag,
 		Region:      region,
 		RwConfig:    *req.RwConfig,
-		Resources:   reqResouceToClusterResource(req.Resources),
+		Resources:   resources,
 		NsId:        uuid.New(),
 		Tier:        *req.Tier,
 		ClusterName: *clusterName,

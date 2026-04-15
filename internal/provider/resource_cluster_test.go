@@ -57,6 +57,59 @@ func createSimpleTestCluster(t *testing.T, name, region, imageTag string, tier a
 	}
 }
 
+func TestMetaStoreEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a    *apigen_mgmtv2.TenantResourceMetaStore
+		b    *apigen_mgmtv2.TenantResourceMetaStore
+		want bool
+	}{
+		{
+			name: "both nil",
+			a:    nil,
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "a nil b non-nil",
+			a:    nil,
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			want: true,
+		},
+		{
+			name: "a non-nil b nil",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "same type",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			want: true,
+		},
+		{
+			name: "same type different rwu",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds, Rwu: "2"},
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds, Rwu: ""},
+			want: true,
+		},
+		{
+			name: "different type",
+			a:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.AwsRds},
+			b:    &apigen_mgmtv2.TenantResourceMetaStore{Type: apigen_mgmtv2.Etcd},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := metaStoreEqual(tt.a, tt.b)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestClusterCreate_previous_creation_failed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
