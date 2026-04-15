@@ -126,28 +126,26 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 ### Optional
 
 - `byoc` (Attributes) The BYOC (Bring Your Own Cloud) configuration of the cluster. These fields are only used in BYOC clusters. (see [below for nested schema](#nestedatt--byoc))
+- `tier` (String) The tier of your RisingWave cluster. Supported values: `Standard`, `Invited`, `BYOC`. Defaults to `Standard` for SaaS clusters and `BYOC` when a `byoc` block is present. Cannot be changed after creation.
 - `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registry of RisingWave Labs.The newest stable version will be used if this field is not present.
 
 ### Read-Only
 
 - `encoded_id` (String) The encoded ID of the cluster. This field is only used in BYOC clusters.
 - `id` (String) The NsID (namespace id) of the cluster.
-- `tier` (String) The tier of your RisingWave cluster. When creating a new cluster, the value is `standard`.
 
 <a id="nestedatt--spec"></a>
 ### Nested Schema for `spec`
 
-Required:
-
-- `compactor` (Attributes) (see [below for nested schema](#nestedatt--spec--compactor))
-- `compute` (Attributes) (see [below for nested schema](#nestedatt--spec--compute))
-- `frontend` (Attributes) (see [below for nested schema](#nestedatt--spec--frontend))
-- `meta` (Attributes) (see [below for nested schema](#nestedatt--spec--meta))
-
 Optional:
 
+- `compactor` (Attributes) The compactor component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--compactor))
+- `compute` (Attributes) The compute component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--compute))
+- `frontend` (Attributes) The frontend component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--frontend))
+- `meta` (Attributes) The meta component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--meta))
 - `metastore_type` (String) The metastore type of the cluster.
 - `risingwave_config` (String) The toml format of the RisingWave configuration of the cluster
+- `standalone` (Attributes) The standalone component specification. Required for Standard tier clusters. (see [below for nested schema](#nestedatt--spec--standalone))
 
 <a id="nestedatt--spec--compactor"></a>
 ### Nested Schema for `spec.compactor`
@@ -221,6 +219,27 @@ Required:
 
 <a id="nestedatt--spec--meta--default_node_group"></a>
 ### Nested Schema for `spec.meta.default_node_group`
+
+Required:
+
+- `cpu` (String) The CPU of the node
+- `memory` (String) The memory size in of the node
+
+Optional:
+
+- `replica` (Number) The number of nodes
+
+
+
+<a id="nestedatt--spec--standalone"></a>
+### Nested Schema for `spec.standalone`
+
+Required:
+
+- `default_node_group` (Attributes) The resource specification of the component (see [below for nested schema](#nestedatt--spec--standalone--default_node_group))
+
+<a id="nestedatt--spec--standalone--default_node_group"></a>
+### Nested Schema for `spec.standalone.default_node_group`
 
 Required:
 

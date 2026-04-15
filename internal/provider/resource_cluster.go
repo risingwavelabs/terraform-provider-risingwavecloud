@@ -85,11 +85,18 @@ var metaAttrTypes = map[string]attr.Type{
 	},
 }
 
+type StandaloneSpecModel struct {
+	DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
+}
+
+var standaloneAttrTypes = componentAttrTypes
+
 type ClusterSpecModel struct {
 	ComputeSpec      types.Object `tfsdk:"compute"`
 	CompactorSpec    types.Object `tfsdk:"compactor"`
 	FrontendSpec     types.Object `tfsdk:"frontend"`
 	MetaSpec         types.Object `tfsdk:"meta"`
+	StandaloneSpec   types.Object `tfsdk:"standalone"`
 	MetaStoreType    types.String `tfsdk:"metastore_type"`
 	RisingWaveConfig types.String `tfsdk:"risingwave_config"`
 }
@@ -106,6 +113,9 @@ var clusterSpecAttrTypes = map[string]attr.Type{
 	},
 	"meta": types.ObjectType{
 		AttrTypes: metaAttrTypes,
+	},
+	"standalone": types.ObjectType{
+		AttrTypes: standaloneAttrTypes,
 	},
 	"metastore_type":    types.StringType,
 	"risingwave_config": types.StringType,
@@ -184,10 +194,14 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"tier": schema.StringAttribute{
-				MarkdownDescription: "The tier of your RisingWave cluster. When creating a new cluster, the value is `standard`.",
-				Computed:            true,
+				MarkdownDescription: "The tier of your RisingWave cluster. Supported values: `Standard`, `Invited`, `BYOC`. " +
+					"Defaults to `Standard` for SaaS clusters and `BYOC` when a `byoc` block is present. " +
+					"Cannot be changed after creation.",
+				Optional: true,
+				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"region": schema.StringAttribute{
@@ -230,25 +244,36 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						Attributes: map[string]schema.Attribute{
 							"default_node_group": defauleNodeGroupAttribute,
 						},
-						Required: true,
+						Optional:            true,
+						MarkdownDescription: "The compute component specification. Required for Invited and BYOC tier clusters.",
 					},
 					"compactor": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
 							"default_node_group": defauleNodeGroupAttribute,
 						},
-						Required: true,
+						Optional:            true,
+						MarkdownDescription: "The compactor component specification. Required for Invited and BYOC tier clusters.",
 					},
 					"frontend": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
 							"default_node_group": defauleNodeGroupAttribute,
 						},
-						Required: true,
+						Optional:            true,
+						MarkdownDescription: "The frontend component specification. Required for Invited and BYOC tier clusters.",
 					},
 					"meta": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
 							"default_node_group": defauleNodeGroupAttribute,
 						},
-						Required: true,
+						Optional:            true,
+						MarkdownDescription: "The meta component specification. Required for Invited and BYOC tier clusters.",
+					},
+					"standalone": schema.SingleNestedAttribute{
+						Attributes: map[string]schema.Attribute{
+							"default_node_group": defauleNodeGroupAttribute,
+						},
+						Optional:            true,
+						MarkdownDescription: "The standalone component specification. Required for Standard tier clusters.",
 					},
 					"risingwave_config": schema.StringAttribute{
 						MarkdownDescription: "The toml format of the RisingWave configuration of the cluster",
@@ -404,56 +429,29 @@ func clusterToDataModel(cluster *apigen_mgmtv2.Tenant, byocCluster *apigen_mgmtv
 	specObj := map[string]attr.Value{
 		"risingwave_config": risingwaveConfigValue,
 		"metastore_type":    metastoreTypeValue,
-		"compute": types.ObjectValueMust(
-			computeAttrTypes,
-			map[string]attr.Value{
-				"default_node_group": types.ObjectValueMust(
-					defaultNodeGroup,
-					map[string]attr.Value{
-						"cpu":     types.StringValue(cluster.Resources.Components.Compute.Cpu),
-						"memory":  types.StringValue(cluster.Resources.Components.Compute.Memory),
-						"replica": types.Int64Value(int64(cluster.Resources.Components.Compute.Replica)),
-					},
-				),
-			},
-		),
-		"compactor": types.ObjectValueMust(
-			compactorAttrTypes,
-			map[string]attr.Value{
-				"default_node_group": types.ObjectValueMust(
-					defaultNodeGroup,
-					map[string]attr.Value{
-						"cpu":     types.StringValue(cluster.Resources.Components.Compactor.Cpu),
-						"memory":  types.StringValue(cluster.Resources.Components.Compactor.Memory),
-						"replica": types.Int64Value(int64(cluster.Resources.Components.Compactor.Replica)),
-					},
-				),
-			},
-		),
-		"frontend": types.ObjectValueMust(
-			frontendAttrTypes,
-			map[string]attr.Value{
-				"default_node_group": types.ObjectValueMust(
-					defaultNodeGroup,
-					map[string]attr.Value{
-						"cpu":     types.StringValue(cluster.Resources.Components.Frontend.Cpu),
-						"memory":  types.StringValue(cluster.Resources.Components.Frontend.Memory),
-						"replica": types.Int64Value(int64(cluster.Resources.Components.Frontend.Replica)),
-					},
-				),
-			},
-		),
-		"meta": types.ObjectValueMust(metaAttrTypes, map[string]attr.Value{
+	}
+
+	componentToObject := func(attrTypes map[string]attr.Type, comp *apigen_mgmtv2.ComponentResource) attr.Value {
+		if comp == nil {
+			return types.ObjectNull(attrTypes)
+		}
+		return types.ObjectValueMust(attrTypes, map[string]attr.Value{
 			"default_node_group": types.ObjectValueMust(
 				defaultNodeGroup,
 				map[string]attr.Value{
-					"cpu":     types.StringValue(cluster.Resources.Components.Meta.Cpu),
-					"memory":  types.StringValue(cluster.Resources.Components.Meta.Memory),
-					"replica": types.Int64Value(int64(cluster.Resources.Components.Meta.Replica)),
+					"cpu":     types.StringValue(comp.Cpu),
+					"memory":  types.StringValue(comp.Memory),
+					"replica": types.Int64Value(int64(comp.Replica)),
 				},
 			),
-		}),
+		})
 	}
+
+	specObj["compute"] = componentToObject(computeAttrTypes, cluster.Resources.Components.Compute)
+	specObj["compactor"] = componentToObject(compactorAttrTypes, cluster.Resources.Components.Compactor)
+	specObj["frontend"] = componentToObject(frontendAttrTypes, cluster.Resources.Components.Frontend)
+	specObj["meta"] = componentToObject(metaAttrTypes, cluster.Resources.Components.Meta)
+	specObj["standalone"] = componentToObject(standaloneAttrTypes, cluster.Resources.Components.Standalone)
 
 	data.Spec = types.ObjectValueMust(
 		clusterSpecAttrTypes,
@@ -471,36 +469,12 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	}
 
 	var (
-		spec                      ClusterSpecModel
-		compactorSpec             CompactorSpecModel
-		compactorDefaultNodeGroup NodeGroupModel
-		computeSpec               ComputeSpecModel
-		computeDefaultNodeGroup   NodeGroupModel
-		frontendSpec              FrontendSpecModel
-		frontendDefaultNodeGroup  NodeGroupModel
-		metaSpec                  MetaSpecModel
-		metaDefaultNodeGroup      NodeGroupModel
-		byoc                      BYOCModel
+		spec ClusterSpecModel
+		byoc BYOCModel
 	)
 
 	tflog.Trace(ctx, "parsing spec")
 	diags.Append(data.Spec.As(ctx, &spec, objectAsOptions)...)
-
-	tflog.Trace(ctx, "parsing compactorSpec")
-	diags.Append(spec.CompactorSpec.As(ctx, &compactorSpec, objectAsOptions)...)
-	diags.Append(compactorSpec.DefaultNodeGroup.As(ctx, &compactorDefaultNodeGroup, objectAsOptions)...)
-
-	tflog.Trace(ctx, "parsing computeSpec")
-	diags.Append(spec.ComputeSpec.As(ctx, &computeSpec, objectAsOptions)...)
-	diags.Append(computeSpec.DefaultNodeGroup.As(ctx, &computeDefaultNodeGroup, objectAsOptions)...)
-
-	tflog.Trace(ctx, "parsing frontendSpec")
-	diags.Append(spec.FrontendSpec.As(ctx, &frontendSpec, objectAsOptions)...)
-	diags.Append(frontendSpec.DefaultNodeGroup.As(ctx, &frontendDefaultNodeGroup, objectAsOptions)...)
-
-	tflog.Trace(ctx, "parsing metaSpec")
-	diags.Append(spec.MetaSpec.As(ctx, &metaSpec, objectAsOptions)...)
-	diags.Append(metaSpec.DefaultNodeGroup.As(ctx, &metaDefaultNodeGroup, objectAsOptions)...)
 
 	if !data.ID.IsUnknown() && !data.ID.IsNull() {
 		nsId, err := uuid.Parse(data.ID.ValueString())
@@ -525,25 +499,34 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
 
-	computeResource := r.nodeGroupModelToComponentResource(ctx, &diags, &computeDefaultNodeGroup, cluster.Region, cluster.Tier, "compute")
-	compactorResource := r.nodeGroupModelToComponentResource(ctx, &diags, &compactorDefaultNodeGroup, cluster.Region, cluster.Tier, "compactor")
-	frontendResource := r.nodeGroupModelToComponentResource(ctx, &diags, &frontendDefaultNodeGroup, cluster.Region, cluster.Tier, "frontend")
-	metaResource := r.nodeGroupModelToComponentResource(ctx, &diags, &metaDefaultNodeGroup, cluster.Region, cluster.Tier, "meta")
-
-	if diags.HasError() {
-		return diags
+	parseComponent := func(specObj types.Object, component string) *apigen_mgmtv2.ComponentResource {
+		if specObj.IsNull() || specObj.IsUnknown() {
+			return nil
+		}
+		var compSpec struct {
+			DefaultNodeGroup types.Object `tfsdk:"default_node_group"`
+		}
+		diags.Append(specObj.As(ctx, &compSpec, objectAsOptions)...)
+		var nodeGroup NodeGroupModel
+		diags.Append(compSpec.DefaultNodeGroup.As(ctx, &nodeGroup, objectAsOptions)...)
+		return r.nodeGroupModelToComponentResource(ctx, &diags, &nodeGroup, cluster.Region, cluster.Tier, component)
 	}
 
 	cluster.Resources = apigen_mgmtv2.TenantResource{
 		Components: apigen_mgmtv2.TenantResourceComponents{
-			Compactor: compactorResource,
-			Compute:   computeResource,
-			Frontend:  frontendResource,
-			Meta:      metaResource,
+			Compute:    parseComponent(spec.ComputeSpec, "compute"),
+			Compactor:  parseComponent(spec.CompactorSpec, "compactor"),
+			Frontend:   parseComponent(spec.FrontendSpec, "frontend"),
+			Meta:       parseComponent(spec.MetaSpec, "meta"),
+			Standalone: parseComponent(spec.StandaloneSpec, "standalone"),
 		},
 		ComputeCache: apigen_mgmtv2.TenantResourceComputeCache{
 			SizeGb: DefaultComputeFileCacheSizeGB,
 		},
+	}
+
+	if diags.HasError() {
+		return diags
 	}
 
 	if !spec.MetaStoreType.IsNull() && !spec.MetaStoreType.IsUnknown() {
@@ -580,11 +563,29 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	isBYOC := !data.BYOC.IsNull() && !data.BYOC.IsUnknown()
+
 	if data.Tier.IsNull() || data.Tier.IsUnknown() {
-		if data.BYOC.IsNull() || data.BYOC.IsUnknown() {
-			data.Tier = types.StringValue(string(apigen_mgmtv2.Standard))
-		} else {
+		if isBYOC {
 			data.Tier = types.StringValue(string(apigen_mgmtv2.BYOC))
+		} else {
+			data.Tier = types.StringValue(string(apigen_mgmtv2.Standard))
+		}
+	} else {
+		tier := apigen_mgmtv2.TierId(data.Tier.ValueString())
+		if isBYOC && tier != apigen_mgmtv2.BYOC {
+			resp.Diagnostics.AddError(
+				"Invalid tier for BYOC cluster",
+				fmt.Sprintf("BYOC clusters must use the BYOC tier, got: %s", tier),
+			)
+			return
+		}
+		if !isBYOC && tier != apigen_mgmtv2.Standard && tier != apigen_mgmtv2.Invited {
+			resp.Diagnostics.AddError(
+				"Invalid tier for SaaS cluster",
+				fmt.Sprintf("SaaS clusters must use either Standard or Invited tier, got: %s", tier),
+			)
+			return
 		}
 	}
 
@@ -632,24 +633,22 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tenantReq.ImageTag = &cluster.ImageTag
 	tenantReq.Tier = &cluster.Tier
 	tenantReq.RwConfig = &cluster.RwConfig
+	componentToReq := func(comp *apigen_mgmtv2.ComponentResource) *apigen_mgmtv2.ComponentResourceRequest {
+		if comp == nil {
+			return nil
+		}
+		return &apigen_mgmtv2.ComponentResourceRequest{
+			ComponentTypeId: comp.ComponentTypeId,
+			Replica:         comp.Replica,
+		}
+	}
 	tenantReq.Resources = &apigen_mgmtv2.TenantResourceRequest{
 		Components: apigen_mgmtv2.TenantResourceRequestComponents{
-			Compute: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: cluster.Resources.Components.Compute.ComponentTypeId,
-				Replica:         cluster.Resources.Components.Compute.Replica,
-			},
-			Frontend: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: cluster.Resources.Components.Frontend.ComponentTypeId,
-				Replica:         cluster.Resources.Components.Frontend.Replica,
-			},
-			Meta: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: cluster.Resources.Components.Meta.ComponentTypeId,
-				Replica:         cluster.Resources.Components.Meta.Replica,
-			},
-			Compactor: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: cluster.Resources.Components.Compactor.ComponentTypeId,
-				Replica:         cluster.Resources.Components.Compactor.Replica,
-			},
+			Compute:    componentToReq(cluster.Resources.Components.Compute),
+			Frontend:   componentToReq(cluster.Resources.Components.Frontend),
+			Meta:       componentToReq(cluster.Resources.Components.Meta),
+			Compactor:  componentToReq(cluster.Resources.Components.Compactor),
+			Standalone: componentToReq(cluster.Resources.Components.Standalone),
 		},
 		ComputeCache: &cluster.Resources.ComputeCache,
 	}
@@ -782,6 +781,12 @@ func metaStoreEqual(a, b *apigen_mgmtv2.TenantResourceMetaStore) bool {
 }
 
 func resourceEqual(a, b *apigen_mgmtv2.ComponentResource) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
 	return a.Cpu == b.Cpu &&
 		a.Memory == b.Memory &&
 		a.Replica == b.Replica
@@ -919,26 +924,25 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !(resourceEqual(previous.Resources.Components.Compute, updated.Resources.Components.Compute) &&
 		resourceEqual(previous.Resources.Components.Compactor, updated.Resources.Components.Compactor) &&
 		resourceEqual(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend) &&
-		resourceEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta)) {
+		resourceEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta) &&
+		resourceEqual(previous.Resources.Components.Standalone, updated.Resources.Components.Standalone)) {
 
 		tflog.Info(ctx, fmt.Sprintf("updating resources, cluster: %s", previous.TenantName))
+		updateComponentReq := func(comp *apigen_mgmtv2.ComponentResource) *apigen_mgmtv2.ComponentResourceRequest {
+			if comp == nil {
+				return nil
+			}
+			return &apigen_mgmtv2.ComponentResourceRequest{
+				ComponentTypeId: comp.ComponentTypeId,
+				Replica:         comp.Replica,
+			}
+		}
 		if err := r.client.UpdateClusterResourcesByNsIDAwait(ctx, nsID, apigen_mgmtv2.PostTenantResourcesRequestBody{
-			Compute: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: updated.Resources.Components.Compute.ComponentTypeId,
-				Replica:         updated.Resources.Components.Compute.Replica,
-			},
-			Compactor: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: updated.Resources.Components.Compactor.ComponentTypeId,
-				Replica:         updated.Resources.Components.Compactor.Replica,
-			},
-			Frontend: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: updated.Resources.Components.Frontend.ComponentTypeId,
-				Replica:         updated.Resources.Components.Frontend.Replica,
-			},
-			Meta: &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: updated.Resources.Components.Meta.ComponentTypeId,
-				Replica:         updated.Resources.Components.Meta.Replica,
-			},
+			Compute:    updateComponentReq(updated.Resources.Components.Compute),
+			Compactor:  updateComponentReq(updated.Resources.Components.Compactor),
+			Frontend:   updateComponentReq(updated.Resources.Components.Frontend),
+			Meta:       updateComponentReq(updated.Resources.Components.Meta),
+			Standalone: updateComponentReq(updated.Resources.Components.Standalone),
 		}); err != nil {
 			if errors.Is(err, wait.ErrWaitTimeout) {
 				resp.Diagnostics.AddError(

@@ -28,6 +28,7 @@ const (
 	ComponentCompactor  = "compactor"
 	ComponentFrontend   = "frontend"
 	ComponentMeta       = "meta"
+	ComponentStandalone = "standalone"
 	ComponentPostgresql = "postgresql"
 )
 
@@ -307,6 +308,8 @@ func (c *RegionServiceClient) GetAvailableComponentTypes(ctx context.Context, ta
 		return tier.AvailableFrontendNodes, nil
 	case ComponentMeta:
 		return tier.AvailableMetaNodes, nil
+	case ComponentStandalone:
+		return tier.AvailableStandaloneNodes, nil
 	case ComponentPostgresql:
 		return tier.AvailableMetaStore.Postgresql.Nodes, nil
 	}
