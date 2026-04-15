@@ -114,9 +114,9 @@ func (c *RegionServiceClient) waitClusterHealthy(ctx context.Context, nsID uuid.
 			return false, errors.Wrap(err, "failed to get the cluster info")
 		}
 		currHealth = cluster.HealthStatus
-		return currHealth == apigen_mgmtv2.TenantHealthStatusHealthy, nil
+		return currHealth == apigen_mgmtv2.Healthy, nil
 	}, PollingTenantCreation); err != nil {
-		return errors.Wrapf(err, "failed to wait for the cluster, current health status: %s, target health status: %s", currHealth, apigen_mgmtv2.TenantHealthStatusHealthy)
+		return errors.Wrapf(err, "failed to wait for the cluster, current health status: %s, target health status: %s", currHealth, apigen_mgmtv2.Healthy)
 	}
 	return nil
 }
@@ -198,7 +198,7 @@ func (c *RegionServiceClient) CreateClusterAwait(ctx context.Context, req apigen
 	if err := c.waitClusterStatusByNsID(ctx, createRes.JSON202.NsId, apigen_mgmtv2.Running); err != nil {
 		return nil, err
 	}
-	if err := c.waitClusterHealthStatusByNsID(ctx, createRes.JSON202.NsId, apigen_mgmtv2.TenantHealthStatusHealthy); err != nil {
+	if err := c.waitClusterHealthStatusByNsID(ctx, createRes.JSON202.NsId, apigen_mgmtv2.Healthy); err != nil {
 		return nil, err
 	}
 
@@ -321,7 +321,7 @@ func (c *RegionServiceClient) UpdateRisingWaveConfigAwait(ctx context.Context, n
 	if err != nil {
 		return errors.Wrap(err, "failed to get cluster info")
 	}
-	res, err := c.mgmtV1Client.PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx, cluster.Id, "text/plain", strings.NewReader(rwConfig))
+	res, err := c.mgmtV1Client.PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx, cluster.Id, nil, "text/plain", strings.NewReader(rwConfig))
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to update cluster config")
 	}

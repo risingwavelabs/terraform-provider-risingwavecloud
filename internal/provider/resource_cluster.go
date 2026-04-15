@@ -390,7 +390,7 @@ func clusterToDataModel(cluster *apigen_mgmtv2.Tenant, byocCluster *apigen_mgmtv
 	data.Region = types.StringValue(cluster.Region)
 	data.Tier = types.StringValue(string(cluster.Tier))
 
-	if cluster.Tier == apigen_mgmtv2.BYOC {
+	if cluster.Tier == apigen_mgmtv2.TierIdBYOC {
 		if cluster.ClusterName == "" {
 			diags.AddError(
 				"Missing BYOC env name",
@@ -567,20 +567,20 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	if data.Tier.IsNull() || data.Tier.IsUnknown() {
 		if isBYOC {
-			data.Tier = types.StringValue(string(apigen_mgmtv2.BYOC))
+			data.Tier = types.StringValue(string(apigen_mgmtv2.TierIdBYOC))
 		} else {
-			data.Tier = types.StringValue(string(apigen_mgmtv2.Standard))
+			data.Tier = types.StringValue(string(apigen_mgmtv2.TierIdStandard))
 		}
 	} else {
 		tier := apigen_mgmtv2.TierId(data.Tier.ValueString())
-		if isBYOC && tier != apigen_mgmtv2.BYOC {
+		if isBYOC && tier != apigen_mgmtv2.TierIdBYOC {
 			resp.Diagnostics.AddError(
 				"Invalid tier for BYOC cluster",
 				fmt.Sprintf("BYOC clusters must use the BYOC tier, got: %s", tier),
 			)
 			return
 		}
-		if !isBYOC && tier != apigen_mgmtv2.Standard && tier != apigen_mgmtv2.Invited {
+		if !isBYOC && tier != apigen_mgmtv2.TierIdStandard && tier != apigen_mgmtv2.TierIdInvited {
 			resp.Diagnostics.AddError(
 				"Invalid tier for SaaS cluster",
 				fmt.Sprintf("SaaS clusters must use either Standard or Invited tier, got: %s", tier),
@@ -737,7 +737,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	if cluster.Tier != apigen_mgmtv2.Standard && cluster.Tier != apigen_mgmtv2.Invited && cluster.Tier != apigen_mgmtv2.BYOC {
+	if cluster.Tier != apigen_mgmtv2.TierIdStandard && cluster.Tier != apigen_mgmtv2.TierIdInvited && cluster.Tier != apigen_mgmtv2.TierIdBYOC {
 		resp.Diagnostics.AddError(
 			"Invalid tier",
 			"Supported tiers are: Standard, Invited, BYOC",
@@ -848,7 +848,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// only check clusterName for BYOC
-	if previous.Tier == apigen_mgmtv2.BYOC {
+	if previous.Tier == apigen_mgmtv2.TierIdBYOC {
 		if previous.ClusterName != updated.ClusterName {
 			resp.Diagnostics.AddError(
 				"Cannot update immutable field",

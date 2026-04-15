@@ -317,9 +317,12 @@ func reqResouceToClusterResource(reqResource *apigen_mgmtv2.TenantResourceReques
 			Meta:       componentReqToComponent(reqResource.Components.Meta),
 			Standalone: componentReqToComponent(reqResource.Components.Standalone),
 		},
-		ComputeCache: apigen_mgmtv2.TenantResourceComputeCache{
-			SizeGb: reqResource.ComputeFileCacheSizeGiB,
-		},
+		ComputeCache: func() apigen_mgmtv2.TenantResourceComputeCache {
+			if reqResource.ComputeCache != nil {
+				return *reqResource.ComputeCache
+			}
+			return apigen_mgmtv2.TenantResourceComputeCache{}
+		}(),
 	}
 	if reqResource.MetaStore != nil {
 		ret.MetaStore = &apigen_mgmtv2.TenantResourceMetaStore{
