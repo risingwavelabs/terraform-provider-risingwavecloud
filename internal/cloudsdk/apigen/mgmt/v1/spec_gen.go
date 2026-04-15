@@ -95,19 +95,14 @@ const (
 
 // Defines values for TenantUsageType.
 const (
-	TenantUsageTypeGeneral  TenantUsageType = "general"
-	TenantUsageTypePipeline TenantUsageType = "pipeline"
-)
-
-// Defines values for TenantRequestRequestBodyUsageType.
-const (
-	TenantRequestRequestBodyUsageTypeGeneral  TenantRequestRequestBodyUsageType = "general"
-	TenantRequestRequestBodyUsageTypePipeline TenantRequestRequestBodyUsageType = "pipeline"
+	General  TenantUsageType = "general"
+	Pipeline TenantUsageType = "pipeline"
 )
 
 // Defines values for TierId.
 const (
 	BYOC      TierId = "BYOC"
+	BYOK      TierId = "BYOK"
 	Benchmark TierId = "Benchmark"
 	Invited   TierId = "Invited"
 	Standard  TierId = "Standard"
@@ -191,56 +186,17 @@ type ComponentResource struct {
 	Replica         int    `json:"replica"`
 }
 
-// ComponentResourceRequest defines model for ComponentResourceRequest.
-type ComponentResourceRequest struct {
-	ComponentTypeId string `json:"componentTypeId"`
-	Replica         int    `json:"replica"`
-}
-
-// CreateDBUserRequestBody defines model for CreateDBUserRequestBody.
-type CreateDBUserRequestBody struct {
-	Createdb   bool   `json:"createdb"`
-	Createuser *bool  `json:"createuser,omitempty"`
-	Password   string `json:"password"`
-	Superuser  bool   `json:"superuser"`
-	TenantId   uint64 `json:"tenantId"`
-	Username   string `json:"username"`
-}
-
-// CreateTenantResponseBody defines model for CreateTenantResponseBody.
-type CreateTenantResponseBody struct {
-	TenantId   uint64 `json:"tenantId"`
-	TenantName string `json:"tenantName"`
-}
-
-// DBUser defines model for DBUser.
-type DBUser struct {
-	Canlogin      bool   `json:"canlogin"`
-	Usecreatedb   bool   `json:"usecreatedb"`
-	Usecreateuser bool   `json:"usecreateuser"`
-	Username      string `json:"username"`
-	Usesuper      bool   `json:"usesuper"`
-	Usesysid      uint64 `json:"usesysid"`
-}
-
-// DBUserArray defines model for DBUserArray.
-type DBUserArray = []DBUser
-
-// DBUsers defines model for DBUsers.
-type DBUsers struct {
-	Dbusers *DBUserArray `json:"dbusers,omitempty"`
-}
-
 // Endpoint defines model for Endpoint.
 type Endpoint struct {
-	Database     string `json:"database"`
-	Host         string `json:"host"`
-	Id           int64  `json:"id"`
-	InternalHost string `json:"internalHost"`
-	InternalPort int    `json:"internalPort"`
-	Options      string `json:"options"`
-	Port         int    `json:"port"`
-	TenantId     int64  `json:"tenantId"`
+	Database                    string `json:"database"`
+	Host                        string `json:"host"`
+	Id                          int64  `json:"id"`
+	InternalHost                string `json:"internalHost"`
+	InternalPort                int    `json:"internalPort"`
+	IsUserFacingEndpointPrivate *bool  `json:"isUserFacingEndpointPrivate,omitempty"`
+	Options                     string `json:"options"`
+	Port                        int    `json:"port"`
+	TenantId                    int64  `json:"tenantId"`
 }
 
 // ErrLogQueryResult defines model for ErrLogQueryResult.
@@ -252,28 +208,6 @@ type ErrLogQueryResult struct {
 // GetImageTagResponse defines model for GetImageTagResponse.
 type GetImageTagResponse struct {
 	ImageTag string `json:"imageTag"`
-}
-
-// MaintenanceWindow defines model for MaintenanceWindow.
-type MaintenanceWindow struct {
-	DisableUntil          *time.Time            `json:"disableUntil"`
-	MaintenanceWindowTime MaintenanceWindowTime `json:"maintenanceWindowTime"`
-	ManualOnly            *bool                 `json:"manualOnly,omitempty"`
-}
-
-// MaintenanceWindowTime defines model for MaintenanceWindowTime.
-type MaintenanceWindowTime struct {
-	// Day Day of week (0=Sunday, 6=Saturday)
-	Day int `json:"day"`
-
-	// DurationMins Duration in minutes
-	DurationMins int `json:"durationMins"`
-
-	// Hour Hour in 24-hour format (0-23)
-	Hour int `json:"hour"`
-
-	// Minute Minute (0-59)
-	Minute int `json:"minute"`
 }
 
 // ManagedCluster defines model for ManagedCluster.
@@ -327,12 +261,6 @@ type MetaStoreSharingPg struct {
 // MetaStoreType defines model for MetaStoreType.
 type MetaStoreType string
 
-// Page defines model for Page.
-type Page struct {
-	Limit  uint64 `json:"limit"`
-	Offset uint64 `json:"offset"`
-}
-
 // PostPrivateLinkRequestBody defines model for PostPrivateLinkRequestBody.
 type PostPrivateLinkRequestBody struct {
 	ConnectionName string `json:"connectionName"`
@@ -343,15 +271,6 @@ type PostPrivateLinkRequestBody struct {
 type PostPrivateLinkResponseBody struct {
 	ConnectionName string             `json:"connectionName"`
 	Id             openapi_types.UUID `json:"id"`
-}
-
-// PostTenantResourcesRequestBody defines model for PostTenantResourcesRequestBody.
-type PostTenantResourcesRequestBody struct {
-	Compactor  *ComponentResourceRequest `json:"compactor,omitempty"`
-	Compute    *ComponentResourceRequest `json:"compute,omitempty"`
-	Frontend   *ComponentResourceRequest `json:"frontend,omitempty"`
-	Meta       *ComponentResourceRequest `json:"meta,omitempty"`
-	Standalone *ComponentResourceRequest `json:"standalone,omitempty"`
 }
 
 // PrivateLink defines model for PrivateLink.
@@ -370,11 +289,6 @@ type PrivateLinkConnectionState string
 
 // PrivateLinkStatus defines model for PrivateLink.Status.
 type PrivateLinkStatus string
-
-// Size defines model for Size.
-type Size struct {
-	Size uint64 `json:"size"`
-}
 
 // Tenant defines model for Tenant.
 type Tenant struct {
@@ -409,29 +323,6 @@ type TenantStatus string
 // TenantUsageType defines model for Tenant.UsageType.
 type TenantUsageType string
 
-// TenantArray defines model for TenantArray.
-type TenantArray = []Tenant
-
-// TenantRequestRequestBody defines model for TenantRequestRequestBody.
-type TenantRequestRequestBody struct {
-	ClusterName       *string                `json:"clusterName,omitempty"`
-	ConfigId          *openapi_types.UUID    `json:"configId,omitempty"`
-	EtcdConfig        *string                `json:"etcdConfig,omitempty"`
-	ImageTag          *string                `json:"imageTag,omitempty"`
-	MaintenanceWindow *MaintenanceWindow     `json:"maintenanceWindow,omitempty"`
-	Resources         *TenantResourceRequest `json:"resources,omitempty"`
-
-	// RwConfig if config ID is not provided, use this config. currently used in tf plugin
-	RwConfig   *string                            `json:"rwConfig,omitempty"`
-	Sku        *string                            `json:"sku,omitempty"`
-	TenantName string                             `json:"tenantName"`
-	Tier       *TierId                            `json:"tier,omitempty"`
-	UsageType  *TenantRequestRequestBodyUsageType `json:"usageType,omitempty"`
-}
-
-// TenantRequestRequestBodyUsageType defines model for TenantRequestRequestBody.UsageType.
-type TenantRequestRequestBodyUsageType string
-
 // TenantResource defines model for TenantResource.
 type TenantResource struct {
 	Components     TenantResourceComponents   `json:"components"`
@@ -451,7 +342,8 @@ type TenantResourceComponents struct {
 
 // TenantResourceComputeCache defines model for TenantResourceComputeCache.
 type TenantResourceComputeCache struct {
-	SizeGb int `json:"sizeGb"`
+	SizeGb       int     `json:"sizeGb"`
+	StorageClass *string `json:"storageClass,omitempty"`
 }
 
 // TenantResourceGroup defines model for TenantResourceGroup.
@@ -474,60 +366,6 @@ type TenantResourceMetaStore struct {
 	Rwu         string                `json:"rwu"`
 	SharingPg   *MetaStoreSharingPg   `json:"sharing_pg,omitempty"`
 	Type        MetaStoreType         `json:"type"`
-}
-
-// TenantResourceRequest defines model for TenantResourceRequest.
-type TenantResourceRequest struct {
-	Components              TenantResourceRequestComponents `json:"components"`
-	ComputeFileCacheSizeGiB int                             `json:"computeFileCacheSizeGiB"`
-	EtcdVolumeSizeGiB       *int                            `json:"etcdVolumeSizeGiB,omitempty"`
-	MetaStore               *TenantResourceRequestMetaStore `json:"metaStore,omitempty"`
-}
-
-// TenantResourceRequestComponents defines model for TenantResourceRequestComponents.
-type TenantResourceRequestComponents struct {
-	Compactor  *ComponentResourceRequest `json:"compactor,omitempty"`
-	Compute    *ComponentResourceRequest `json:"compute,omitempty"`
-	Etcd       *ComponentResourceRequest `json:"etcd,omitempty"`
-	Frontend   *ComponentResourceRequest `json:"frontend,omitempty"`
-	Meta       *ComponentResourceRequest `json:"meta,omitempty"`
-	Standalone *ComponentResourceRequest `json:"standalone,omitempty"`
-}
-
-// TenantResourceRequestMetaStore defines model for TenantResourceRequestMetaStore.
-type TenantResourceRequestMetaStore struct {
-	AwsRds     *TenantResourceRequestMetaStoreAwsRds     `json:"aws_rds,omitempty"`
-	Etcd       *TenantResourceRequestMetaStoreEtcd       `json:"etcd,omitempty"`
-	Postgresql *TenantResourceRequestMetaStorePostgreSql `json:"postgresql,omitempty"`
-	Type       MetaStoreType                             `json:"type"`
-}
-
-// TenantResourceRequestMetaStoreAwsRds defines model for TenantResourceRequestMetaStoreAwsRds.
-type TenantResourceRequestMetaStoreAwsRds struct {
-	InstanceClass string `json:"instanceClass"`
-	SizeGb        int    `json:"sizeGb"`
-}
-
-// TenantResourceRequestMetaStoreEtcd defines model for TenantResourceRequestMetaStoreEtcd.
-type TenantResourceRequestMetaStoreEtcd struct {
-	ComponentTypeId string `json:"componentTypeId"`
-	Replica         int    `json:"replica"`
-	SizeGb          int    `json:"sizeGb"`
-}
-
-// TenantResourceRequestMetaStorePostgreSql defines model for TenantResourceRequestMetaStorePostgreSql.
-type TenantResourceRequestMetaStorePostgreSql struct {
-	ComponentTypeId string `json:"componentTypeId"`
-	Replica         int    `json:"replica"`
-	SizeGb          int    `json:"sizeGb"`
-}
-
-// TenantSizePage defines model for TenantSizePage.
-type TenantSizePage struct {
-	Limit   uint64      `json:"limit"`
-	Offset  uint64      `json:"offset"`
-	Size    uint64      `json:"size"`
-	Tenants TenantArray `json:"tenants"`
 }
 
 // Tier defines model for Tier.
@@ -555,13 +393,6 @@ type Tiers struct {
 	Tiers TierArray `json:"tiers"`
 }
 
-// UpdateDBUserRequestBody defines model for UpdateDBUserRequestBody.
-type UpdateDBUserRequestBody struct {
-	Password string `json:"password"`
-	TenantId uint64 `json:"tenantId"`
-	Username string `json:"username"`
-}
-
 // BadRequestResponse defines model for BadRequestResponse.
 type BadRequestResponse struct {
 	Msg string `json:"msg"`
@@ -569,11 +400,6 @@ type BadRequestResponse struct {
 
 // DefaultResponse defines model for DefaultResponse.
 type DefaultResponse struct {
-	Msg string `json:"msg"`
-}
-
-// FailedPreconditionResponse defines model for FailedPreconditionResponse.
-type FailedPreconditionResponse struct {
 	Msg string `json:"msg"`
 }
 
@@ -605,63 +431,26 @@ type QueryErrLogParamsTarget string
 // QueryErrLogParamsDirection defines parameters for QueryErrLog.
 type QueryErrLogParamsDirection string
 
-// DeleteTenantParams defines parameters for DeleteTenant.
-type DeleteTenantParams struct {
-	TenantId   *uint64 `form:"tenantId,omitempty" json:"tenantId,omitempty"`
-	TenantName *string `form:"tenantName,omitempty" json:"tenantName,omitempty"`
-}
-
 // GetTenantParams defines parameters for GetTenant.
 type GetTenantParams struct {
 	TenantId   *uint64 `form:"tenantId,omitempty" json:"tenantId,omitempty"`
 	TenantName *string `form:"tenantName,omitempty" json:"tenantName,omitempty"`
 }
 
-// DeleteTenantDbusersParams defines parameters for DeleteTenantDbusers.
-type DeleteTenantDbusersParams struct {
-	TenantId uint64 `form:"tenantId" json:"tenantId"`
-	Username string `form:"username" json:"username"`
-}
-
-// GetTenantDbusersParams defines parameters for GetTenantDbusers.
-type GetTenantDbusersParams struct {
-	TenantId uint64 `form:"tenantId" json:"tenantId"`
-}
-
 // PutTenantTenantIdConfigRisingwaveTextBody defines parameters for PutTenantTenantIdConfigRisingwave.
 type PutTenantTenantIdConfigRisingwaveTextBody = string
 
-// PostTenantTenantIdUpdateVersionJSONBody defines parameters for PostTenantTenantIdUpdateVersion.
-type PostTenantTenantIdUpdateVersionJSONBody struct {
-	Version *string `json:"version,omitempty"`
+// PutTenantTenantIdConfigRisingwaveParams defines parameters for PutTenantTenantIdConfigRisingwave.
+type PutTenantTenantIdConfigRisingwaveParams struct {
+	Component *string `form:"component,omitempty" json:"component,omitempty"`
+	NodeGroup *string `form:"nodeGroup,omitempty" json:"nodeGroup,omitempty"`
 }
-
-// GetTenantsParams defines parameters for GetTenants.
-type GetTenantsParams struct {
-	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// PostTenantDbusersJSONRequestBody defines body for PostTenantDbusers for application/json ContentType.
-type PostTenantDbusersJSONRequestBody = CreateDBUserRequestBody
-
-// PutTenantDbusersJSONRequestBody defines body for PutTenantDbusers for application/json ContentType.
-type PutTenantDbusersJSONRequestBody = UpdateDBUserRequestBody
 
 // PutTenantTenantIdConfigRisingwaveTextRequestBody defines body for PutTenantTenantIdConfigRisingwave for text/plain ContentType.
 type PutTenantTenantIdConfigRisingwaveTextRequestBody = PutTenantTenantIdConfigRisingwaveTextBody
 
 // PostTenantTenantIdPrivatelinksJSONRequestBody defines body for PostTenantTenantIdPrivatelinks for application/json ContentType.
 type PostTenantTenantIdPrivatelinksJSONRequestBody = PostPrivateLinkRequestBody
-
-// PostTenantTenantIdResourceJSONRequestBody defines body for PostTenantTenantIdResource for application/json ContentType.
-type PostTenantTenantIdResourceJSONRequestBody = PostTenantResourcesRequestBody
-
-// PostTenantTenantIdUpdateVersionJSONRequestBody defines body for PostTenantTenantIdUpdateVersion for application/json ContentType.
-type PostTenantTenantIdUpdateVersionJSONRequestBody PostTenantTenantIdUpdateVersionJSONBody
-
-// PostTenantsJSONRequestBody defines body for PostTenants for application/json ContentType.
-type PostTenantsJSONRequestBody = TenantRequestRequestBody
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -748,35 +537,16 @@ type ClientInterface interface {
 	// GetRootca request
 	GetRootca(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteTenant request
-	DeleteTenant(ctx context.Context, params *DeleteTenantParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetTenant request
 	GetTenant(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteTenantDbusers request
-	DeleteTenantDbusers(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTenantDbusers request
-	GetTenantDbusers(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostTenantDbusersWithBody request with any body
-	PostTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostTenantDbusers(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PutTenantDbusersWithBody request with any body
-	PutTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PutTenantDbusers(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantTags request
 	GetTenantTags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutTenantTenantIdConfigRisingwaveWithBody request with any body
-	PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PutTenantTenantIdConfigRisingwaveWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutTenantTenantIdConfigRisingwaveWithTextBody(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTenantTenantIdPrivatelinkPrivateLinkId request
 	DeleteTenantTenantIdPrivatelinkPrivateLinkId(ctx context.Context, tenantId uint64, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -788,24 +558,6 @@ type ClientInterface interface {
 	PostTenantTenantIdPrivatelinksWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostTenantTenantIdPrivatelinks(ctx context.Context, tenantId uint64, body PostTenantTenantIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostTenantTenantIdResourceWithBody request with any body
-	PostTenantTenantIdResourceWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostTenantTenantIdResource(ctx context.Context, tenantId uint64, body PostTenantTenantIdResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostTenantTenantIdUpdateVersionWithBody request with any body
-	PostTenantTenantIdUpdateVersionWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostTenantTenantIdUpdateVersion(ctx context.Context, tenantId uint64, body PostTenantTenantIdUpdateVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTenants request
-	GetTenants(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostTenantsWithBody request with any body
-	PostTenantsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostTenants(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostTenantsTenantIdUnquiesce request
 	PostTenantsTenantIdUnquiesce(ctx context.Context, tenantId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -862,92 +614,8 @@ func (c *Client) GetRootca(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTenant(ctx context.Context, params *DeleteTenantParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTenantRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetTenant(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteTenantDbusers(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTenantDbusersRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetTenantDbusers(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTenantDbusersRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantDbusersRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantDbusers(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantDbusersRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutTenantDbusersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutTenantDbusersRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutTenantDbusers(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutTenantDbusersRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -970,8 +638,8 @@ func (c *Client) GetTenantTags(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithBody(c.Server, tenantId, contentType, body)
+func (c *Client) PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithBody(c.Server, tenantId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -982,8 +650,8 @@ func (c *Client) PutTenantTenantIdConfigRisingwaveWithBody(ctx context.Context, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutTenantTenantIdConfigRisingwaveWithTextBody(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(c.Server, tenantId, body)
+func (c *Client) PutTenantTenantIdConfigRisingwaveWithTextBody(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(c.Server, tenantId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1032,90 +700,6 @@ func (c *Client) PostTenantTenantIdPrivatelinksWithBody(ctx context.Context, ten
 
 func (c *Client) PostTenantTenantIdPrivatelinks(ctx context.Context, tenantId uint64, body PostTenantTenantIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostTenantTenantIdPrivatelinksRequest(c.Server, tenantId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantTenantIdResourceWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantTenantIdResourceRequestWithBody(c.Server, tenantId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantTenantIdResource(ctx context.Context, tenantId uint64, body PostTenantTenantIdResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantTenantIdResourceRequest(c.Server, tenantId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantTenantIdUpdateVersionWithBody(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantTenantIdUpdateVersionRequestWithBody(c.Server, tenantId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantTenantIdUpdateVersion(ctx context.Context, tenantId uint64, body PostTenantTenantIdUpdateVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantTenantIdUpdateVersionRequest(c.Server, tenantId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetTenants(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTenantsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenantsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantsRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTenants(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1409,71 +993,6 @@ func NewGetRootcaRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewDeleteTenantRequest generates requests for DeleteTenant
-func NewDeleteTenantRequest(server string, params *DeleteTenantParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.TenantId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, *params.TenantId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.TenantName != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantName", runtime.ParamLocationQuery, *params.TenantName); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetTenantRequest generates requests for GetTenant
 func NewGetTenantRequest(server string, params *GetTenantParams) (*http.Request, error) {
 	var err error
@@ -1539,188 +1058,6 @@ func NewGetTenantRequest(server string, params *GetTenantParams) (*http.Request,
 	return req, nil
 }
 
-// NewDeleteTenantDbusersRequest generates requests for DeleteTenantDbusers
-func NewDeleteTenantDbusersRequest(server string, params *DeleteTenantDbusersParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/dbusers")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, params.TenantId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "username", runtime.ParamLocationQuery, params.Username); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetTenantDbusersRequest generates requests for GetTenantDbusers
-func NewGetTenantDbusersRequest(server string, params *GetTenantDbusersParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/dbusers")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, params.TenantId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostTenantDbusersRequest calls the generic PostTenantDbusers builder with application/json body
-func NewPostTenantDbusersRequest(server string, body PostTenantDbusersJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostTenantDbusersRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostTenantDbusersRequestWithBody generates requests for PostTenantDbusers with any type of body
-func NewPostTenantDbusersRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/dbusers")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewPutTenantDbusersRequest calls the generic PutTenantDbusers builder with application/json body
-func NewPutTenantDbusersRequest(server string, body PutTenantDbusersJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPutTenantDbusersRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPutTenantDbusersRequestWithBody generates requests for PutTenantDbusers with any type of body
-func NewPutTenantDbusersRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/dbusers")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewGetTenantTagsRequest generates requests for GetTenantTags
 func NewGetTenantTagsRequest(server string) (*http.Request, error) {
 	var err error
@@ -1749,14 +1086,14 @@ func NewGetTenantTagsRequest(server string) (*http.Request, error) {
 }
 
 // NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody calls the generic PutTenantTenantIdConfigRisingwave builder with text/plain body
-func NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(server string, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody) (*http.Request, error) {
+func NewPutTenantTenantIdConfigRisingwaveRequestWithTextBody(server string, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, body PutTenantTenantIdConfigRisingwaveTextRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	bodyReader = strings.NewReader(string(body))
-	return NewPutTenantTenantIdConfigRisingwaveRequestWithBody(server, tenantId, "text/plain", bodyReader)
+	return NewPutTenantTenantIdConfigRisingwaveRequestWithBody(server, tenantId, params, "text/plain", bodyReader)
 }
 
 // NewPutTenantTenantIdConfigRisingwaveRequestWithBody generates requests for PutTenantTenantIdConfigRisingwave with any type of body
-func NewPutTenantTenantIdConfigRisingwaveRequestWithBody(server string, tenantId uint64, contentType string, body io.Reader) (*http.Request, error) {
+func NewPutTenantTenantIdConfigRisingwaveRequestWithBody(server string, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1779,6 +1116,44 @@ func NewPutTenantTenantIdConfigRisingwaveRequestWithBody(server string, tenantId
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Component != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "component", runtime.ParamLocationQuery, *params.Component); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.NodeGroup != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "nodeGroup", runtime.ParamLocationQuery, *params.NodeGroup); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("PUT", queryURL.String(), body)
@@ -1920,205 +1295,6 @@ func NewPostTenantTenantIdPrivatelinksRequestWithBody(server string, tenantId ui
 	return req, nil
 }
 
-// NewPostTenantTenantIdResourceRequest calls the generic PostTenantTenantIdResource builder with application/json body
-func NewPostTenantTenantIdResourceRequest(server string, tenantId uint64, body PostTenantTenantIdResourceJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostTenantTenantIdResourceRequestWithBody(server, tenantId, "application/json", bodyReader)
-}
-
-// NewPostTenantTenantIdResourceRequestWithBody generates requests for PostTenantTenantIdResource with any type of body
-func NewPostTenantTenantIdResourceRequestWithBody(server string, tenantId uint64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/%s/resource", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewPostTenantTenantIdUpdateVersionRequest calls the generic PostTenantTenantIdUpdateVersion builder with application/json body
-func NewPostTenantTenantIdUpdateVersionRequest(server string, tenantId uint64, body PostTenantTenantIdUpdateVersionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostTenantTenantIdUpdateVersionRequestWithBody(server, tenantId, "application/json", bodyReader)
-}
-
-// NewPostTenantTenantIdUpdateVersionRequestWithBody generates requests for PostTenantTenantIdUpdateVersion with any type of body
-func NewPostTenantTenantIdUpdateVersionRequestWithBody(server string, tenantId uint64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenant/%s/updateVersion", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetTenantsRequest generates requests for GetTenants
-func NewGetTenantsRequest(server string, params *GetTenantsParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenants")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Offset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Limit != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostTenantsRequest calls the generic PostTenants builder with application/json body
-func NewPostTenantsRequest(server string, body PostTenantsJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostTenantsRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostTenantsRequestWithBody generates requests for PostTenants with any type of body
-func NewPostTenantsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/tenants")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewPostTenantsTenantIdUnquiesceRequest generates requests for PostTenantsTenantIdUnquiesce
 func NewPostTenantsTenantIdUnquiesceRequest(server string, tenantId uint64) (*http.Request, error) {
 	var err error
@@ -2235,35 +1411,16 @@ type ClientWithResponsesInterface interface {
 	// GetRootcaWithResponse request
 	GetRootcaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRootcaResponse, error)
 
-	// DeleteTenantWithResponse request
-	DeleteTenantWithResponse(ctx context.Context, params *DeleteTenantParams, reqEditors ...RequestEditorFn) (*DeleteTenantResponse, error)
-
 	// GetTenantWithResponse request
 	GetTenantWithResponse(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*GetTenantResponse, error)
-
-	// DeleteTenantDbusersWithResponse request
-	DeleteTenantDbusersWithResponse(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*DeleteTenantDbusersResponse, error)
-
-	// GetTenantDbusersWithResponse request
-	GetTenantDbusersWithResponse(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*GetTenantDbusersResponse, error)
-
-	// PostTenantDbusersWithBodyWithResponse request with any body
-	PostTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error)
-
-	PostTenantDbusersWithResponse(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error)
-
-	// PutTenantDbusersWithBodyWithResponse request with any body
-	PutTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error)
-
-	PutTenantDbusersWithResponse(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error)
 
 	// GetTenantTagsWithResponse request
 	GetTenantTagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTenantTagsResponse, error)
 
 	// PutTenantTenantIdConfigRisingwaveWithBodyWithResponse request with any body
-	PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
+	PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
 
-	PutTenantTenantIdConfigRisingwaveWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
+	PutTenantTenantIdConfigRisingwaveWithTextBodyWithResponse(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error)
 
 	// DeleteTenantTenantIdPrivatelinkPrivateLinkIdWithResponse request
 	DeleteTenantTenantIdPrivatelinkPrivateLinkIdWithResponse(ctx context.Context, tenantId uint64, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantTenantIdPrivatelinkPrivateLinkIdResponse, error)
@@ -2275,24 +1432,6 @@ type ClientWithResponsesInterface interface {
 	PostTenantTenantIdPrivatelinksWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantTenantIdPrivatelinksResponse, error)
 
 	PostTenantTenantIdPrivatelinksWithResponse(ctx context.Context, tenantId uint64, body PostTenantTenantIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantTenantIdPrivatelinksResponse, error)
-
-	// PostTenantTenantIdResourceWithBodyWithResponse request with any body
-	PostTenantTenantIdResourceWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantTenantIdResourceResponse, error)
-
-	PostTenantTenantIdResourceWithResponse(ctx context.Context, tenantId uint64, body PostTenantTenantIdResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantTenantIdResourceResponse, error)
-
-	// PostTenantTenantIdUpdateVersionWithBodyWithResponse request with any body
-	PostTenantTenantIdUpdateVersionWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantTenantIdUpdateVersionResponse, error)
-
-	PostTenantTenantIdUpdateVersionWithResponse(ctx context.Context, tenantId uint64, body PostTenantTenantIdUpdateVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantTenantIdUpdateVersionResponse, error)
-
-	// GetTenantsWithResponse request
-	GetTenantsWithResponse(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*GetTenantsResponse, error)
-
-	// PostTenantsWithBodyWithResponse request with any body
-	PostTenantsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsResponse, error)
-
-	PostTenantsWithResponse(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsResponse, error)
 
 	// PostTenantsTenantIdUnquiesceWithResponse request
 	PostTenantsTenantIdUnquiesceWithResponse(ctx context.Context, tenantId uint64, reqEditors ...RequestEditorFn) (*PostTenantsTenantIdUnquiesceResponse, error)
@@ -2391,30 +1530,6 @@ func (r GetRootcaResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteTenantResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON202      *DefaultResponse
-	JSON403      *DefaultResponse
-	JSON404      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteTenantResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteTenantResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetTenantResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2432,101 +1547,6 @@ func (r GetTenantResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DeleteTenantDbusersResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DefaultResponse
-	JSON400      *FailedPreconditionResponse
-	JSON404      *NotFoundResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteTenantDbusersResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteTenantDbusersResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetTenantDbusersResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DBUsers
-	JSON404      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTenantDbusersResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTenantDbusersResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostTenantDbusersResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DBUser
-	JSON400      *FailedPreconditionResponse
-	JSON404      *NotFoundResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostTenantDbusersResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostTenantDbusersResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PutTenantDbusersResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DefaultResponse
-	JSON400      *FailedPreconditionResponse
-	JSON404      *NotFoundResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PutTenantDbusersResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutTenantDbusersResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2558,6 +1578,7 @@ func (r GetTenantTagsResponse) StatusCode() int {
 type PutTenantTenantIdConfigRisingwaveResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequestResponse
 	JSON404      *NotFoundResponse
 	JSON409      *DefaultResponse
 }
@@ -2647,100 +1668,6 @@ func (r PostTenantTenantIdPrivatelinksResponse) StatusCode() int {
 	return 0
 }
 
-type PostTenantTenantIdResourceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON202      *DefaultResponse
-	JSON400      *BadRequestResponse
-	JSON422      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostTenantTenantIdResourceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostTenantTenantIdResourceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostTenantTenantIdUpdateVersionResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON202      *DefaultResponse
-	JSON404      *DefaultResponse
-	JSON409      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostTenantTenantIdUpdateVersionResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostTenantTenantIdUpdateVersionResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetTenantsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *TenantSizePage
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTenantsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTenantsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostTenantsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON202      *CreateTenantResponseBody
-	JSON400      *BadRequestResponse
-	JSON422      *DefaultResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostTenantsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostTenantsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type PostTenantsTenantIdUnquiesceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2820,15 +1747,6 @@ func (c *ClientWithResponses) GetRootcaWithResponse(ctx context.Context, reqEdit
 	return ParseGetRootcaResponse(rsp)
 }
 
-// DeleteTenantWithResponse request returning *DeleteTenantResponse
-func (c *ClientWithResponses) DeleteTenantWithResponse(ctx context.Context, params *DeleteTenantParams, reqEditors ...RequestEditorFn) (*DeleteTenantResponse, error) {
-	rsp, err := c.DeleteTenant(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteTenantResponse(rsp)
-}
-
 // GetTenantWithResponse request returning *GetTenantResponse
 func (c *ClientWithResponses) GetTenantWithResponse(ctx context.Context, params *GetTenantParams, reqEditors ...RequestEditorFn) (*GetTenantResponse, error) {
 	rsp, err := c.GetTenant(ctx, params, reqEditors...)
@@ -2836,58 +1754,6 @@ func (c *ClientWithResponses) GetTenantWithResponse(ctx context.Context, params 
 		return nil, err
 	}
 	return ParseGetTenantResponse(rsp)
-}
-
-// DeleteTenantDbusersWithResponse request returning *DeleteTenantDbusersResponse
-func (c *ClientWithResponses) DeleteTenantDbusersWithResponse(ctx context.Context, params *DeleteTenantDbusersParams, reqEditors ...RequestEditorFn) (*DeleteTenantDbusersResponse, error) {
-	rsp, err := c.DeleteTenantDbusers(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteTenantDbusersResponse(rsp)
-}
-
-// GetTenantDbusersWithResponse request returning *GetTenantDbusersResponse
-func (c *ClientWithResponses) GetTenantDbusersWithResponse(ctx context.Context, params *GetTenantDbusersParams, reqEditors ...RequestEditorFn) (*GetTenantDbusersResponse, error) {
-	rsp, err := c.GetTenantDbusers(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTenantDbusersResponse(rsp)
-}
-
-// PostTenantDbusersWithBodyWithResponse request with arbitrary body returning *PostTenantDbusersResponse
-func (c *ClientWithResponses) PostTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error) {
-	rsp, err := c.PostTenantDbusersWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantDbusersResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostTenantDbusersWithResponse(ctx context.Context, body PostTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantDbusersResponse, error) {
-	rsp, err := c.PostTenantDbusers(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantDbusersResponse(rsp)
-}
-
-// PutTenantDbusersWithBodyWithResponse request with arbitrary body returning *PutTenantDbusersResponse
-func (c *ClientWithResponses) PutTenantDbusersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error) {
-	rsp, err := c.PutTenantDbusersWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutTenantDbusersResponse(rsp)
-}
-
-func (c *ClientWithResponses) PutTenantDbusersWithResponse(ctx context.Context, body PutTenantDbusersJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantDbusersResponse, error) {
-	rsp, err := c.PutTenantDbusers(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutTenantDbusersResponse(rsp)
 }
 
 // GetTenantTagsWithResponse request returning *GetTenantTagsResponse
@@ -2900,16 +1766,16 @@ func (c *ClientWithResponses) GetTenantTagsWithResponse(ctx context.Context, req
 }
 
 // PutTenantTenantIdConfigRisingwaveWithBodyWithResponse request with arbitrary body returning *PutTenantTenantIdConfigRisingwaveResponse
-func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
-	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithBody(ctx, tenantId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithBodyWithResponse(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
+	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithBody(ctx, tenantId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParsePutTenantTenantIdConfigRisingwaveResponse(rsp)
 }
 
-func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithTextBodyWithResponse(ctx context.Context, tenantId uint64, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
-	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithTextBody(ctx, tenantId, body, reqEditors...)
+func (c *ClientWithResponses) PutTenantTenantIdConfigRisingwaveWithTextBodyWithResponse(ctx context.Context, tenantId uint64, params *PutTenantTenantIdConfigRisingwaveParams, body PutTenantTenantIdConfigRisingwaveTextRequestBody, reqEditors ...RequestEditorFn) (*PutTenantTenantIdConfigRisingwaveResponse, error) {
+	rsp, err := c.PutTenantTenantIdConfigRisingwaveWithTextBody(ctx, tenantId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2949,66 +1815,6 @@ func (c *ClientWithResponses) PostTenantTenantIdPrivatelinksWithResponse(ctx con
 		return nil, err
 	}
 	return ParsePostTenantTenantIdPrivatelinksResponse(rsp)
-}
-
-// PostTenantTenantIdResourceWithBodyWithResponse request with arbitrary body returning *PostTenantTenantIdResourceResponse
-func (c *ClientWithResponses) PostTenantTenantIdResourceWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantTenantIdResourceResponse, error) {
-	rsp, err := c.PostTenantTenantIdResourceWithBody(ctx, tenantId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantTenantIdResourceResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostTenantTenantIdResourceWithResponse(ctx context.Context, tenantId uint64, body PostTenantTenantIdResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantTenantIdResourceResponse, error) {
-	rsp, err := c.PostTenantTenantIdResource(ctx, tenantId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantTenantIdResourceResponse(rsp)
-}
-
-// PostTenantTenantIdUpdateVersionWithBodyWithResponse request with arbitrary body returning *PostTenantTenantIdUpdateVersionResponse
-func (c *ClientWithResponses) PostTenantTenantIdUpdateVersionWithBodyWithResponse(ctx context.Context, tenantId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantTenantIdUpdateVersionResponse, error) {
-	rsp, err := c.PostTenantTenantIdUpdateVersionWithBody(ctx, tenantId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantTenantIdUpdateVersionResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostTenantTenantIdUpdateVersionWithResponse(ctx context.Context, tenantId uint64, body PostTenantTenantIdUpdateVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantTenantIdUpdateVersionResponse, error) {
-	rsp, err := c.PostTenantTenantIdUpdateVersion(ctx, tenantId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantTenantIdUpdateVersionResponse(rsp)
-}
-
-// GetTenantsWithResponse request returning *GetTenantsResponse
-func (c *ClientWithResponses) GetTenantsWithResponse(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*GetTenantsResponse, error) {
-	rsp, err := c.GetTenants(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTenantsResponse(rsp)
-}
-
-// PostTenantsWithBodyWithResponse request with arbitrary body returning *PostTenantsResponse
-func (c *ClientWithResponses) PostTenantsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsResponse, error) {
-	rsp, err := c.PostTenantsWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantsResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostTenantsWithResponse(ctx context.Context, body PostTenantsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsResponse, error) {
-	rsp, err := c.PostTenants(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTenantsResponse(rsp)
 }
 
 // PostTenantsTenantIdUnquiesceWithResponse request returning *PostTenantsTenantIdUnquiesceResponse
@@ -3144,46 +1950,6 @@ func ParseGetRootcaResponse(rsp *http.Response) (*GetRootcaResponse, error) {
 	return response, nil
 }
 
-// ParseDeleteTenantResponse parses an HTTP response from a DeleteTenantWithResponse call
-func ParseDeleteTenantResponse(rsp *http.Response) (*DeleteTenantResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteTenantResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON202 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetTenantResponse parses an HTTP response from a GetTenantWithResponse call
 func ParseGetTenantResponse(rsp *http.Response) (*GetTenantResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -3204,159 +1970,6 @@ func ParseGetTenantResponse(rsp *http.Response) (*GetTenantResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteTenantDbusersResponse parses an HTTP response from a DeleteTenantDbusersWithResponse call
-func ParseDeleteTenantDbusersResponse(rsp *http.Response) (*DeleteTenantDbusersResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteTenantDbusersResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest FailedPreconditionResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetTenantDbusersResponse parses an HTTP response from a GetTenantDbusersWithResponse call
-func ParseGetTenantDbusersResponse(rsp *http.Response) (*GetTenantDbusersResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTenantDbusersResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DBUsers
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostTenantDbusersResponse parses an HTTP response from a PostTenantDbusersWithResponse call
-func ParsePostTenantDbusersResponse(rsp *http.Response) (*PostTenantDbusersResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostTenantDbusersResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DBUser
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest FailedPreconditionResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePutTenantDbusersResponse parses an HTTP response from a PutTenantDbusersWithResponse call
-func ParsePutTenantDbusersResponse(rsp *http.Response) (*PutTenantDbusersResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutTenantDbusersResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest FailedPreconditionResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
@@ -3410,6 +2023,13 @@ func ParsePutTenantTenantIdConfigRisingwaveResponse(rsp *http.Response) (*PutTen
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3522,152 +2142,6 @@ func ParsePostTenantTenantIdPrivatelinksResponse(rsp *http.Response) (*PostTenan
 			return nil, err
 		}
 		response.JSON400 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostTenantTenantIdResourceResponse parses an HTTP response from a PostTenantTenantIdResourceWithResponse call
-func ParsePostTenantTenantIdResourceResponse(rsp *http.Response) (*PostTenantTenantIdResourceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostTenantTenantIdResourceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON202 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostTenantTenantIdUpdateVersionResponse parses an HTTP response from a PostTenantTenantIdUpdateVersionWithResponse call
-func ParsePostTenantTenantIdUpdateVersionResponse(rsp *http.Response) (*PostTenantTenantIdUpdateVersionResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostTenantTenantIdUpdateVersionResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON202 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetTenantsResponse parses an HTTP response from a GetTenantsWithResponse call
-func ParseGetTenantsResponse(rsp *http.Response) (*GetTenantsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTenantsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TenantSizePage
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostTenantsResponse parses an HTTP response from a PostTenantsWithResponse call
-func ParsePostTenantsResponse(rsp *http.Response) (*PostTenantsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostTenantsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest CreateTenantResponseBody
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON202 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest DefaultResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
 
 	}
 

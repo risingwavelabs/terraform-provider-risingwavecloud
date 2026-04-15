@@ -121,36 +121,36 @@ func TestTierValidation(t *testing.T) {
 	}{
 		{
 			name:   "SaaS Standard",
-			tier:   string(apigen_mgmtv2.Standard),
+			tier:   string(apigen_mgmtv2.TierIdStandard),
 			isBYOC: false,
 		},
 		{
 			name:   "SaaS Invited",
-			tier:   string(apigen_mgmtv2.Invited),
+			tier:   string(apigen_mgmtv2.TierIdInvited),
 			isBYOC: false,
 		},
 		{
 			name:    "SaaS with BYOC tier",
-			tier:    string(apigen_mgmtv2.BYOC),
+			tier:    string(apigen_mgmtv2.TierIdBYOC),
 			isBYOC:  false,
 			wantErr: true,
 			errMsg:  "SaaS clusters must use either Standard or Invited tier",
 		},
 		{
 			name:   "BYOC with BYOC tier",
-			tier:   string(apigen_mgmtv2.BYOC),
+			tier:   string(apigen_mgmtv2.TierIdBYOC),
 			isBYOC: true,
 		},
 		{
 			name:    "BYOC with Standard tier",
-			tier:    string(apigen_mgmtv2.Standard),
+			tier:    string(apigen_mgmtv2.TierIdStandard),
 			isBYOC:  true,
 			wantErr: true,
 			errMsg:  "BYOC clusters must use the BYOC tier",
 		},
 		{
 			name:    "BYOC with Invited tier",
-			tier:    string(apigen_mgmtv2.Invited),
+			tier:    string(apigen_mgmtv2.TierIdInvited),
 			isBYOC:  true,
 			wantErr: true,
 			errMsg:  "BYOC clusters must use the BYOC tier",
@@ -163,11 +163,11 @@ func TestTierValidation(t *testing.T) {
 			var hasErr bool
 			var errMsg string
 
-			if tt.isBYOC && tier != apigen_mgmtv2.BYOC {
+			if tt.isBYOC && tier != apigen_mgmtv2.TierIdBYOC {
 				hasErr = true
 				errMsg = "BYOC clusters must use the BYOC tier"
 			}
-			if !tt.isBYOC && tier != apigen_mgmtv2.Standard && tier != apigen_mgmtv2.Invited {
+			if !tt.isBYOC && tier != apigen_mgmtv2.TierIdStandard && tier != apigen_mgmtv2.TierIdInvited {
 				hasErr = true
 				errMsg = "SaaS clusters must use either Standard or Invited tier"
 			}
@@ -189,7 +189,7 @@ func TestClusterCreate_previous_creation_failed(t *testing.T) {
 		name     = "test-cluster"
 		region   = "us-west-2"
 		imageTag = "v1.10.0"
-		tier     = apigen_mgmtv2.Standard
+		tier     = apigen_mgmtv2.TierIdStandard
 		tierV1   = apigen_mgmtv1.TierId(tier)
 		tenant   = createSimpleTestCluster(t, name, region, imageTag, tier, apigen_mgmtv2.Failed)
 	)

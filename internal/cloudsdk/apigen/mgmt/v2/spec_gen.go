@@ -35,10 +35,25 @@ const (
 	ClusterStatusUpdating                ClusterStatus = "Updating"
 )
 
+// Defines values for ComputeCachePerformanceTier.
+const (
+	ComputeCachePerformanceTierPerformance ComputeCachePerformanceTier = "performance"
+	ComputeCachePerformanceTierStandard    ComputeCachePerformanceTier = "standard"
+	ComputeCachePerformanceTierUltra       ComputeCachePerformanceTier = "ultra"
+)
+
 // Defines values for DdlProgressStatus.
 const (
 	Completed  DdlProgressStatus = "Completed"
 	InProgress DdlProgressStatus = "InProgress"
+)
+
+// Defines values for GetTenantAllowedIamRolesResponseBodyStatus.
+const (
+	GetTenantAllowedIamRolesResponseBodyStatusFailed   GetTenantAllowedIamRolesResponseBodyStatus = "Failed"
+	GetTenantAllowedIamRolesResponseBodyStatusPending  GetTenantAllowedIamRolesResponseBodyStatus = "Pending"
+	GetTenantAllowedIamRolesResponseBodyStatusReady    GetTenantAllowedIamRolesResponseBodyStatus = "Ready"
+	GetTenantAllowedIamRolesResponseBodyStatusUpdating GetTenantAllowedIamRolesResponseBodyStatus = "Updating"
 )
 
 // Defines values for KafkaConfigSaslMechanisms.
@@ -158,13 +173,14 @@ const (
 
 // Defines values for TenantHealthStatus.
 const (
-	TenantHealthStatusHealthy   TenantHealthStatus = "Healthy"
-	TenantHealthStatusUnhealthy TenantHealthStatus = "Unhealthy"
-	TenantHealthStatusUnknown   TenantHealthStatus = "Unknown"
+	Healthy   TenantHealthStatus = "Healthy"
+	Unhealthy TenantHealthStatus = "Unhealthy"
+	Unknown   TenantHealthStatus = "Unknown"
 )
 
 // Defines values for TenantStatus.
 const (
+	AwaitingConfig         TenantStatus = "AwaitingConfig"
 	ConfigUpdating         TenantStatus = "ConfigUpdating"
 	Creating               TenantStatus = "Creating"
 	Deleting               TenantStatus = "Deleting"
@@ -200,11 +216,12 @@ const (
 
 // Defines values for TierId.
 const (
-	BYOC      TierId = "BYOC"
-	Benchmark TierId = "Benchmark"
-	Invited   TierId = "Invited"
-	Standard  TierId = "Standard"
-	Test      TierId = "Test"
+	TierIdBYOC      TierId = "BYOC"
+	TierIdBYOK      TierId = "BYOK"
+	TierIdBenchmark TierId = "Benchmark"
+	TierIdInvited   TierId = "Invited"
+	TierIdStandard  TierId = "Standard"
+	TierIdTest      TierId = "Test"
 )
 
 // Defines values for GetTenantsNsIdDatabasesDatabaseNameMatviewsMatViewNameDependenciesParamsDependencyDirection.
@@ -250,18 +267,68 @@ type AutoUpgradeDetails struct {
 // AutoUpgradeDetailsArray defines model for AutoUpgradeDetailsArray.
 type AutoUpgradeDetailsArray = []AutoUpgradeDetails
 
+// BYOKTenantAWSConfig defines model for BYOKTenantAWSConfig.
+type BYOKTenantAWSConfig struct {
+	// IamRoleArn Customer-provided IAM role ARN with IRSA trust policy for RisingWave pods
+	IamRoleArn string `json:"iamRoleArn"`
+}
+
+// BYOKTenantMetastoreConfig defines model for BYOKTenantMetastoreConfig.
+type BYOKTenantMetastoreConfig struct {
+	// Database Database name for RisingWave metadata
+	Database string `json:"database"`
+
+	// Host PostgreSQL host
+	Host string `json:"host"`
+
+	// Password PostgreSQL password
+	Password string `json:"password"`
+
+	// Port PostgreSQL port
+	Port int `json:"port"`
+
+	// Username PostgreSQL username
+	Username string `json:"username"`
+}
+
+// BackfillingMatview defines model for BackfillingMatview.
+type BackfillingMatview struct {
+	// BackfillingProgress Backfilling progress, which can be a percentage or "xxx rows consumed" if the upstream is an external source.
+	BackfillingProgress *string `json:"backfillingProgress"`
+
+	// DatabaseName Name of the database.
+	DatabaseName *string `json:"databaseName,omitempty"`
+
+	// InitializedTimestamp RFC3339 timestamp when the backfilling DDL was initialized. Omitted or null if unavailable.
+	InitializedTimestamp *time.Time `json:"initializedTimestamp"`
+
+	// IsServerless Whether this MV is created with serverless backfilling (run in a separated resource group).
+	IsServerless *bool `json:"isServerless,omitempty"`
+
+	// MatViewName Name of the materialized view.
+	MatViewName *string `json:"matViewName,omitempty"`
+
+	// Schema Name of the schema.
+	Schema *string `json:"schema,omitempty"`
+
+	// TimeElapsed Human-readable time elapsed since the backfilling DDL was initialized.
+	TimeElapsed *string `json:"timeElapsed,omitempty"`
+}
+
+// BackfillingMatviewsList defines model for BackfillingMatviewsList.
+type BackfillingMatviewsList struct {
+	MatViews *[]BackfillingMatview `json:"matViews,omitempty"`
+}
+
 // BackupSnapshotItem defines model for BackupSnapshotItem.
 type BackupSnapshotItem struct {
 	AutoDeletableSince *time.Time         `json:"autoDeletableSince,omitempty"`
 	CreatedAt          time.Time          `json:"createdAt"`
 	CreatedBy          string             `json:"createdBy"`
-	CreatedAtUnixMills *int64             `json:"created_at_unix_mills,omitempty"`
 	Id                 openapi_types.UUID `json:"id"`
-	MetaSnapshotId     *int64             `json:"meta_snapshot_id,omitempty"`
 	RwSnapshotId       int                `json:"rwSnapshotId"`
 	RwVersion          string             `json:"rwVersion"`
 	Status             string             `json:"status"`
-	Type               *string            `json:"type,omitempty"`
 }
 
 // BackupSnapshotsPagination defines model for BackupSnapshotsPagination.
@@ -309,6 +376,9 @@ type ComponentResourceRequest struct {
 	Replica         int    `json:"replica"`
 }
 
+// ComputeCachePerformanceTier defines model for ComputeCachePerformanceTier.
+type ComputeCachePerformanceTier string
+
 // Connector defines model for Connector.
 type Connector struct {
 	ConnectorType    *string            `json:"connectorType,omitempty"`
@@ -333,6 +403,8 @@ type CreateDatabaseRequestBody struct {
 
 // CreateResourceGroupsRequestBody defines model for CreateResourceGroupsRequestBody.
 type CreateResourceGroupsRequestBody struct {
+	ComputeCache *TenantResourceComputeCache `json:"computeCache,omitempty"`
+	// Deprecated:
 	FileCacheSizeGb *int                     `json:"fileCacheSizeGb,omitempty"`
 	Name            string                   `json:"name"`
 	Resource        ComponentResourceRequest `json:"resource"`
@@ -385,20 +457,56 @@ type DdlProgressStatus string
 
 // Endpoint defines model for Endpoint.
 type Endpoint struct {
-	AwsServingPrivateLink *AWSServingPrivateLinkInfo `json:"awsServingPrivateLink,omitempty"`
-	Database              string                     `json:"database"`
-	Host                  string                     `json:"host"`
-	Id                    int64                      `json:"id"`
-	InternalHost          string                     `json:"internalHost"`
-	InternalPort          int                        `json:"internalPort"`
-	NsId                  openapi_types.UUID         `json:"nsId"`
-	Options               string                     `json:"options"`
-	Port                  int                        `json:"port"`
+	AwsServingPrivateLink       *AWSServingPrivateLinkInfo `json:"awsServingPrivateLink,omitempty"`
+	Database                    string                     `json:"database"`
+	Host                        string                     `json:"host"`
+	Id                          int64                      `json:"id"`
+	InternalHost                string                     `json:"internalHost"`
+	InternalPort                int                        `json:"internalPort"`
+	IsUserFacingEndpointPrivate *bool                      `json:"isUserFacingEndpointPrivate,omitempty"`
+	NsId                        openapi_types.UUID         `json:"nsId"`
+	Options                     string                     `json:"options"`
+	Port                        int                        `json:"port"`
 }
 
 // GetResourceGroupsResponseBody defines model for GetResourceGroupsResponseBody.
 type GetResourceGroupsResponseBody struct {
 	ResourceGroups []ResourceGroupDetails `json:"resourceGroups"`
+}
+
+// GetTenantAllowedIamRolesResponseBody defines model for GetTenantAllowedIamRolesResponseBody.
+type GetTenantAllowedIamRolesResponseBody struct {
+	RoleArns []string                                   `json:"roleArns"`
+	Status   GetTenantAllowedIamRolesResponseBodyStatus `json:"status"`
+}
+
+// GetTenantAllowedIamRolesResponseBodyStatus defines model for GetTenantAllowedIamRolesResponseBody.Status.
+type GetTenantAllowedIamRolesResponseBodyStatus string
+
+// GetTenantCloudMetadataResponseBody defines model for GetTenantCloudMetadataResponseBody.
+type GetTenantCloudMetadataResponseBody struct {
+	Meta TenantCloudMetadata `json:"meta"`
+}
+
+// GetTenantComputeCacheCapabilitiesResponseBody defines model for GetTenantComputeCacheCapabilitiesResponseBody.
+type GetTenantComputeCacheCapabilitiesResponseBody struct {
+	AvailablePerformanceTiers []TenantComputeCachePerformanceTier `json:"availablePerformanceTiers"`
+	DefaultConfig             TenantComputeCacheConfig            `json:"defaultConfig"`
+	MaxSizeGb                 int                                 `json:"maxSizeGb"`
+	MinSizeGb                 int                                 `json:"minSizeGb"`
+	SizeStepGb                int                                 `json:"sizeStepGb"`
+}
+
+// GetTenantComputeCacheRecommendationResponseBody defines model for GetTenantComputeCacheRecommendationResponseBody.
+type GetTenantComputeCacheRecommendationResponseBody struct {
+	Current     TenantComputeCacheConfig `json:"current"`
+	Recommended TenantComputeCacheConfig `json:"recommended"`
+}
+
+// GetTenantComputeCacheResponseBody defines model for GetTenantComputeCacheResponseBody.
+type GetTenantComputeCacheResponseBody struct {
+	Current TenantComputeCacheConfig  `json:"current"`
+	Desired *TenantComputeCacheConfig `json:"desired,omitempty"`
 }
 
 // GetTenantExtensionCompactionResponseBody Compaction status and parameters response.
@@ -603,6 +711,12 @@ type Pagination struct {
 	Size   uint64 `json:"size"`
 }
 
+// PostBYOKTenantConfigRequestBody defines model for PostBYOKTenantConfigRequestBody.
+type PostBYOKTenantConfigRequestBody struct {
+	Aws       *BYOKTenantAWSConfig      `json:"aws,omitempty"`
+	Metastore BYOKTenantMetastoreConfig `json:"metastore"`
+}
+
 // PostByocClusterUpdateRequestBody defines model for PostByocClusterUpdateRequestBody.
 type PostByocClusterUpdateRequestBody struct {
 	// CustomSettings base64 encoded custom settings
@@ -615,6 +729,21 @@ type PostByocClustersRequestBody struct {
 	Name     string            `json:"name"`
 	Settings map[string]string `json:"settings"`
 	Version  *string           `json:"version,omitempty"`
+}
+
+// PostByokClusterUpdateRequestBody defines model for PostByokClusterUpdateRequestBody.
+type PostByokClusterUpdateRequestBody struct {
+	// CustomSettings base64 encoded custom settings
+	CustomSettings *string `json:"customSettings,omitempty"`
+	Version        *string `json:"version,omitempty"`
+}
+
+// PostByokClustersRequestBody defines model for PostByokClustersRequestBody.
+type PostByokClustersRequestBody struct {
+	// Config Base64-encoded BYOK config YAML
+	Config  *string `json:"config,omitempty"`
+	Name    string  `json:"name"`
+	Version *string `json:"version,omitempty"`
 }
 
 // PostPrivateLinkRequestBody defines model for PostPrivateLinkRequestBody.
@@ -743,6 +872,12 @@ type PostSourcesPingRequestBody_Config struct {
 // PostSourcesPingRequestBodyType defines model for PostSourcesPingRequestBody.Type.
 type PostSourcesPingRequestBodyType string
 
+// PostTenantComputeCacheRequestBody defines model for PostTenantComputeCacheRequestBody.
+type PostTenantComputeCacheRequestBody struct {
+	PerformanceTier *ComputeCachePerformanceTier `json:"performanceTier,omitempty"`
+	SizeGb          int                          `json:"sizeGb"`
+}
+
 // PostTenantOAuthTokenResponseBody defines model for PostTenantOAuthTokenResponseBody.
 type PostTenantOAuthTokenResponseBody struct {
 	Token string `json:"token"`
@@ -750,8 +885,9 @@ type PostTenantOAuthTokenResponseBody struct {
 
 // PostTenantResourcesRequestBody defines model for PostTenantResourcesRequestBody.
 type PostTenantResourcesRequestBody struct {
-	Compactor *ComponentResourceRequest `json:"compactor,omitempty"`
-	Compute   *ComponentResourceRequest `json:"compute,omitempty"`
+	Compactor    *ComponentResourceRequest          `json:"compactor,omitempty"`
+	Compute      *ComponentResourceRequest          `json:"compute,omitempty"`
+	ComputeCache *PostTenantComputeCacheRequestBody `json:"computeCache,omitempty"`
 
 	// Extensions Extensions request for tenant. Currently only serverless compaction is supported
 	Extensions *TenantExtensionsRequest  `json:"extensions,omitempty"`
@@ -821,6 +957,13 @@ type PrivateLinkStatus string
 
 // PutByocClusterRequestBody defines model for PutByocClusterRequestBody.
 type PutByocClusterRequestBody struct {
+	Name     string            `json:"name"`
+	Settings map[string]string `json:"settings"`
+	Status   ClusterStatus     `json:"status"`
+}
+
+// PutByokClusterRequestBody defines model for PutByokClusterRequestBody.
+type PutByokClusterRequestBody struct {
 	Name     string            `json:"name"`
 	Settings map[string]string `json:"settings"`
 	Status   ClusterStatus     `json:"status"`
@@ -1068,27 +1211,30 @@ type TablesPagination struct {
 
 // Tenant defines model for Tenant.
 type Tenant struct {
-	ClusterName          string             `json:"clusterName"`
-	CreatedAt            time.Time          `json:"createdAt"`
-	EtcdConfig           string             `json:"etcd_config"`
-	Extensions           *TenantExtensions  `json:"extensions,omitempty"`
-	HealthStatus         TenantHealthStatus `json:"health_status"`
-	Id                   uint64             `json:"id"`
-	ImageTag             string             `json:"imageTag"`
-	LatestImageTag       string             `json:"latestImageTag"`
-	NsId                 openapi_types.UUID `json:"nsId"`
-	OrgId                openapi_types.UUID `json:"orgId"`
-	Region               string             `json:"region"`
-	ResourceNamespace    string             `json:"resourceNamespace"`
-	Resources            TenantResource     `json:"resources"`
-	RwConfig             string             `json:"rw_config"`
-	Status               TenantStatus       `json:"status"`
-	TenantName           string             `json:"tenantName"`
-	Tier                 TierId             `json:"tier"`
-	UpcomingSnapshotTime *time.Time         `json:"upcomingSnapshotTime,omitempty"`
-	UpdatedAt            time.Time          `json:"updatedAt"`
-	UsageType            TenantUsageType    `json:"usageType"`
-	UserId               uint64             `json:"userId"`
+	ClusterName       string             `json:"clusterName"`
+	CreatedAt         time.Time          `json:"createdAt"`
+	EtcdConfig        string             `json:"etcd_config"`
+	Extensions        *TenantExtensions  `json:"extensions,omitempty"`
+	HealthStatus      TenantHealthStatus `json:"health_status"`
+	Id                uint64             `json:"id"`
+	ImageTag          string             `json:"imageTag"`
+	LatestImageTag    string             `json:"latestImageTag"`
+	NsId              openapi_types.UUID `json:"nsId"`
+	OrgId             openapi_types.UUID `json:"orgId"`
+	Region            string             `json:"region"`
+	ResourceNamespace string             `json:"resourceNamespace"`
+	Resources         TenantResource     `json:"resources"`
+	RwConfig          string             `json:"rw_config"`
+
+	// ServiceAccountName K8s service account name for the tenant. Used by BYOK tenants to set up IRSA trust policy.
+	ServiceAccountName   *string         `json:"serviceAccountName,omitempty"`
+	Status               TenantStatus    `json:"status"`
+	TenantName           string          `json:"tenantName"`
+	Tier                 TierId          `json:"tier"`
+	UpcomingSnapshotTime *time.Time      `json:"upcomingSnapshotTime,omitempty"`
+	UpdatedAt            time.Time       `json:"updatedAt"`
+	UsageType            TenantUsageType `json:"usageType"`
+	UserId               uint64          `json:"userId"`
 }
 
 // TenantHealthStatus defines model for Tenant.HealthStatus.
@@ -1100,8 +1246,89 @@ type TenantStatus string
 // TenantUsageType defines model for Tenant.UsageType.
 type TenantUsageType string
 
+// TenantAllowedIamRoleRequestBody defines model for TenantAllowedIamRoleRequestBody.
+type TenantAllowedIamRoleRequestBody struct {
+	RoleArn string `json:"roleArn"`
+}
+
 // TenantArray defines model for TenantArray.
 type TenantArray = []Tenant
+
+// TenantCloudMetadata defines model for TenantCloudMetadata.
+type TenantCloudMetadata struct {
+	// CloudProvider Cloud provider for the tenant cluster.
+	CloudProvider string                      `json:"cloudProvider"`
+	Iam           *TenantCloudMetadataIAM     `json:"iam,omitempty"`
+	Network       *TenantCloudMetadataNetwork `json:"network,omitempty"`
+
+	// Region Cloud region for the tenant cluster.
+	Region string `json:"region"`
+}
+
+// TenantCloudMetadataAWSServingPrivateLinkInfo defines model for TenantCloudMetadataAWSServingPrivateLinkInfo.
+type TenantCloudMetadataAWSServingPrivateLinkInfo struct {
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	ServiceName string `json:"serviceName"`
+}
+
+// TenantCloudMetadataIAM defines model for TenantCloudMetadataIAM.
+type TenantCloudMetadataIAM struct {
+	union json.RawMessage
+}
+
+// TenantCloudMetadataIAMAWS defines model for TenantCloudMetadataIAMAWS.
+type TenantCloudMetadataIAMAWS struct {
+	// WorkloadRoleArn Workload identity role ARN for AWS.
+	WorkloadRoleArn string `json:"workloadRoleArn"`
+}
+
+// TenantCloudMetadataIAMGCP defines model for TenantCloudMetadataIAMGCP.
+type TenantCloudMetadataIAMGCP struct {
+	// WorkloadGsa Workload identity Google service account for GCP.
+	WorkloadGsa string `json:"workloadGsa"`
+}
+
+// TenantCloudMetadataNetwork defines model for TenantCloudMetadataNetwork.
+type TenantCloudMetadataNetwork struct {
+	union json.RawMessage
+}
+
+// TenantCloudMetadataNetworkAWS defines model for TenantCloudMetadataNetworkAWS.
+type TenantCloudMetadataNetworkAWS struct {
+	// NatGatewayIps Egress public IPs.
+	NatGatewayIps []string `json:"natGatewayIps"`
+
+	// PrivateLinkPrincipal Legacy single IAM principal ARN. Use privateLinkPrincipals for the complete list.
+	// Deprecated:
+	PrivateLinkPrincipal *string `json:"privateLinkPrincipal,omitempty"`
+
+	// PrivateLinkPrincipals IAM principal ARNs that customers must add to their VPC Endpoint Service allowed principals list for PrivateLink.
+	PrivateLinkPrincipals *[]string                                     `json:"privateLinkPrincipals,omitempty"`
+	ServingPrivateLink    *TenantCloudMetadataAWSServingPrivateLinkInfo `json:"servingPrivateLink,omitempty"`
+}
+
+// TenantCloudMetadataNetworkGCP defines model for TenantCloudMetadataNetworkGCP.
+type TenantCloudMetadataNetworkGCP struct {
+	// NatGatewayIps Egress public IPs.
+	NatGatewayIps *[]string `json:"natGatewayIps,omitempty"`
+
+	// PscProject GCP project allowed to consume PSC service attachment.
+	PscProject *string `json:"pscProject,omitempty"`
+}
+
+// TenantComputeCacheConfig defines model for TenantComputeCacheConfig.
+type TenantComputeCacheConfig struct {
+	PerformanceTier *ComputeCachePerformanceTier `json:"performanceTier,omitempty"`
+	SizeGb          int                          `json:"sizeGb"`
+}
+
+// TenantComputeCachePerformanceTier defines model for TenantComputeCachePerformanceTier.
+type TenantComputeCachePerformanceTier struct {
+	Default bool                        `json:"default"`
+	Id      ComputeCachePerformanceTier `json:"id"`
+	Label   string                      `json:"label"`
+}
 
 // TenantDdlProgress defines model for TenantDdlProgress.
 type TenantDdlProgress struct {
@@ -1223,11 +1450,10 @@ type TenantResourceMetaStore struct {
 
 // TenantResourceRequest defines model for TenantResourceRequest.
 type TenantResourceRequest struct {
-	Components              TenantResourceRequestComponents `json:"components"`
-	ComputeCache            *TenantResourceComputeCache     `json:"computeCache,omitempty"`
-	ComputeFileCacheSizeGiB int                             `json:"computeFileCacheSizeGiB"`
-	EtcdVolumeSizeGiB       *int                            `json:"etcdVolumeSizeGiB,omitempty"`
-	MetaStore               *TenantResourceRequestMetaStore `json:"metaStore,omitempty"`
+	Components        TenantResourceRequestComponents `json:"components"`
+	ComputeCache      *TenantResourceComputeCache     `json:"computeCache,omitempty"`
+	EtcdVolumeSizeGiB *int                            `json:"etcdVolumeSizeGiB,omitempty"`
+	MetaStore         *TenantResourceRequestMetaStore `json:"metaStore,omitempty"`
 }
 
 // TenantResourceRequestComponents defines model for TenantResourceRequestComponents.
@@ -1356,6 +1582,12 @@ type GetByocClustersParams struct {
 	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// GetByokClustersParams defines parameters for GetByokClusters.
+type GetByokClustersParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // GetTenantsParams defines parameters for GetTenants.
 type GetTenantsParams struct {
 	Offset         *uint64    `form:"offset,omitempty" json:"offset,omitempty"`
@@ -1368,6 +1600,12 @@ type GetTenantsParams struct {
 type GetTenantsNsIdBackupsParams struct {
 	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetTenantsNsIdComputeCacheRecommendationParams defines parameters for GetTenantsNsIdComputeCacheRecommendation.
+type GetTenantsNsIdComputeCacheRecommendationParams struct {
+	// ComponentTypeId Target compute component type ID after rescale.
+	ComponentTypeId string `form:"componentTypeId" json:"componentTypeId"`
 }
 
 // GetTenantsNsIdDatabaseUsersParams defines parameters for GetTenantsNsIdDatabaseUsers.
@@ -1595,11 +1833,35 @@ type PostByocClustersNameManualUpdateJSONRequestBody = PostByocClusterUpdateRequ
 // PostByocClustersNameUpdateJSONRequestBody defines body for PostByocClustersNameUpdate for application/json ContentType.
 type PostByocClustersNameUpdateJSONRequestBody = PostByocClusterUpdateRequestBody
 
+// PostByokClustersJSONRequestBody defines body for PostByokClusters for application/json ContentType.
+type PostByokClustersJSONRequestBody = PostByokClustersRequestBody
+
+// PutByokClustersNameJSONRequestBody defines body for PutByokClustersName for application/json ContentType.
+type PutByokClustersNameJSONRequestBody = PutByokClusterRequestBody
+
+// PostByokClustersNameManualUpdateJSONRequestBody defines body for PostByokClustersNameManualUpdate for application/json ContentType.
+type PostByokClustersNameManualUpdateJSONRequestBody = PostByokClusterUpdateRequestBody
+
+// PostByokClustersNameUpdateJSONRequestBody defines body for PostByokClustersNameUpdate for application/json ContentType.
+type PostByokClustersNameUpdateJSONRequestBody = PostByokClusterUpdateRequestBody
+
 // PostTenantsJSONRequestBody defines body for PostTenants for application/json ContentType.
 type PostTenantsJSONRequestBody = TenantRequestRequestBody
 
+// DeleteTenantsNsIdAllowedIamRolesJSONRequestBody defines body for DeleteTenantsNsIdAllowedIamRoles for application/json ContentType.
+type DeleteTenantsNsIdAllowedIamRolesJSONRequestBody = TenantAllowedIamRoleRequestBody
+
+// PostTenantsNsIdAllowedIamRolesJSONRequestBody defines body for PostTenantsNsIdAllowedIamRoles for application/json ContentType.
+type PostTenantsNsIdAllowedIamRolesJSONRequestBody = TenantAllowedIamRoleRequestBody
+
 // PostTenantsNsIdBackupsSnapshotIdRestoreJSONRequestBody defines body for PostTenantsNsIdBackupsSnapshotIdRestore for application/json ContentType.
 type PostTenantsNsIdBackupsSnapshotIdRestoreJSONRequestBody = PostTenantRestoreRequestBody
+
+// PostTenantsNsIdByokConfigJSONRequestBody defines body for PostTenantsNsIdByokConfig for application/json ContentType.
+type PostTenantsNsIdByokConfigJSONRequestBody = PostBYOKTenantConfigRequestBody
+
+// PostTenantsNsIdComputeCacheJSONRequestBody defines body for PostTenantsNsIdComputeCache for application/json ContentType.
+type PostTenantsNsIdComputeCacheJSONRequestBody = PostTenantComputeCacheRequestBody
 
 // PostTenantsNsIdDatabaseUsersJSONRequestBody defines body for PostTenantsNsIdDatabaseUsers for application/json ContentType.
 type PostTenantsNsIdDatabaseUsersJSONRequestBody = CreateDBUserRequestBody
@@ -1840,6 +2102,130 @@ func (t *PostSourcesPingRequestBody_Config) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsTenantCloudMetadataIAMAWS returns the union data inside the TenantCloudMetadataIAM as a TenantCloudMetadataIAMAWS
+func (t TenantCloudMetadataIAM) AsTenantCloudMetadataIAMAWS() (TenantCloudMetadataIAMAWS, error) {
+	var body TenantCloudMetadataIAMAWS
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTenantCloudMetadataIAMAWS overwrites any union data inside the TenantCloudMetadataIAM as the provided TenantCloudMetadataIAMAWS
+func (t *TenantCloudMetadataIAM) FromTenantCloudMetadataIAMAWS(v TenantCloudMetadataIAMAWS) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTenantCloudMetadataIAMAWS performs a merge with any union data inside the TenantCloudMetadataIAM, using the provided TenantCloudMetadataIAMAWS
+func (t *TenantCloudMetadataIAM) MergeTenantCloudMetadataIAMAWS(v TenantCloudMetadataIAMAWS) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTenantCloudMetadataIAMGCP returns the union data inside the TenantCloudMetadataIAM as a TenantCloudMetadataIAMGCP
+func (t TenantCloudMetadataIAM) AsTenantCloudMetadataIAMGCP() (TenantCloudMetadataIAMGCP, error) {
+	var body TenantCloudMetadataIAMGCP
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTenantCloudMetadataIAMGCP overwrites any union data inside the TenantCloudMetadataIAM as the provided TenantCloudMetadataIAMGCP
+func (t *TenantCloudMetadataIAM) FromTenantCloudMetadataIAMGCP(v TenantCloudMetadataIAMGCP) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTenantCloudMetadataIAMGCP performs a merge with any union data inside the TenantCloudMetadataIAM, using the provided TenantCloudMetadataIAMGCP
+func (t *TenantCloudMetadataIAM) MergeTenantCloudMetadataIAMGCP(v TenantCloudMetadataIAMGCP) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t TenantCloudMetadataIAM) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *TenantCloudMetadataIAM) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsTenantCloudMetadataNetworkAWS returns the union data inside the TenantCloudMetadataNetwork as a TenantCloudMetadataNetworkAWS
+func (t TenantCloudMetadataNetwork) AsTenantCloudMetadataNetworkAWS() (TenantCloudMetadataNetworkAWS, error) {
+	var body TenantCloudMetadataNetworkAWS
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTenantCloudMetadataNetworkAWS overwrites any union data inside the TenantCloudMetadataNetwork as the provided TenantCloudMetadataNetworkAWS
+func (t *TenantCloudMetadataNetwork) FromTenantCloudMetadataNetworkAWS(v TenantCloudMetadataNetworkAWS) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTenantCloudMetadataNetworkAWS performs a merge with any union data inside the TenantCloudMetadataNetwork, using the provided TenantCloudMetadataNetworkAWS
+func (t *TenantCloudMetadataNetwork) MergeTenantCloudMetadataNetworkAWS(v TenantCloudMetadataNetworkAWS) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTenantCloudMetadataNetworkGCP returns the union data inside the TenantCloudMetadataNetwork as a TenantCloudMetadataNetworkGCP
+func (t TenantCloudMetadataNetwork) AsTenantCloudMetadataNetworkGCP() (TenantCloudMetadataNetworkGCP, error) {
+	var body TenantCloudMetadataNetworkGCP
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTenantCloudMetadataNetworkGCP overwrites any union data inside the TenantCloudMetadataNetwork as the provided TenantCloudMetadataNetworkGCP
+func (t *TenantCloudMetadataNetwork) FromTenantCloudMetadataNetworkGCP(v TenantCloudMetadataNetworkGCP) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTenantCloudMetadataNetworkGCP performs a merge with any union data inside the TenantCloudMetadataNetwork, using the provided TenantCloudMetadataNetworkGCP
+func (t *TenantCloudMetadataNetwork) MergeTenantCloudMetadataNetworkGCP(v TenantCloudMetadataNetworkGCP) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t TenantCloudMetadataNetwork) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *TenantCloudMetadataNetwork) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 
@@ -1945,6 +2331,38 @@ type ClientInterface interface {
 
 	PostByocClustersNameUpdate(ctx context.Context, name string, body PostByocClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetByokClusters request
+	GetByokClusters(ctx context.Context, params *GetByokClustersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersWithBody request with any body
+	PostByokClustersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClusters(ctx context.Context, body PostByokClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteByokClustersName request
+	DeleteByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetByokClustersName request
+	GetByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutByokClustersNameWithBody request with any body
+	PutByokClustersNameWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutByokClustersName(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersNameManualUpdateWithBody request with any body
+	PostByokClustersNameManualUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersNameManualUpdate(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersNameTerminate request
+	PostByokClustersNameTerminate(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersNameUpdateWithBody request with any body
+	PostByokClustersNameUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersNameUpdate(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTenants request
 	GetTenants(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1958,6 +2376,22 @@ type ClientInterface interface {
 
 	// GetTenantsNsId request
 	GetTenantsNsId(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdAllowedIamRolesWithBody request with any body
+	DeleteTenantsNsIdAllowedIamRolesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	DeleteTenantsNsIdAllowedIamRoles(ctx context.Context, nsId openapi_types.UUID, body DeleteTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdAllowedIamRoles request
+	GetTenantsNsIdAllowedIamRoles(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdAllowedIamRolesWithBody request with any body
+	PostTenantsNsIdAllowedIamRolesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdAllowedIamRoles(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdBackfillingMatviews request
+	GetTenantsNsIdBackfillingMatviews(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantsNsIdBackups request
 	GetTenantsNsIdBackups(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdBackupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1976,8 +2410,30 @@ type ClientInterface interface {
 
 	PostTenantsNsIdBackupsSnapshotIdRestore(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, body PostTenantsNsIdBackupsSnapshotIdRestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostTenantsNsIdByokConfigWithBody request with any body
+	PostTenantsNsIdByokConfigWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdByokConfig(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdByokConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTenantsNsIdCaCert request
 	GetTenantsNsIdCaCert(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdCloudMeta request
+	GetTenantsNsIdCloudMeta(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdComputeCache request
+	GetTenantsNsIdComputeCache(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdComputeCacheWithBody request with any body
+	PostTenantsNsIdComputeCacheWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdComputeCache(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeCacheJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdComputeCacheCapabilities request
+	GetTenantsNsIdComputeCacheCapabilities(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdComputeCacheRecommendation request
+	GetTenantsNsIdComputeCacheRecommendation(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantsNsIdDatabaseUsers request
 	GetTenantsNsIdDatabaseUsers(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdDatabaseUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2493,6 +2949,150 @@ func (c *Client) PostByocClustersNameUpdate(ctx context.Context, name string, bo
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetByokClusters(ctx context.Context, params *GetByokClustersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByokClustersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClusters(ctx context.Context, body PostByokClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteByokClustersNameRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByokClustersNameRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutByokClustersNameWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByokClustersNameRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutByokClustersName(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByokClustersNameRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameManualUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameManualUpdateRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameManualUpdate(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameManualUpdateRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameTerminate(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameTerminateRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameUpdateRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameUpdate(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameUpdateRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetTenants(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsRequest(c.Server, params)
 	if err != nil {
@@ -2543,6 +3143,78 @@ func (c *Client) DeleteTenantsNsId(ctx context.Context, nsId openapi_types.UUID,
 
 func (c *Client) GetTenantsNsId(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsNsIdRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdAllowedIamRolesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdAllowedIamRolesRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdAllowedIamRoles(ctx context.Context, nsId openapi_types.UUID, body DeleteTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdAllowedIamRolesRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdAllowedIamRoles(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdAllowedIamRolesRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdAllowedIamRolesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdAllowedIamRolesRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdAllowedIamRoles(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdAllowedIamRolesRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdBackfillingMatviews(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdBackfillingMatviewsRequest(c.Server, nsId)
 	if err != nil {
 		return nil, err
 	}
@@ -2625,8 +3297,104 @@ func (c *Client) PostTenantsNsIdBackupsSnapshotIdRestore(ctx context.Context, ns
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostTenantsNsIdByokConfigWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdByokConfigRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdByokConfig(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdByokConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdByokConfigRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetTenantsNsIdCaCert(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsNsIdCaCertRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdCloudMeta(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdCloudMetaRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdComputeCache(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdComputeCacheRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdComputeCacheWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdComputeCacheRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdComputeCache(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeCacheJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdComputeCacheRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdComputeCacheCapabilities(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdComputeCacheCapabilitiesRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdComputeCacheRecommendation(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdComputeCacheRecommendationRequest(c.Server, nsId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4593,6 +5361,354 @@ func NewPostByocClustersNameUpdateRequestWithBody(server string, name string, co
 	return req, nil
 }
 
+// NewGetByokClustersRequest generates requests for GetByokClusters
+func NewGetByokClustersRequest(server string, params *GetByokClustersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostByokClustersRequest calls the generic PostByokClusters builder with application/json body
+func NewPostByokClustersRequest(server string, body PostByokClustersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostByokClustersRequestWithBody generates requests for PostByokClusters with any type of body
+func NewPostByokClustersRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteByokClustersNameRequest generates requests for DeleteByokClustersName
+func NewDeleteByokClustersNameRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetByokClustersNameRequest generates requests for GetByokClustersName
+func NewGetByokClustersNameRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutByokClustersNameRequest calls the generic PutByokClustersName builder with application/json body
+func NewPutByokClustersNameRequest(server string, name string, body PutByokClustersNameJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutByokClustersNameRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPutByokClustersNameRequestWithBody generates requests for PutByokClustersName with any type of body
+func NewPutByokClustersNameRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByokClustersNameManualUpdateRequest calls the generic PostByokClustersNameManualUpdate builder with application/json body
+func NewPostByokClustersNameManualUpdateRequest(server string, name string, body PostByokClustersNameManualUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersNameManualUpdateRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPostByokClustersNameManualUpdateRequestWithBody generates requests for PostByokClustersNameManualUpdate with any type of body
+func NewPostByokClustersNameManualUpdateRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s/manualUpdate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByokClustersNameTerminateRequest generates requests for PostByokClustersNameTerminate
+func NewPostByokClustersNameTerminateRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s/terminate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostByokClustersNameUpdateRequest calls the generic PostByokClustersNameUpdate builder with application/json body
+func NewPostByokClustersNameUpdateRequest(server string, name string, body PostByokClustersNameUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersNameUpdateRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPostByokClustersNameUpdateRequestWithBody generates requests for PostByokClustersNameUpdate with any type of body
+func NewPostByokClustersNameUpdateRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s/update", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetTenantsRequest generates requests for GetTenants
 func NewGetTenantsRequest(server string, params *GetTenantsParams) (*http.Request, error) {
 	var err error
@@ -4781,6 +5897,168 @@ func NewGetTenantsNsIdRequest(server string, nsId openapi_types.UUID) (*http.Req
 	}
 
 	operationPath := fmt.Sprintf("/tenants/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdAllowedIamRolesRequest calls the generic DeleteTenantsNsIdAllowedIamRoles builder with application/json body
+func NewDeleteTenantsNsIdAllowedIamRolesRequest(server string, nsId openapi_types.UUID, body DeleteTenantsNsIdAllowedIamRolesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDeleteTenantsNsIdAllowedIamRolesRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewDeleteTenantsNsIdAllowedIamRolesRequestWithBody generates requests for DeleteTenantsNsIdAllowedIamRoles with any type of body
+func NewDeleteTenantsNsIdAllowedIamRolesRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/allowedIamRoles", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdAllowedIamRolesRequest generates requests for GetTenantsNsIdAllowedIamRoles
+func NewGetTenantsNsIdAllowedIamRolesRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/allowedIamRoles", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdAllowedIamRolesRequest calls the generic PostTenantsNsIdAllowedIamRoles builder with application/json body
+func NewPostTenantsNsIdAllowedIamRolesRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdAllowedIamRolesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdAllowedIamRolesRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdAllowedIamRolesRequestWithBody generates requests for PostTenantsNsIdAllowedIamRoles with any type of body
+func NewPostTenantsNsIdAllowedIamRolesRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/allowedIamRoles", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdBackfillingMatviewsRequest generates requests for GetTenantsNsIdBackfillingMatviews
+func NewGetTenantsNsIdBackfillingMatviewsRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/backfillingMatviewsProgress", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5040,6 +6318,53 @@ func NewPostTenantsNsIdBackupsSnapshotIdRestoreRequestWithBody(server string, ns
 	return req, nil
 }
 
+// NewPostTenantsNsIdByokConfigRequest calls the generic PostTenantsNsIdByokConfig builder with application/json body
+func NewPostTenantsNsIdByokConfigRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdByokConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdByokConfigRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdByokConfigRequestWithBody generates requests for PostTenantsNsIdByokConfig with any type of body
+func NewPostTenantsNsIdByokConfigRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/byokConfig", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetTenantsNsIdCaCertRequest generates requests for GetTenantsNsIdCaCert
 func NewGetTenantsNsIdCaCertRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -5064,6 +6389,207 @@ func NewGetTenantsNsIdCaCertRequest(server string, nsId openapi_types.UUID) (*ht
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdCloudMetaRequest generates requests for GetTenantsNsIdCloudMeta
+func NewGetTenantsNsIdCloudMetaRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/cloudMeta", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdComputeCacheRequest generates requests for GetTenantsNsIdComputeCache
+func NewGetTenantsNsIdComputeCacheRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/computeCache", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdComputeCacheRequest calls the generic PostTenantsNsIdComputeCache builder with application/json body
+func NewPostTenantsNsIdComputeCacheRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdComputeCacheJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdComputeCacheRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdComputeCacheRequestWithBody generates requests for PostTenantsNsIdComputeCache with any type of body
+func NewPostTenantsNsIdComputeCacheRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/computeCache", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdComputeCacheCapabilitiesRequest generates requests for GetTenantsNsIdComputeCacheCapabilities
+func NewGetTenantsNsIdComputeCacheCapabilitiesRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/computeCache/capabilities", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdComputeCacheRecommendationRequest generates requests for GetTenantsNsIdComputeCacheRecommendation
+func NewGetTenantsNsIdComputeCacheRecommendationRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/computeCache/recommendation", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "componentTypeId", runtime.ParamLocationQuery, params.ComponentTypeId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -10736,6 +12262,38 @@ type ClientWithResponsesInterface interface {
 
 	PostByocClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByocClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateResponse, error)
 
+	// GetByokClustersWithResponse request
+	GetByokClustersWithResponse(ctx context.Context, params *GetByokClustersParams, reqEditors ...RequestEditorFn) (*GetByokClustersResponse, error)
+
+	// PostByokClustersWithBodyWithResponse request with any body
+	PostByokClustersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersResponse, error)
+
+	PostByokClustersWithResponse(ctx context.Context, body PostByokClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersResponse, error)
+
+	// DeleteByokClustersNameWithResponse request
+	DeleteByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByokClustersNameResponse, error)
+
+	// GetByokClustersNameWithResponse request
+	GetByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByokClustersNameResponse, error)
+
+	// PutByokClustersNameWithBodyWithResponse request with any body
+	PutByokClustersNameWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error)
+
+	PutByokClustersNameWithResponse(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error)
+
+	// PostByokClustersNameManualUpdateWithBodyWithResponse request with any body
+	PostByokClustersNameManualUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error)
+
+	PostByokClustersNameManualUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error)
+
+	// PostByokClustersNameTerminateWithResponse request
+	PostByokClustersNameTerminateWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByokClustersNameTerminateResponse, error)
+
+	// PostByokClustersNameUpdateWithBodyWithResponse request with any body
+	PostByokClustersNameUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error)
+
+	PostByokClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error)
+
 	// GetTenantsWithResponse request
 	GetTenantsWithResponse(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*GetTenantsResponse, error)
 
@@ -10749,6 +12307,22 @@ type ClientWithResponsesInterface interface {
 
 	// GetTenantsNsIdWithResponse request
 	GetTenantsNsIdWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdResponse, error)
+
+	// DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse request with any body
+	DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAllowedIamRolesResponse, error)
+
+	DeleteTenantsNsIdAllowedIamRolesWithResponse(ctx context.Context, nsId openapi_types.UUID, body DeleteTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAllowedIamRolesResponse, error)
+
+	// GetTenantsNsIdAllowedIamRolesWithResponse request
+	GetTenantsNsIdAllowedIamRolesWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAllowedIamRolesResponse, error)
+
+	// PostTenantsNsIdAllowedIamRolesWithBodyWithResponse request with any body
+	PostTenantsNsIdAllowedIamRolesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAllowedIamRolesResponse, error)
+
+	PostTenantsNsIdAllowedIamRolesWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAllowedIamRolesResponse, error)
+
+	// GetTenantsNsIdBackfillingMatviewsWithResponse request
+	GetTenantsNsIdBackfillingMatviewsWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdBackfillingMatviewsResponse, error)
 
 	// GetTenantsNsIdBackupsWithResponse request
 	GetTenantsNsIdBackupsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdBackupsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdBackupsResponse, error)
@@ -10767,8 +12341,30 @@ type ClientWithResponsesInterface interface {
 
 	PostTenantsNsIdBackupsSnapshotIdRestoreWithResponse(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, body PostTenantsNsIdBackupsSnapshotIdRestoreJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdBackupsSnapshotIdRestoreResponse, error)
 
+	// PostTenantsNsIdByokConfigWithBodyWithResponse request with any body
+	PostTenantsNsIdByokConfigWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdByokConfigResponse, error)
+
+	PostTenantsNsIdByokConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdByokConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdByokConfigResponse, error)
+
 	// GetTenantsNsIdCaCertWithResponse request
 	GetTenantsNsIdCaCertWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdCaCertResponse, error)
+
+	// GetTenantsNsIdCloudMetaWithResponse request
+	GetTenantsNsIdCloudMetaWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdCloudMetaResponse, error)
+
+	// GetTenantsNsIdComputeCacheWithResponse request
+	GetTenantsNsIdComputeCacheWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheResponse, error)
+
+	// PostTenantsNsIdComputeCacheWithBodyWithResponse request with any body
+	PostTenantsNsIdComputeCacheWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeCacheResponse, error)
+
+	PostTenantsNsIdComputeCacheWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeCacheJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeCacheResponse, error)
+
+	// GetTenantsNsIdComputeCacheCapabilitiesWithResponse request
+	GetTenantsNsIdComputeCacheCapabilitiesWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheCapabilitiesResponse, error)
+
+	// GetTenantsNsIdComputeCacheRecommendationWithResponse request
+	GetTenantsNsIdComputeCacheRecommendationWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheRecommendationResponse, error)
 
 	// GetTenantsNsIdDatabaseUsersWithResponse request
 	GetTenantsNsIdDatabaseUsersWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdDatabaseUsersParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabaseUsersResponse, error)
@@ -11328,6 +12924,194 @@ func (r PostByocClustersNameUpdateResponse) StatusCode() int {
 	return 0
 }
 
+type GetByokClustersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedClustersPagination
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByokClustersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByokClustersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON400      *BadRequestResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteByokClustersNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteByokClustersNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteByokClustersNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetByokClustersNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByokClustersNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByokClustersNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutByokClustersNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PutByokClustersNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutByokClustersNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersNameManualUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersNameManualUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersNameManualUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersNameTerminateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersNameTerminateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersNameTerminateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersNameUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersNameUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersNameUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTenantsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11415,6 +13199,99 @@ func (r GetTenantsNsIdResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantsNsIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdAllowedIamRolesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdAllowedIamRolesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdAllowedIamRolesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdAllowedIamRolesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTenantAllowedIamRolesResponseBody
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdAllowedIamRolesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdAllowedIamRolesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdAllowedIamRolesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdAllowedIamRolesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdAllowedIamRolesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdBackfillingMatviewsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *BackfillingMatviewsList
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdBackfillingMatviewsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdBackfillingMatviewsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11530,6 +13407,31 @@ func (r PostTenantsNsIdBackupsSnapshotIdRestoreResponse) StatusCode() int {
 	return 0
 }
 
+type PostTenantsNsIdByokConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *Tenant
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdByokConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdByokConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTenantsNsIdCaCertResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11546,6 +13448,124 @@ func (r GetTenantsNsIdCaCertResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantsNsIdCaCertResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdCloudMetaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTenantCloudMetadataResponseBody
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdCloudMetaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdCloudMetaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdComputeCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTenantComputeCacheResponseBody
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdComputeCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdComputeCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdComputeCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON403      *ForbiddenResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdComputeCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdComputeCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdComputeCacheCapabilitiesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTenantComputeCacheCapabilitiesResponseBody
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdComputeCacheCapabilitiesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdComputeCacheCapabilitiesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdComputeCacheRecommendationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTenantComputeCacheRecommendationResponseBody
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdComputeCacheRecommendationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdComputeCacheRecommendationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14010,6 +16030,110 @@ func (c *ClientWithResponses) PostByocClustersNameUpdateWithResponse(ctx context
 	return ParsePostByocClustersNameUpdateResponse(rsp)
 }
 
+// GetByokClustersWithResponse request returning *GetByokClustersResponse
+func (c *ClientWithResponses) GetByokClustersWithResponse(ctx context.Context, params *GetByokClustersParams, reqEditors ...RequestEditorFn) (*GetByokClustersResponse, error) {
+	rsp, err := c.GetByokClusters(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByokClustersResponse(rsp)
+}
+
+// PostByokClustersWithBodyWithResponse request with arbitrary body returning *PostByokClustersResponse
+func (c *ClientWithResponses) PostByokClustersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersResponse, error) {
+	rsp, err := c.PostByokClustersWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersWithResponse(ctx context.Context, body PostByokClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersResponse, error) {
+	rsp, err := c.PostByokClusters(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersResponse(rsp)
+}
+
+// DeleteByokClustersNameWithResponse request returning *DeleteByokClustersNameResponse
+func (c *ClientWithResponses) DeleteByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByokClustersNameResponse, error) {
+	rsp, err := c.DeleteByokClustersName(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteByokClustersNameResponse(rsp)
+}
+
+// GetByokClustersNameWithResponse request returning *GetByokClustersNameResponse
+func (c *ClientWithResponses) GetByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByokClustersNameResponse, error) {
+	rsp, err := c.GetByokClustersName(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByokClustersNameResponse(rsp)
+}
+
+// PutByokClustersNameWithBodyWithResponse request with arbitrary body returning *PutByokClustersNameResponse
+func (c *ClientWithResponses) PutByokClustersNameWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error) {
+	rsp, err := c.PutByokClustersNameWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutByokClustersNameResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutByokClustersNameWithResponse(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error) {
+	rsp, err := c.PutByokClustersName(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutByokClustersNameResponse(rsp)
+}
+
+// PostByokClustersNameManualUpdateWithBodyWithResponse request with arbitrary body returning *PostByokClustersNameManualUpdateResponse
+func (c *ClientWithResponses) PostByokClustersNameManualUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error) {
+	rsp, err := c.PostByokClustersNameManualUpdateWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameManualUpdateResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersNameManualUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error) {
+	rsp, err := c.PostByokClustersNameManualUpdate(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameManualUpdateResponse(rsp)
+}
+
+// PostByokClustersNameTerminateWithResponse request returning *PostByokClustersNameTerminateResponse
+func (c *ClientWithResponses) PostByokClustersNameTerminateWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByokClustersNameTerminateResponse, error) {
+	rsp, err := c.PostByokClustersNameTerminate(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameTerminateResponse(rsp)
+}
+
+// PostByokClustersNameUpdateWithBodyWithResponse request with arbitrary body returning *PostByokClustersNameUpdateResponse
+func (c *ClientWithResponses) PostByokClustersNameUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error) {
+	rsp, err := c.PostByokClustersNameUpdateWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameUpdateResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error) {
+	rsp, err := c.PostByokClustersNameUpdate(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameUpdateResponse(rsp)
+}
+
 // GetTenantsWithResponse request returning *GetTenantsResponse
 func (c *ClientWithResponses) GetTenantsWithResponse(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*GetTenantsResponse, error) {
 	rsp, err := c.GetTenants(ctx, params, reqEditors...)
@@ -14052,6 +16176,58 @@ func (c *ClientWithResponses) GetTenantsNsIdWithResponse(ctx context.Context, ns
 		return nil, err
 	}
 	return ParseGetTenantsNsIdResponse(rsp)
+}
+
+// DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse request with arbitrary body returning *DeleteTenantsNsIdAllowedIamRolesResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAllowedIamRolesResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdAllowedIamRolesWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdAllowedIamRolesResponse(rsp)
+}
+
+func (c *ClientWithResponses) DeleteTenantsNsIdAllowedIamRolesWithResponse(ctx context.Context, nsId openapi_types.UUID, body DeleteTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAllowedIamRolesResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdAllowedIamRoles(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdAllowedIamRolesResponse(rsp)
+}
+
+// GetTenantsNsIdAllowedIamRolesWithResponse request returning *GetTenantsNsIdAllowedIamRolesResponse
+func (c *ClientWithResponses) GetTenantsNsIdAllowedIamRolesWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAllowedIamRolesResponse, error) {
+	rsp, err := c.GetTenantsNsIdAllowedIamRoles(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdAllowedIamRolesResponse(rsp)
+}
+
+// PostTenantsNsIdAllowedIamRolesWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdAllowedIamRolesResponse
+func (c *ClientWithResponses) PostTenantsNsIdAllowedIamRolesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAllowedIamRolesResponse, error) {
+	rsp, err := c.PostTenantsNsIdAllowedIamRolesWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdAllowedIamRolesResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdAllowedIamRolesWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAllowedIamRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAllowedIamRolesResponse, error) {
+	rsp, err := c.PostTenantsNsIdAllowedIamRoles(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdAllowedIamRolesResponse(rsp)
+}
+
+// GetTenantsNsIdBackfillingMatviewsWithResponse request returning *GetTenantsNsIdBackfillingMatviewsResponse
+func (c *ClientWithResponses) GetTenantsNsIdBackfillingMatviewsWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdBackfillingMatviewsResponse, error) {
+	rsp, err := c.GetTenantsNsIdBackfillingMatviews(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdBackfillingMatviewsResponse(rsp)
 }
 
 // GetTenantsNsIdBackupsWithResponse request returning *GetTenantsNsIdBackupsResponse
@@ -14107,6 +16283,23 @@ func (c *ClientWithResponses) PostTenantsNsIdBackupsSnapshotIdRestoreWithRespons
 	return ParsePostTenantsNsIdBackupsSnapshotIdRestoreResponse(rsp)
 }
 
+// PostTenantsNsIdByokConfigWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdByokConfigResponse
+func (c *ClientWithResponses) PostTenantsNsIdByokConfigWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdByokConfigResponse, error) {
+	rsp, err := c.PostTenantsNsIdByokConfigWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdByokConfigResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdByokConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdByokConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdByokConfigResponse, error) {
+	rsp, err := c.PostTenantsNsIdByokConfig(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdByokConfigResponse(rsp)
+}
+
 // GetTenantsNsIdCaCertWithResponse request returning *GetTenantsNsIdCaCertResponse
 func (c *ClientWithResponses) GetTenantsNsIdCaCertWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdCaCertResponse, error) {
 	rsp, err := c.GetTenantsNsIdCaCert(ctx, nsId, reqEditors...)
@@ -14114,6 +16307,59 @@ func (c *ClientWithResponses) GetTenantsNsIdCaCertWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseGetTenantsNsIdCaCertResponse(rsp)
+}
+
+// GetTenantsNsIdCloudMetaWithResponse request returning *GetTenantsNsIdCloudMetaResponse
+func (c *ClientWithResponses) GetTenantsNsIdCloudMetaWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdCloudMetaResponse, error) {
+	rsp, err := c.GetTenantsNsIdCloudMeta(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdCloudMetaResponse(rsp)
+}
+
+// GetTenantsNsIdComputeCacheWithResponse request returning *GetTenantsNsIdComputeCacheResponse
+func (c *ClientWithResponses) GetTenantsNsIdComputeCacheWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheResponse, error) {
+	rsp, err := c.GetTenantsNsIdComputeCache(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdComputeCacheResponse(rsp)
+}
+
+// PostTenantsNsIdComputeCacheWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdComputeCacheResponse
+func (c *ClientWithResponses) PostTenantsNsIdComputeCacheWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeCacheResponse, error) {
+	rsp, err := c.PostTenantsNsIdComputeCacheWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdComputeCacheResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdComputeCacheWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeCacheJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeCacheResponse, error) {
+	rsp, err := c.PostTenantsNsIdComputeCache(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdComputeCacheResponse(rsp)
+}
+
+// GetTenantsNsIdComputeCacheCapabilitiesWithResponse request returning *GetTenantsNsIdComputeCacheCapabilitiesResponse
+func (c *ClientWithResponses) GetTenantsNsIdComputeCacheCapabilitiesWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheCapabilitiesResponse, error) {
+	rsp, err := c.GetTenantsNsIdComputeCacheCapabilities(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdComputeCacheCapabilitiesResponse(rsp)
+}
+
+// GetTenantsNsIdComputeCacheRecommendationWithResponse request returning *GetTenantsNsIdComputeCacheRecommendationResponse
+func (c *ClientWithResponses) GetTenantsNsIdComputeCacheRecommendationWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheRecommendationResponse, error) {
+	rsp, err := c.GetTenantsNsIdComputeCacheRecommendation(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdComputeCacheRecommendationResponse(rsp)
 }
 
 // GetTenantsNsIdDatabaseUsersWithResponse request returning *GetTenantsNsIdDatabaseUsersResponse
@@ -15581,6 +17827,298 @@ func ParsePostByocClustersNameUpdateResponse(rsp *http.Response) (*PostByocClust
 	return response, nil
 }
 
+// ParseGetByokClustersResponse parses an HTTP response from a GetByokClustersWithResponse call
+func ParseGetByokClustersResponse(rsp *http.Response) (*GetByokClustersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByokClustersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedClustersPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersResponse parses an HTTP response from a PostByokClustersWithResponse call
+func ParsePostByokClustersResponse(rsp *http.Response) (*PostByokClustersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteByokClustersNameResponse parses an HTTP response from a DeleteByokClustersNameWithResponse call
+func ParseDeleteByokClustersNameResponse(rsp *http.Response) (*DeleteByokClustersNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteByokClustersNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetByokClustersNameResponse parses an HTTP response from a GetByokClustersNameWithResponse call
+func ParseGetByokClustersNameResponse(rsp *http.Response) (*GetByokClustersNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByokClustersNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutByokClustersNameResponse parses an HTTP response from a PutByokClustersNameWithResponse call
+func ParsePutByokClustersNameResponse(rsp *http.Response) (*PutByokClustersNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutByokClustersNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersNameManualUpdateResponse parses an HTTP response from a PostByokClustersNameManualUpdateWithResponse call
+func ParsePostByokClustersNameManualUpdateResponse(rsp *http.Response) (*PostByokClustersNameManualUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersNameManualUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersNameTerminateResponse parses an HTTP response from a PostByokClustersNameTerminateWithResponse call
+func ParsePostByokClustersNameTerminateResponse(rsp *http.Response) (*PostByokClustersNameTerminateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersNameTerminateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersNameUpdateResponse parses an HTTP response from a PostByokClustersNameUpdateWithResponse call
+func ParsePostByokClustersNameUpdateResponse(rsp *http.Response) (*PostByokClustersNameUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersNameUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetTenantsResponse parses an HTTP response from a GetTenantsWithResponse call
 func ParseGetTenantsResponse(rsp *http.Response) (*GetTenantsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -15720,6 +18258,145 @@ func ParseGetTenantsNsIdResponse(rsp *http.Response) (*GetTenantsNsIdResponse, e
 	return response, nil
 }
 
+// ParseDeleteTenantsNsIdAllowedIamRolesResponse parses an HTTP response from a DeleteTenantsNsIdAllowedIamRolesWithResponse call
+func ParseDeleteTenantsNsIdAllowedIamRolesResponse(rsp *http.Response) (*DeleteTenantsNsIdAllowedIamRolesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdAllowedIamRolesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdAllowedIamRolesResponse parses an HTTP response from a GetTenantsNsIdAllowedIamRolesWithResponse call
+func ParseGetTenantsNsIdAllowedIamRolesResponse(rsp *http.Response) (*GetTenantsNsIdAllowedIamRolesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdAllowedIamRolesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTenantAllowedIamRolesResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdAllowedIamRolesResponse parses an HTTP response from a PostTenantsNsIdAllowedIamRolesWithResponse call
+func ParsePostTenantsNsIdAllowedIamRolesResponse(rsp *http.Response) (*PostTenantsNsIdAllowedIamRolesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdAllowedIamRolesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdBackfillingMatviewsResponse parses an HTTP response from a GetTenantsNsIdBackfillingMatviewsWithResponse call
+func ParseGetTenantsNsIdBackfillingMatviewsResponse(rsp *http.Response) (*GetTenantsNsIdBackfillingMatviewsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdBackfillingMatviewsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BackfillingMatviewsList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetTenantsNsIdBackupsResponse parses an HTTP response from a GetTenantsNsIdBackupsWithResponse call
 func ParseGetTenantsNsIdBackupsResponse(rsp *http.Response) (*GetTenantsNsIdBackupsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -15837,6 +18514,53 @@ func ParsePostTenantsNsIdBackupsSnapshotIdRestoreResponse(rsp *http.Response) (*
 	return response, nil
 }
 
+// ParsePostTenantsNsIdByokConfigResponse parses an HTTP response from a PostTenantsNsIdByokConfigWithResponse call
+func ParsePostTenantsNsIdByokConfigResponse(rsp *http.Response) (*PostTenantsNsIdByokConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdByokConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Tenant
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetTenantsNsIdCaCertResponse parses an HTTP response from a GetTenantsNsIdCaCertWithResponse call
 func ParseGetTenantsNsIdCaCertResponse(rsp *http.Response) (*GetTenantsNsIdCaCertResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -15851,6 +18575,192 @@ func ParseGetTenantsNsIdCaCertResponse(rsp *http.Response) (*GetTenantsNsIdCaCer
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdCloudMetaResponse parses an HTTP response from a GetTenantsNsIdCloudMetaWithResponse call
+func ParseGetTenantsNsIdCloudMetaResponse(rsp *http.Response) (*GetTenantsNsIdCloudMetaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdCloudMetaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTenantCloudMetadataResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdComputeCacheResponse parses an HTTP response from a GetTenantsNsIdComputeCacheWithResponse call
+func ParseGetTenantsNsIdComputeCacheResponse(rsp *http.Response) (*GetTenantsNsIdComputeCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdComputeCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTenantComputeCacheResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdComputeCacheResponse parses an HTTP response from a PostTenantsNsIdComputeCacheWithResponse call
+func ParsePostTenantsNsIdComputeCacheResponse(rsp *http.Response) (*PostTenantsNsIdComputeCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdComputeCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdComputeCacheCapabilitiesResponse parses an HTTP response from a GetTenantsNsIdComputeCacheCapabilitiesWithResponse call
+func ParseGetTenantsNsIdComputeCacheCapabilitiesResponse(rsp *http.Response) (*GetTenantsNsIdComputeCacheCapabilitiesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdComputeCacheCapabilitiesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTenantComputeCacheCapabilitiesResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdComputeCacheRecommendationResponse parses an HTTP response from a GetTenantsNsIdComputeCacheRecommendationWithResponse call
+func ParseGetTenantsNsIdComputeCacheRecommendationResponse(rsp *http.Response) (*GetTenantsNsIdComputeCacheRecommendationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdComputeCacheRecommendationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTenantComputeCacheRecommendationResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

@@ -31,6 +31,7 @@ const (
 // Defines values for TierId.
 const (
 	BYOC      TierId = "BYOC"
+	BYOK      TierId = "BYOK"
 	Benchmark TierId = "Benchmark"
 	Invited   TierId = "Invited"
 	Standard  TierId = "Standard"
@@ -63,6 +64,7 @@ type PrivateLink struct {
 	Id             openapi_types.UUID `json:"id"`
 	OrgId          openapi_types.UUID `json:"orgId"`
 	Region         string             `json:"region"`
+	ServiceRegion  *string            `json:"serviceRegion,omitempty"`
 	Target         *string            `json:"target,omitempty"`
 	TenantId       uint64             `json:"tenantId"`
 	TenantNsId     openapi_types.UUID `json:"tenantNsId"`

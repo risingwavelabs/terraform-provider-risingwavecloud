@@ -102,7 +102,6 @@ type ApiKey struct {
 	Id          uint64             `json:"id"`
 	Key         string             `json:"key"`
 	Principal   openapi_types.UUID `json:"principal"`
-	Secret      string             `json:"secret"`
 	UpdatedAt   time.Time          `json:"updatedAt"`
 }
 
@@ -122,6 +121,17 @@ type AuthType string
 type CreateInvitationRequestBody struct {
 	Email  string             `json:"email"`
 	RoleId openapi_types.UUID `json:"roleId"`
+}
+
+// CreatedApiKey defines model for CreatedApiKey.
+type CreatedApiKey struct {
+	CreatedAt   time.Time          `json:"createdAt"`
+	Description string             `json:"description"`
+	Id          uint64             `json:"id"`
+	Key         string             `json:"key"`
+	Principal   openapi_types.UUID `json:"principal"`
+	Secret      string             `json:"secret"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
 }
 
 // EmailRecipientConfig defines model for EmailRecipientConfig.
@@ -3410,7 +3420,7 @@ func (r GetApiKeysResponse) StatusCode() int {
 type PostApiKeysResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ApiKey
+	JSON200      *CreatedApiKey
 	JSON400      *BadRequestResponse
 }
 
@@ -4760,7 +4770,7 @@ func ParsePostApiKeysResponse(rsp *http.Response) (*PostApiKeysResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ApiKey
+		var dest CreatedApiKey
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
