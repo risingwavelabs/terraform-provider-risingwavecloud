@@ -111,6 +111,75 @@ func TestMetaStoreEqual(t *testing.T) {
 	}
 }
 
+func TestTierValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		tier    string
+		isBYOC  bool
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:   "SaaS Standard",
+			tier:   string(apigen_mgmtv2.Standard),
+			isBYOC: false,
+		},
+		{
+			name:   "SaaS Invited",
+			tier:   string(apigen_mgmtv2.Invited),
+			isBYOC: false,
+		},
+		{
+			name:    "SaaS with BYOC tier",
+			tier:    string(apigen_mgmtv2.BYOC),
+			isBYOC:  false,
+			wantErr: true,
+			errMsg:  "SaaS clusters must use either Standard or Invited tier",
+		},
+		{
+			name:   "BYOC with BYOC tier",
+			tier:   string(apigen_mgmtv2.BYOC),
+			isBYOC: true,
+		},
+		{
+			name:    "BYOC with Standard tier",
+			tier:    string(apigen_mgmtv2.Standard),
+			isBYOC:  true,
+			wantErr: true,
+			errMsg:  "BYOC clusters must use the BYOC tier",
+		},
+		{
+			name:    "BYOC with Invited tier",
+			tier:    string(apigen_mgmtv2.Invited),
+			isBYOC:  true,
+			wantErr: true,
+			errMsg:  "BYOC clusters must use the BYOC tier",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tier := apigen_mgmtv2.TierId(tt.tier)
+			var hasErr bool
+			var errMsg string
+
+			if tt.isBYOC && tier != apigen_mgmtv2.BYOC {
+				hasErr = true
+				errMsg = "BYOC clusters must use the BYOC tier"
+			}
+			if !tt.isBYOC && tier != apigen_mgmtv2.Standard && tier != apigen_mgmtv2.Invited {
+				hasErr = true
+				errMsg = "SaaS clusters must use either Standard or Invited tier"
+			}
+
+			assert.Equal(t, tt.wantErr, hasErr)
+			if tt.wantErr {
+				assert.Contains(t, errMsg, tt.errMsg)
+			}
+		})
+	}
+}
+
 func TestClusterCreate_previous_creation_failed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

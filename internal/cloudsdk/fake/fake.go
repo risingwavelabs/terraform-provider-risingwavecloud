@@ -136,12 +136,9 @@ var availableMetaStore = &apigen_mgmtv1.AvailableMetaStore{
 func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mgmtv1.Tier, error) {
 	return []apigen_mgmtv1.Tier{
 		{
-			Id:                      ptr.Ptr(apigen_mgmtv1.Standard),
-			AvailableMetaNodes:      availableComponentTypes,
-			AvailableComputeNodes:   availableComponentTypes,
-			AvailableCompactorNodes: availableComponentTypes,
-			AvailableFrontendNodes:  availableComponentTypes,
-			AvailableMetaStore:      availableMetaStore,
+			Id:                       ptr.Ptr(apigen_mgmtv1.Standard),
+			AvailableStandaloneNodes: availableComponentTypes,
+			AvailableMetaStore:       availableMetaStore,
 		},
 		{
 			Id:                      ptr.Ptr(apigen_mgmtv1.BYOC),
@@ -189,6 +186,8 @@ func (acc *FakeCloudClient) GetAvailableComponentTypes(ctx context.Context, regi
 		return tier.AvailableFrontendNodes, nil
 	case cloudsdk.ComponentMeta:
 		return tier.AvailableMetaNodes, nil
+	case cloudsdk.ComponentStandalone:
+		return tier.AvailableStandaloneNodes, nil
 	}
 	return nil, errors.Errorf("component %s not found", component)
 }
@@ -233,6 +232,7 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 	cluster.GetTenant().Resources.Components.Compute = componentReqToComponent(req.Compute)
 	cluster.GetTenant().Resources.Components.Frontend = componentReqToComponent(req.Frontend)
 	cluster.GetTenant().Resources.Components.Meta = componentReqToComponent(req.Meta)
+	cluster.GetTenant().Resources.Components.Standalone = componentReqToComponent(req.Standalone)
 	r := state.GetRegionState(cluster.GetTenant().Region)
 
 	r.ReplaceCluster(nsID, cluster)
@@ -311,10 +311,11 @@ func (acc *FakeCloudClient) DeleteClusterUser(ctx context.Context, nsID uuid.UUI
 func reqResouceToClusterResource(reqResource *apigen_mgmtv2.TenantResourceRequest) apigen_mgmtv2.TenantResource {
 	ret := apigen_mgmtv2.TenantResource{
 		Components: apigen_mgmtv2.TenantResourceComponents{
-			Compute:   componentReqToComponent(reqResource.Components.Compute),
-			Compactor: componentReqToComponent(reqResource.Components.Compactor),
-			Frontend:  componentReqToComponent(reqResource.Components.Frontend),
-			Meta:      componentReqToComponent(reqResource.Components.Meta),
+			Compute:    componentReqToComponent(reqResource.Components.Compute),
+			Compactor:  componentReqToComponent(reqResource.Components.Compactor),
+			Frontend:   componentReqToComponent(reqResource.Components.Frontend),
+			Meta:       componentReqToComponent(reqResource.Components.Meta),
+			Standalone: componentReqToComponent(reqResource.Components.Standalone),
 		},
 		ComputeCache: apigen_mgmtv2.TenantResourceComputeCache{
 			SizeGb: reqResource.ComputeFileCacheSizeGiB,
@@ -335,6 +336,9 @@ func reqResouceToClusterResource(reqResource *apigen_mgmtv2.TenantResourceReques
 }
 
 func componentReqToComponent(req *apigen_mgmtv2.ComponentResourceRequest) *apigen_mgmtv2.ComponentResource {
+	if req == nil {
+		return nil
+	}
 	for _, c := range availableComponentTypes {
 		if c.Id == req.ComponentTypeId {
 			return &apigen_mgmtv2.ComponentResource{

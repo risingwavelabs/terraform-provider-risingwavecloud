@@ -78,7 +78,7 @@ func TestClusterResource_Standard(t *testing.T) {
 				Config: testClusterResourceConfig_oldVersion(clusterName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster.test", "id"),
-					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Standard)),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "tier", string(apigen_mgmt.Invited)),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "version", oldVersion),
 					func(s *terraform.State) error {
 						cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
@@ -176,6 +176,7 @@ resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
 	version  = "%s"
+	tier     = "Invited"
 	spec     = {
 		compute = {
 			default_node_group = {
@@ -217,6 +218,7 @@ resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
 	version  = "%s"
+	tier     = "Invited"
 	spec     = {
 		compute = {
 			default_node_group = {
@@ -259,6 +261,7 @@ resource "risingwavecloud_cluster" "test" {
 	region   = "us-east-1"
 	name     = "%s"
 	version  = "%s"
+	tier     = "Invited"
 	spec     = {
 		compute = {
 			default_node_group = {
