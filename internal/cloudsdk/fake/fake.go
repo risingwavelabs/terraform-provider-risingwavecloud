@@ -320,6 +320,16 @@ func reqResouceToClusterResource(reqResource *apigen_mgmtv2.TenantResourceReques
 			SizeGb: reqResource.ComputeFileCacheSizeGiB,
 		},
 	}
+	if reqResource.MetaStore != nil {
+		ret.MetaStore = &apigen_mgmtv2.TenantResourceMetaStore{
+			Type: reqResource.MetaStore.Type,
+		}
+	} else {
+		// Real API always assigns a default metastore
+		ret.MetaStore = &apigen_mgmtv2.TenantResourceMetaStore{
+			Type: apigen_mgmtv2.Postgresql,
+		}
+	}
 
 	return ret
 }
