@@ -26,18 +26,18 @@ import (
 const defaultResourceGroup = "default"
 
 // Assert provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &ResourceGroupResource{}
-var _ resource.ResourceWithImportState = &ResourceGroupResource{}
+var _ resource.Resource = &ClusterResourceGroupResource{}
+var _ resource.ResourceWithImportState = &ClusterResourceGroupResource{}
 
 func NewResourceGroupResource() resource.Resource {
-	return &ResourceGroupResource{}
+	return &ClusterResourceGroupResource{}
 }
 
-type ResourceGroupResource struct {
+type ClusterResourceGroupResource struct {
 	client cloudsdk.CloudClientInterface
 }
 
-type ResourceGroupModel struct {
+type ClusterResourceGroupModel struct {
 	// [cluster ID].[resource group name]
 	ID                 types.String `tfsdk:"id"`
 	ClusterID          types.String `tfsdk:"cluster_id"`
@@ -95,14 +95,14 @@ func checkNotDefaultResourceGroup(name string, diags *diag.Diagnostics) {
 	)
 }
 
-func (r *ResourceGroupResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_resource_group"
+func (r *ClusterResourceGroupResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_cluster_resource_group"
 }
 
-func (r *ResourceGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *ClusterResourceGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description:         "An additional (non-default) resource group in a RisingWave cluster used to isolate streaming workloads on their own compute nodes.",
-		MarkdownDescription: resourceGroupMarkdownDescription,
+		MarkdownDescription: clusterResourceGroupMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The global identifier for the resource: [cluster ID].[resource group name]",
@@ -145,7 +145,7 @@ func (r *ResourceGroupResource) Schema(ctx context.Context, req resource.SchemaR
 	}
 }
 
-func (r *ResourceGroupResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *ClusterResourceGroupResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -165,8 +165,8 @@ func (r *ResourceGroupResource) Configure(ctx context.Context, req resource.Conf
 	r.client = client
 }
 
-func (r *ResourceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data ResourceGroupModel
+func (r *ClusterResourceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data ClusterResourceGroupModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -205,14 +205,14 @@ func (r *ResourceGroupResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	resourceGroupToDataModel(nsID, group, &data)
+	clusterResourceGroupToDataModel(nsID, group, &data)
 
 	tflog.Info(ctx, fmt.Sprintf("resource group created, name: %s", name))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func resourceGroupToDataModel(clusterNsID uuid.UUID, group *apigen_mgmtv2.ResourceGroupDetails, data *ResourceGroupModel) {
+func clusterResourceGroupToDataModel(clusterNsID uuid.UUID, group *apigen_mgmtv2.ResourceGroupDetails, data *ClusterResourceGroupModel) {
 	data.ID = types.StringValue(fmt.Sprintf("%s.%s", clusterNsID.String(), group.Name))
 	data.ClusterID = types.StringValue(clusterNsID.String())
 	data.Name = types.StringValue(group.Name)
@@ -221,7 +221,7 @@ func resourceGroupToDataModel(clusterNsID uuid.UUID, group *apigen_mgmtv2.Resour
 	data.ComputeCacheSizeGB = types.Int64Value(int64(group.ComputeCache.SizeGb))
 }
 
-func parseResourceGroupIdentifier(resourceGroupResourceID string, diags *diag.Diagnostics) (nsID uuid.UUID, name string) {
+func parseClusterResourceGroupIdentifier(resourceGroupResourceID string, diags *diag.Diagnostics) (nsID uuid.UUID, name string) {
 	arr := strings.SplitN(resourceGroupResourceID, ".", 2)
 	if len(arr) != 2 || len(arr[1]) == 0 {
 		diags.AddError("Invalid ID", fmt.Sprintf("Cannot parse resource group ID: %s, expected format: [cluster ID].[resource group name]", resourceGroupResourceID))
@@ -237,8 +237,8 @@ func parseResourceGroupIdentifier(resourceGroupResourceID string, diags *diag.Di
 	return
 }
 
-func (r *ResourceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data ResourceGroupModel
+func (r *ClusterResourceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data ClusterResourceGroupModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -249,7 +249,7 @@ func (r *ResourceGroupResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	nsID, name := parseResourceGroupIdentifier(data.ID.ValueString(), &resp.Diagnostics)
+	nsID, name := parseClusterResourceGroupIdentifier(data.ID.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -267,15 +267,15 @@ func (r *ResourceGroupResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	resourceGroupToDataModel(nsID, group, &data)
+	clusterResourceGroupToDataModel(nsID, group, &data)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ResourceGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *ClusterResourceGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var (
-		data  ResourceGroupModel
-		state ResourceGroupModel
+		data  ClusterResourceGroupModel
+		state ClusterResourceGroupModel
 	)
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -287,7 +287,7 @@ func (r *ResourceGroupResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	nsID, name := parseResourceGroupIdentifier(state.ID.ValueString(), &resp.Diagnostics)
+	nsID, name := parseClusterResourceGroupIdentifier(state.ID.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -303,13 +303,13 @@ func (r *ResourceGroupResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	resourceGroupToDataModel(nsID, group, &data)
+	clusterResourceGroupToDataModel(nsID, group, &data)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ResourceGroupResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data ResourceGroupModel
+func (r *ClusterResourceGroupResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data ClusterResourceGroupModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -320,7 +320,7 @@ func (r *ResourceGroupResource) Delete(ctx context.Context, req resource.DeleteR
 		return
 	}
 
-	nsID, name := parseResourceGroupIdentifier(data.ID.ValueString(), &resp.Diagnostics)
+	nsID, name := parseClusterResourceGroupIdentifier(data.ID.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -338,8 +338,8 @@ func (r *ResourceGroupResource) Delete(ctx context.Context, req resource.DeleteR
 	}
 }
 
-func (r *ResourceGroupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	nsID, name := parseResourceGroupIdentifier(req.ID, &resp.Diagnostics)
+func (r *ClusterResourceGroupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	nsID, name := parseClusterResourceGroupIdentifier(req.ID, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

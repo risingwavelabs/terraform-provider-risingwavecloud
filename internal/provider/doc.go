@@ -190,7 +190,7 @@ terraform import risingwavecloud_privatelink.test <privatelink_id>
 ` + "```" + `
 `
 
-var resourceGroupMarkdownDescription = `
+var clusterResourceGroupMarkdownDescription = `
 An additional (non-default) resource group in a RisingWave cluster. A resource group is a set of
 compute nodes of its own, used to isolate streaming workloads from each other.
 
@@ -215,7 +215,7 @@ To import a resource group, follow the steps below:
 2. Write a resource definition to import the resource group. For example:
 
 ` + "```hcl" + `
-  resource "risingwavecloud_resource_group" "streaming" {
+  resource "risingwavecloud_cluster_resource_group" "streaming" {
     cluster_id        = risingwavecloud_cluster.mycluster.id
     name              = "streaming-rg"
     component_type_id = "p-1c4g"
@@ -230,7 +230,7 @@ To import a resource group, follow the steps below:
 3. Run the import command:
 
 ` + "```shell" + `
-terraform import risingwavecloud_resource_group.test <cluster_id>.<resource_group_name>
+terraform import risingwavecloud_cluster_resource_group.test <cluster_id>.<resource_group_name>
 ` + "```" + `
 `
 

@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseResourceGroupIdentifier(t *testing.T) {
+func TestParseClusterResourceGroupIdentifier(t *testing.T) {
 	nsID := uuid.Must(uuid.NewRandom())
 
 	tests := []struct {
@@ -52,7 +52,7 @@ func TestParseResourceGroupIdentifier(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var diags diag.Diagnostics
-			gotNsID, gotName := parseResourceGroupIdentifier(tt.id, &diags)
+			gotNsID, gotName := parseClusterResourceGroupIdentifier(tt.id, &diags)
 
 			if tt.expectErr {
 				assert.True(t, diags.HasError())
@@ -65,11 +65,11 @@ func TestParseResourceGroupIdentifier(t *testing.T) {
 	}
 }
 
-func TestResourceGroupToDataModel(t *testing.T) {
+func TestClusterResourceGroupToDataModel(t *testing.T) {
 	nsID := uuid.Must(uuid.NewRandom())
 
-	var data ResourceGroupModel
-	resourceGroupToDataModel(nsID, &apigen_mgmtv2.ResourceGroupDetails{
+	var data ClusterResourceGroupModel
+	clusterResourceGroupToDataModel(nsID, &apigen_mgmtv2.ResourceGroupDetails{
 		Name: "streaming-rg",
 		Resource: apigen_mgmtv2.ComponentResource{
 			ComponentTypeId: "p-1c4g",
@@ -97,11 +97,11 @@ func TestCheckNotDefaultResourceGroup(t *testing.T) {
 	assert.True(t, diags.HasError())
 }
 
-func resourceGroupSchema(ctx context.Context, t *testing.T) schema.Schema {
+func clusterResourceGroupSchema(ctx context.Context, t *testing.T) schema.Schema {
 	t.Helper()
 
 	resp := &resource.SchemaResponse{}
-	(&ResourceGroupResource{}).Schema(ctx, resource.SchemaRequest{}, resp)
+	(&ClusterResourceGroupResource{}).Schema(ctx, resource.SchemaRequest{}, resp)
 	require.False(t, resp.Diagnostics.HasError())
 	return resp.Schema
 }
@@ -110,7 +110,7 @@ func resourceGroupSchema(ctx context.Context, t *testing.T) schema.Schema {
 // currently in the state.
 const stateCacheSizeGB = 20
 
-func resourceGroupValue(t *testing.T, objType tftypes.Object, componentTypeID string, replica int64) tftypes.Value {
+func clusterResourceGroupValue(t *testing.T, objType tftypes.Object, componentTypeID string, replica int64) tftypes.Value {
 	t.Helper()
 
 	return tftypes.NewValue(objType, map[string]tftypes.Value{
@@ -128,7 +128,7 @@ func resourceGroupValue(t *testing.T, objType tftypes.Object, componentTypeID st
 // type change would end with an applied value that differs from the planned one.
 func TestComputeCacheSizePlanModifier(t *testing.T) {
 	ctx := context.Background()
-	sch := resourceGroupSchema(ctx, t)
+	sch := clusterResourceGroupSchema(ctx, t)
 	objType, ok := sch.Type().TerraformType(ctx).(tftypes.Object)
 	require.True(t, ok)
 
@@ -145,8 +145,8 @@ func TestComputeCacheSizePlanModifier(t *testing.T) {
 
 	t.Run("component type changed", func(t *testing.T) {
 		req := newRequest(
-			resourceGroupValue(t, objType, "p-1c4g", 1),
-			resourceGroupValue(t, objType, "p-2c8g", 1),
+			clusterResourceGroupValue(t, objType, "p-1c4g", 1),
+			clusterResourceGroupValue(t, objType, "p-2c8g", 1),
 		)
 		resp := &planmodifier.Int64Response{PlanValue: req.PlanValue}
 
@@ -158,8 +158,8 @@ func TestComputeCacheSizePlanModifier(t *testing.T) {
 
 	t.Run("only the replica changed", func(t *testing.T) {
 		req := newRequest(
-			resourceGroupValue(t, objType, "p-1c4g", 1),
-			resourceGroupValue(t, objType, "p-1c4g", 2),
+			clusterResourceGroupValue(t, objType, "p-1c4g", 1),
+			clusterResourceGroupValue(t, objType, "p-1c4g", 2),
 		)
 		resp := &planmodifier.Int64Response{PlanValue: req.PlanValue}
 
@@ -173,7 +173,7 @@ func TestComputeCacheSizePlanModifier(t *testing.T) {
 		req := planmodifier.Int64Request{
 			Path:        path.Root("compute_cache_size_gb"),
 			State:       tfsdk.State{Raw: tftypes.NewValue(objType, nil), Schema: sch},
-			Plan:        tfsdk.Plan{Raw: resourceGroupValue(t, objType, "p-1c4g", 1), Schema: sch},
+			Plan:        tfsdk.Plan{Raw: clusterResourceGroupValue(t, objType, "p-1c4g", 1), Schema: sch},
 			StateValue:  types.Int64Null(),
 			PlanValue:   types.Int64Unknown(),
 			ConfigValue: types.Int64Null(),
@@ -188,7 +188,7 @@ func TestComputeCacheSizePlanModifier(t *testing.T) {
 
 	t.Run("destroy is not modified", func(t *testing.T) {
 		req := newRequest(
-			resourceGroupValue(t, objType, "p-1c4g", 1),
+			clusterResourceGroupValue(t, objType, "p-1c4g", 1),
 			tftypes.NewValue(objType, nil),
 		)
 		resp := &planmodifier.Int64Response{PlanValue: req.PlanValue}

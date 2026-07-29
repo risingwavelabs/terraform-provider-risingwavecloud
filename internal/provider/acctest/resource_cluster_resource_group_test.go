@@ -41,21 +41,21 @@ func TestResourceGroupResource(t *testing.T) {
 				Config: config("p-1c4g", 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					captureClusterID,
-					resource.TestCheckResourceAttrSet("risingwavecloud_resource_group.test", "id"),
+					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_resource_group.test", "id"),
 					resource.TestCheckResourceAttrPair(
-						"risingwavecloud_resource_group.test", "cluster_id",
+						"risingwavecloud_cluster_resource_group.test", "cluster_id",
 						"risingwavecloud_cluster.test", "id",
 					),
-					resource.TestCheckResourceAttr("risingwavecloud_resource_group.test", "name", "streaming-rg"),
-					resource.TestCheckResourceAttr("risingwavecloud_resource_group.test", "component_type_id", "p-1c4g"),
-					resource.TestCheckResourceAttr("risingwavecloud_resource_group.test", "replica", "1"),
-					resource.TestCheckResourceAttrSet("risingwavecloud_resource_group.test", "compute_cache_size_gb"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "name", "streaming-rg"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "component_type_id", "p-1c4g"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "replica", "1"),
+					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_resource_group.test", "compute_cache_size_gb"),
 				),
 			},
 			// Import
 			{
 				Config:       config("p-1c4g", 1),
-				ResourceName: "risingwavecloud_resource_group.test",
+				ResourceName: "risingwavecloud_cluster_resource_group.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return fmt.Sprintf("%s.streaming-rg", clusterID.String()), nil
 				},
@@ -66,7 +66,7 @@ func TestResourceGroupResource(t *testing.T) {
 			{
 				Config: config("p-1c4g", 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_resource_group.test", "replica", "2"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "replica", "2"),
 				),
 			},
 			// Update: move to another component type. The compute cache size is resolved by the
@@ -75,9 +75,9 @@ func TestResourceGroupResource(t *testing.T) {
 			{
 				Config: config("p-2c8g", 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("risingwavecloud_resource_group.test", "component_type_id", "p-2c8g"),
-					resource.TestCheckResourceAttr("risingwavecloud_resource_group.test", "replica", "2"),
-					resource.TestCheckResourceAttrSet("risingwavecloud_resource_group.test", "compute_cache_size_gb"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "component_type_id", "p-2c8g"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "replica", "2"),
+					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_resource_group.test", "compute_cache_size_gb"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -87,7 +87,7 @@ func TestResourceGroupResource(t *testing.T) {
 
 func testResourceGroup(componentTypeID string, replica int) string {
 	return fmt.Sprintf(`
-resource "risingwavecloud_resource_group" "test" {
+resource "risingwavecloud_cluster_resource_group" "test" {
 	cluster_id        = risingwavecloud_cluster.test.id
 	name              = "streaming-rg"
 	component_type_id = "%s"

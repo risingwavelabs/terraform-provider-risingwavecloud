@@ -1,4 +1,4 @@
-resource "risingwavecloud_resource_group" "streaming" {
+resource "risingwavecloud_cluster_resource_group" "streaming" {
   # Reference the cluster instead of hardcoding its ID, so that Terraform creates the
   # cluster first and deletes the resource group before the cluster.
   cluster_id        = risingwavecloud_cluster.mycluster.id
