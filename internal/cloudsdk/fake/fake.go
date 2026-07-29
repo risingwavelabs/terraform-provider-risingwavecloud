@@ -459,3 +459,113 @@ func (acc *FakeCloudClient) GetBYOCCluster(ctx context.Context, region string, n
 		},
 	}, nil
 }
+
+func (acc *FakeCloudClient) GetDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) (*apigen_mgmtv2.Database, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	for _, db := range c.GetDatabases() {
+		if db.Name == databaseName {
+			return db, nil
+		}
+	}
+	return nil, errors.Wrapf(cloudsdk.ErrDatabaseNotFound, "database %s in cluster %s", databaseName, clusterNsID.String())
+}
+
+func (acc *FakeCloudClient) CreateDatabase(ctx context.Context, clusterNsID uuid.UUID, name, resourceGroup string) (*apigen_mgmtv2.Database, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	db := &apigen_mgmtv2.Database{
+		Name:          name,
+		ResourceGroup: resourceGroup,
+	}
+	c.AddDatabase(db)
+	return db, nil
+}
+
+func (acc *FakeCloudClient) DeleteDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) error {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	c.DeleteDatabase(databaseName)
+	return nil
+}
+
+func (acc *FakeCloudClient) GetResourceGroup(ctx context.Context, clusterNsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetResourceGroup(name)
+}
+
+func reqResourceGroupToDetails(req apigen_mgmtv2.ComponentResourceRequest, computeCache *apigen_mgmtv2.TenantResourceComputeCache, name string) *apigen_mgmtv2.ResourceGroupDetails {
+	var resource apigen_mgmtv2.ComponentResource
+	if comp := componentReqToComponent(&req); comp != nil {
+		resource = *comp
+	} else {
+		resource = apigen_mgmtv2.ComponentResource{
+			ComponentTypeId: req.ComponentTypeId,
+			Replica:         req.Replica,
+		}
+	}
+	cache := apigen_mgmtv2.TenantResourceComputeCache{}
+	if computeCache != nil {
+		cache = *computeCache
+	}
+	return &apigen_mgmtv2.ResourceGroupDetails{
+		Name:         name,
+		Resource:     resource,
+		ComputeCache: cache,
+	}
+}
+
+func (acc *FakeCloudClient) CreateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	g := reqResourceGroupToDetails(req.Resource, req.ComputeCache, req.Name)
+	c.AddResourceGroup(g)
+	return g, nil
+}
+
+func (acc *FakeCloudClient) UpdateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := c.GetResourceGroup(resourceGroup); err != nil {
+		return nil, err
+	}
+	g := reqResourceGroupToDetails(req.Resource, nil, resourceGroup)
+	c.AddResourceGroup(g)
+	return g, nil
+}
+
+func (acc *FakeCloudClient) DeleteResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string) error {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	c.DeleteResourceGroup(resourceGroup)
+	return nil
+}

@@ -17,10 +17,12 @@ import (
 )
 
 var (
-	ErrClusterNotFound     = errors.New("cluster not found")
-	ErrBYOCClusterNotFound = errors.New("BYOC cluster not found")
-	ErrClusterUserNotFound = errors.New("cluster user not found")
-	ErrPrivateLinkNotFound = errors.New("private link not found")
+	ErrClusterNotFound       = errors.New("cluster not found")
+	ErrBYOCClusterNotFound   = errors.New("BYOC cluster not found")
+	ErrClusterUserNotFound   = errors.New("cluster user not found")
+	ErrPrivateLinkNotFound   = errors.New("private link not found")
+	ErrDatabaseNotFound      = errors.New("database not found")
+	ErrResourceGroupNotFound = errors.New("resource group not found")
 )
 
 const (
@@ -50,6 +52,13 @@ var (
 
 	PollingPrivateLinkDeletion = wait.PollingParams{
 		Timeout:  5 * time.Minute,
+		Interval: 3 * time.Second,
+	}
+
+	// Resource group create/update/delete trigger a cluster rescale, so reuse the
+	// tenant-scale timeout budget.
+	PollingResourceGroupOperation = wait.PollingParams{
+		Timeout:  15 * time.Minute,
 		Interval: 3 * time.Second,
 	}
 )
@@ -88,6 +97,20 @@ type RegionServiceClientInterface interface {
 	DeletePrivateLinkAwait(ctx context.Context, nsID, privateLinkID uuid.UUID) error
 
 	GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmtv2.ManagedCluster, error)
+
+	GetDatabases(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.Database, error)
+
+	CreateDatabase(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateDatabaseRequestBody) (*apigen_mgmtv2.Database, error)
+
+	DeleteDatabase(ctx context.Context, nsID uuid.UUID, databaseName string) error
+
+	GetResourceGroups(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.ResourceGroupDetails, error)
+
+	CreateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	UpdateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error
 }
 
 type RegionServiceClient struct {
@@ -470,4 +493,157 @@ func (c *RegionServiceClient) GetBYOCCluster(ctx context.Context, name string) (
 		return nil, err
 	}
 	return res.JSON200, nil
+}
+
+func (c *RegionServiceClient) GetDatabases(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.Database, error) {
+	var (
+		offset uint64 = 0
+		limit  uint64 = 100
+	)
+	var databases []apigen_mgmtv2.Database
+	for {
+		res, err := c.mgmtV2Client.GetTenantsNsIdDatabasesWithResponse(ctx, nsID, &apigen_mgmtv2.GetTenantsNsIdDatabasesParams{
+			Offset: &offset,
+			Limit:  &limit,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to call API to get databases")
+		}
+		if res.StatusCode() == http.StatusNotFound {
+			return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
+		}
+		if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+			return nil, err
+		}
+		databases = append(databases, res.JSON200.Databases...)
+		if res.JSON200.Pagination == nil {
+			break
+		}
+		p := res.JSON200.Pagination
+		if p.Offset+uint64(len(res.JSON200.Databases)) >= p.Size || len(res.JSON200.Databases) == 0 {
+			break
+		}
+		offset = p.Offset + uint64(len(res.JSON200.Databases))
+	}
+	return databases, nil
+}
+
+func (c *RegionServiceClient) CreateDatabase(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateDatabaseRequestBody) (*apigen_mgmtv2.Database, error) {
+	res, err := c.mgmtV2Client.PostTenantsNsIdDatabasesWithResponse(ctx, nsID, req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to create database")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
+}
+
+func (c *RegionServiceClient) DeleteDatabase(ctx context.Context, nsID uuid.UUID, databaseName string) error {
+	res, err := c.mgmtV2Client.DeleteTenantsNsIdDatabasesDatabaseNameWithResponse(ctx, nsID, databaseName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to call API to delete database %s", databaseName)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil
+	}
+	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body))
+}
+
+func (c *RegionServiceClient) GetResourceGroups(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.ResourceGroupDetails, error) {
+	res, err := c.mgmtV2Client.GetTenantsNsIdResourceGroupsWithResponse(ctx, nsID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get resource groups")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
+	}
+	return res.JSON200.ResourceGroups, nil
+}
+
+func (c *RegionServiceClient) getResourceGroup(ctx context.Context, nsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	groups, err := c.GetResourceGroups(ctx, nsID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range groups {
+		if g.Name == name {
+			return ptr.Ptr(g), nil
+		}
+	}
+	return nil, errors.Wrapf(ErrResourceGroupNotFound, "resource group %s", name)
+}
+
+func (c *RegionServiceClient) CreateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	res, err := c.mgmtV2Client.PostTenantsNsIdResourceGroupsWithResponse(ctx, nsID, req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to create resource group")
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return nil, err
+	}
+	if err := c.waitClusterHealthy(ctx, nsID); err != nil {
+		return nil, err
+	}
+	var rtn *apigen_mgmtv2.ResourceGroupDetails
+	if err := wait.Poll(ctx, func() (bool, error) {
+		g, err := c.getResourceGroup(ctx, nsID, req.Name)
+		if err != nil {
+			if errors.Is(err, ErrResourceGroupNotFound) {
+				return false, nil
+			}
+			return false, err
+		}
+		rtn = g
+		return true, nil
+	}, PollingResourceGroupOperation); err != nil {
+		return nil, errors.Wrapf(err, "failed to wait for the resource group %s to be created", req.Name)
+	}
+	return rtn, nil
+}
+
+func (c *RegionServiceClient) UpdateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	res, err := c.mgmtV2Client.PostTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup, req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to call API to update resource group %s", resourceGroup)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrResourceGroupNotFound, "resource group %s", resourceGroup)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return nil, err
+	}
+	if err := c.waitClusterHealthy(ctx, nsID); err != nil {
+		return nil, err
+	}
+	return c.getResourceGroup(ctx, nsID, resourceGroup)
+}
+
+func (c *RegionServiceClient) DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error {
+	res, err := c.mgmtV2Client.DeleteTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup)
+	if err != nil {
+		return errors.Wrapf(err, "failed to call API to delete resource group %s", resourceGroup)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
+	}
+	return wait.Poll(ctx, func() (bool, error) {
+		_, err := c.getResourceGroup(ctx, nsID, resourceGroup)
+		if err != nil {
+			if errors.Is(err, ErrResourceGroupNotFound) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	}, PollingResourceGroupOperation)
 }
