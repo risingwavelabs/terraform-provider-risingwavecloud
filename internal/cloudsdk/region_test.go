@@ -27,8 +27,8 @@ func newTestRegionServiceClient(t *testing.T, handler http.Handler) *RegionServi
 }
 
 // Databases are paginated: the loop must keep requesting until every page is consumed,
-// otherwise a cluster with more databases than the page size silently reports a database as
-// missing and terraform deletes it from the state.
+// otherwise the resource group deletion error only mentions some of the databases that keep
+// the resource group alive.
 func TestGetDatabasesPagination(t *testing.T) {
 	var (
 		nsID  = uuid.Must(uuid.NewRandom())
@@ -114,6 +114,36 @@ func TestGetResourceGroupsClusterNotFound(t *testing.T) {
 
 	_, err := client.GetResourceGroups(context.Background(), nsID)
 	assert.True(t, errors.Is(err, ErrClusterNotFound))
+}
+
+// Deleting a resource group a database still runs in is rejected by the platform with a
+// message that does not name the databases. Databases are not managed by this provider, so the
+// error has to point at them explicitly for the user to be able to act on it.
+func TestDeleteResourceGroupInUse(t *testing.T) {
+	nsID := uuid.Must(uuid.NewRandom())
+
+	client := newTestRegionServiceClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err := w.Write([]byte(`{"msg":"resource group is in use"}`))
+			require.NoError(t, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(apigen_mgmtv2.DatabasesPagination{
+			Databases: []apigen_mgmtv2.Database{
+				{Name: "other_db", ResourceGroup: "default"},
+				{Name: "test_db", ResourceGroup: "streaming-rg"},
+			},
+		}))
+	}))
+
+	err := client.DeleteResourceGroupAwait(context.Background(), nsID, "streaming-rg")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resource group is in use")
+	assert.Contains(t, err.Error(), "test_db")
+	assert.NotContains(t, err.Error(), "other_db")
 }
 
 func TestGetResourceGroups(t *testing.T) {

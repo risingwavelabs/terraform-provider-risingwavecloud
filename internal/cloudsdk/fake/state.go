@@ -20,9 +20,6 @@ type ClusterState struct {
 	// private link ID -> private link
 	privateLinks map[string]*apigen_mgmtv2.PrivateLink
 
-	// database name -> database
-	databases map[string]*apigen_mgmtv2.Database
-
 	// resource group name -> resource group
 	resourceGroups map[string]*apigen_mgmtv2.ResourceGroupDetails
 }
@@ -32,7 +29,6 @@ func NewClusterState(tenant *apigen_mgmtv2.Tenant) *ClusterState {
 		tenant:         tenant,
 		users:          map[string]*apigen_mgmtv2.DBUser{},
 		privateLinks:   map[string]*apigen_mgmtv2.PrivateLink{},
-		databases:      map[string]*apigen_mgmtv2.Database{},
 		resourceGroups: map[string]*apigen_mgmtv2.ResourceGroupDetails{},
 	}
 }
@@ -99,31 +95,6 @@ func (c *ClusterState) GetPrivateLink(id uuid.UUID) (*apigen_mgmtv2.PrivateLink,
 		return nil, errors.Wrapf(cloudsdk.ErrPrivateLinkNotFound, "id: %s", id.String())
 	}
 	return pl, nil
-}
-
-func (c *ClusterState) GetDatabases() []*apigen_mgmtv2.Database {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	rtn := make([]*apigen_mgmtv2.Database, 0, len(c.databases))
-	for _, db := range c.databases {
-		rtn = append(rtn, db)
-	}
-	return rtn
-}
-
-func (c *ClusterState) AddDatabase(database *apigen_mgmtv2.Database) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.databases[database.Name] = database
-}
-
-func (c *ClusterState) DeleteDatabase(name string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.databases, name)
 }
 
 func (c *ClusterState) GetResourceGroups() []*apigen_mgmtv2.ResourceGroupDetails {

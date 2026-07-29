@@ -3,8 +3,10 @@
 page_title: "risingwavecloud_resource_group Resource - terraform-provider-risingwavecloud"
 subcategory: ""
 description: |-
-  An additional (non-default) resource group in a RisingWave cluster. Resource groups isolate
-  streaming workloads onto their own compute nodes.
+  An additional (non-default) resource group in a RisingWave cluster. A resource group is a set of
+  compute nodes of its own, used to isolate streaming workloads from each other.
+  This resource only manages the compute capacity. Assigning a database to a resource group is done in
+  SQL when the database is created, and the databases themselves are not managed by this provider.
   ~> Note: The default resource group is managed by the risingwavecloud_cluster resource
   and cannot be created or imported here. Use this resource only for additional named resource groups,
   and the cluster's spec to rescale the default one.
@@ -27,8 +29,7 @@ description: |-
   
   ~> Note: Reference the cluster instead of hardcoding its ID, as shown above. This is how
   Terraform learns that the resource group has to be created after the cluster and deleted before it.
-  Databases have to be deleted before the resource group they run on, so reference this resource's
-  name from the risingwavecloud_database resources that use it.
+  Deleting a resource group fails while databases still run in it: drop those databases first.
   Run the import command:
   
   terraform import risingwavecloud_resource_group.test <cluster_id>.<resource_group_name>
@@ -36,8 +37,11 @@ description: |-
 
 # risingwavecloud_resource_group (Resource)
 
-An additional (non-default) resource group in a RisingWave cluster. Resource groups isolate
-streaming workloads onto their own compute nodes.
+An additional (non-default) resource group in a RisingWave cluster. A resource group is a set of
+compute nodes of its own, used to isolate streaming workloads from each other.
+
+This resource only manages the compute capacity. Assigning a database to a resource group is done in
+SQL when the database is created, and the databases themselves are not managed by this provider.
 
 ~> **Note:** The `default` resource group is managed by the `risingwavecloud_cluster` resource
 and cannot be created or imported here. Use this resource only for additional named resource groups,
@@ -67,8 +71,7 @@ To import a resource group, follow the steps below:
 
   ~> **Note:** Reference the cluster instead of hardcoding its ID, as shown above. This is how
   Terraform learns that the resource group has to be created after the cluster and deleted before it.
-  Databases have to be deleted before the resource group they run on, so reference this resource's
-  `name` from the `risingwavecloud_database` resources that use it.
+  Deleting a resource group fails while databases still run in it: drop those databases first.
 
 3. Run the import command:
 

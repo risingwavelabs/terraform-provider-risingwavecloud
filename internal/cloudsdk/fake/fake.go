@@ -465,53 +465,6 @@ func (acc *FakeCloudClient) GetBYOCCluster(ctx context.Context, region string, n
 	}, nil
 }
 
-func (acc *FakeCloudClient) GetDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) (*apigen_mgmtv2.Database, error) {
-	debugFuncCaller()
-
-	c, err := state.GetClusterByNsID(clusterNsID)
-	if err != nil {
-		return nil, err
-	}
-	for _, db := range c.GetDatabases() {
-		if db.Name == databaseName {
-			return db, nil
-		}
-	}
-	return nil, errors.Wrapf(cloudsdk.ErrDatabaseNotFound, "database %s in cluster %s", databaseName, clusterNsID.String())
-}
-
-func (acc *FakeCloudClient) CreateDatabase(ctx context.Context, clusterNsID uuid.UUID, name, resourceGroup string) (*apigen_mgmtv2.Database, error) {
-	debugFuncCaller()
-
-	c, err := state.GetClusterByNsID(clusterNsID)
-	if err != nil {
-		return nil, err
-	}
-	// the default resource group always exists, any other one must be created first.
-	if resourceGroup != defaultResourceGroup {
-		if _, err := c.GetResourceGroup(resourceGroup); err != nil {
-			return nil, err
-		}
-	}
-	db := &apigen_mgmtv2.Database{
-		Name:          name,
-		ResourceGroup: resourceGroup,
-	}
-	c.AddDatabase(db)
-	return db, nil
-}
-
-func (acc *FakeCloudClient) DeleteDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) error {
-	debugFuncCaller()
-
-	c, err := state.GetClusterByNsID(clusterNsID)
-	if err != nil {
-		return err
-	}
-	c.DeleteDatabase(databaseName)
-	return nil
-}
-
 func (acc *FakeCloudClient) GetResourceGroup(ctx context.Context, clusterNsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error) {
 	debugFuncCaller()
 
@@ -598,12 +551,6 @@ func (acc *FakeCloudClient) DeleteResourceGroupAwait(ctx context.Context, cluste
 	c, err := state.GetClusterByNsID(clusterNsID)
 	if err != nil {
 		return err
-	}
-	// the platform refuses to remove the compute nodes a database still runs on.
-	for _, db := range c.GetDatabases() {
-		if db.ResourceGroup == resourceGroup {
-			return errors.Errorf("resource group %s is still used by database %s", resourceGroup, db.Name)
-		}
 	}
 	c.DeleteResourceGroup(resourceGroup)
 	return nil

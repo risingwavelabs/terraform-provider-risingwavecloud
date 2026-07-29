@@ -68,21 +68,6 @@ func (mr *MockCloudClientInterfaceMockRecorder) CreateClusterAwait(arg0, arg1, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateClusterAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateClusterAwait), arg0, arg1, arg2)
 }
 
-// CreateDatabase mocks base method.
-func (m *MockCloudClientInterface) CreateDatabase(arg0 context.Context, arg1 uuid.UUID, arg2, arg3 string) (*apigen0.Database, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateDatabase", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*apigen0.Database)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateDatabase indicates an expected call of CreateDatabase.
-func (mr *MockCloudClientInterfaceMockRecorder) CreateDatabase(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDatabase", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateDatabase), arg0, arg1, arg2, arg3)
-}
-
 // CreatePrivateLinkAwait mocks base method.
 func (m *MockCloudClientInterface) CreatePrivateLinkAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.PostPrivateLinkRequestBody) (*cloudsdk.PrivateLinkInfo, error) {
 	m.ctrl.T.Helper()
@@ -139,20 +124,6 @@ func (m *MockCloudClientInterface) DeleteClusterUser(arg0 context.Context, arg1 
 func (mr *MockCloudClientInterfaceMockRecorder) DeleteClusterUser(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteClusterUser", reflect.TypeOf((*MockCloudClientInterface)(nil).DeleteClusterUser), arg0, arg1, arg2)
-}
-
-// DeleteDatabase mocks base method.
-func (m *MockCloudClientInterface) DeleteDatabase(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDatabase", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteDatabase indicates an expected call of DeleteDatabase.
-func (mr *MockCloudClientInterfaceMockRecorder) DeleteDatabase(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDatabase", reflect.TypeOf((*MockCloudClientInterface)(nil).DeleteDatabase), arg0, arg1, arg2)
 }
 
 // DeletePrivateLinkAwait mocks base method.
@@ -256,21 +227,6 @@ func (m *MockCloudClientInterface) GetClusterUser(arg0 context.Context, arg1 uui
 func (mr *MockCloudClientInterfaceMockRecorder) GetClusterUser(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterUser", reflect.TypeOf((*MockCloudClientInterface)(nil).GetClusterUser), arg0, arg1, arg2)
-}
-
-// GetDatabase mocks base method.
-func (m *MockCloudClientInterface) GetDatabase(arg0 context.Context, arg1 uuid.UUID, arg2 string) (*apigen0.Database, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDatabase", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*apigen0.Database)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetDatabase indicates an expected call of GetDatabase.
-func (mr *MockCloudClientInterfaceMockRecorder) GetDatabase(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDatabase", reflect.TypeOf((*MockCloudClientInterface)(nil).GetDatabase), arg0, arg1, arg2)
 }
 
 // GetPrivateLink mocks base method.

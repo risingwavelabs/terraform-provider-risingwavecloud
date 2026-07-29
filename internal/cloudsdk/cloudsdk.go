@@ -84,18 +84,6 @@ type CloudClientInterface interface {
 
 	GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmtv2.ManagedCluster, error)
 
-	/* Database */
-
-	// GetDatabase returns the database of the given name in the cluster.
-	GetDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) (*apigen_mgmtv2.Database, error)
-
-	// CreateDatabase creates a database in the cluster. This is a synchronous operation.
-	CreateDatabase(ctx context.Context, clusterNsID uuid.UUID, name, resourceGroup string) (*apigen_mgmtv2.Database, error)
-
-	// DeleteDatabase drops the database from the cluster. it returns nil if the database is
-	// deleted successfully or not found.
-	DeleteDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) error
-
 	/* Resource Group */
 
 	// GetResourceGroup returns the resource group of the given name in the cluster.
@@ -500,42 +488,6 @@ func (c *CloudClient) GetBYOCCluster(ctx context.Context, region string, name st
 		return nil, err
 	}
 	return rs.GetBYOCCluster(ctx, name)
-}
-
-func (c *CloudClient) GetDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) (*apigen_mgmtv2.Database, error) {
-	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
-	if err != nil {
-		return nil, err
-	}
-	databases, err := rs.GetDatabases(ctx, info.NsId)
-	if err != nil {
-		return nil, err
-	}
-	for _, db := range databases {
-		if db.Name == databaseName {
-			return ptr.Ptr(db), nil
-		}
-	}
-	return nil, errors.Wrapf(ErrDatabaseNotFound, "database %s in cluster %s", databaseName, clusterNsID.String())
-}
-
-func (c *CloudClient) CreateDatabase(ctx context.Context, clusterNsID uuid.UUID, name, resourceGroup string) (*apigen_mgmtv2.Database, error) {
-	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
-	if err != nil {
-		return nil, err
-	}
-	return rs.CreateDatabase(ctx, info.NsId, apigen_mgmtv2.CreateDatabaseRequestBody{
-		Name:          name,
-		ResourceGroup: resourceGroup,
-	})
-}
-
-func (c *CloudClient) DeleteDatabase(ctx context.Context, clusterNsID uuid.UUID, databaseName string) error {
-	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
-	if err != nil {
-		return err
-	}
-	return rs.DeleteDatabase(ctx, info.NsId, databaseName)
 }
 
 func (c *CloudClient) GetResourceGroup(ctx context.Context, clusterNsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error) {

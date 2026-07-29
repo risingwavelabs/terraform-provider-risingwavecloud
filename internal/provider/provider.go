@@ -153,7 +153,6 @@ func (p *RisingWaveCloudProvider) Resources(ctx context.Context) []func() resour
 		NewClusterResource,
 		NewClusterUserResource,
 		NewPrivateLinkResource,
-		NewDatabaseResource,
 		NewResourceGroupResource,
 	}
 }

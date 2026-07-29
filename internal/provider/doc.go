@@ -190,50 +190,12 @@ terraform import risingwavecloud_privatelink.test <privatelink_id>
 ` + "```" + `
 `
 
-var databaseMarkdownDescription = `
-A database in a RisingWave cluster.
-
-A database is created synchronously. Optionally, you can pin the database's streaming jobs to a
-specific resource group with the ` + "`" + `resource_group` + "`" + ` argument (defaults to the ` + "`" + `default` + "`" + ` resource group).
-
-!> **Data loss:** the RisingWave Cloud API cannot move an existing database, so all of the
-attributes of this resource are immutable. Changing any of them, including ` + "`" + `resource_group` + "`" + `,
-drops the database with all of its data and creates an empty one. Deleting the resource drops the
-database as well. Check the plan before applying, and use a ` + "`" + `lifecycle` + "`" + ` block with
-` + "`" + `prevent_destroy = true` + "`" + ` to protect a production database.
-
-## Import a Database
-
-To import a database, follow the steps below:
-
-1. Get the UUID of the corresponding cluster from the RisingWave Cloud platform.
-
-2. Write a resource definition to import the database. For example:
-
-` + "```hcl" + `
-  resource "risingwavecloud_database" "test" {
-    cluster_id     = risingwavecloud_cluster.mycluster.id
-    name           = "test_db"
-    resource_group = risingwavecloud_resource_group.streaming.name
-  }
-  ` + "```" + `
-
-  ~> **Note:** Reference the cluster and the resource group instead of hardcoding their values, as
-  shown above. This is how Terraform learns that the database has to be created after them and
-  deleted before them. Dropping a database whose cluster is already gone, or dropping a resource
-  group a database still runs on, fails. Use ` + "`" + `depends_on` + "`" + ` if the IDs must be
-  hardcoded.
-
-3. Run the import command:
-
-` + "```shell" + `
-terraform import risingwavecloud_database.test <cluster_id>.<database_name>
-` + "```" + `
-`
-
 var resourceGroupMarkdownDescription = `
-An additional (non-default) resource group in a RisingWave cluster. Resource groups isolate
-streaming workloads onto their own compute nodes.
+An additional (non-default) resource group in a RisingWave cluster. A resource group is a set of
+compute nodes of its own, used to isolate streaming workloads from each other.
+
+This resource only manages the compute capacity. Assigning a database to a resource group is done in
+SQL when the database is created, and the databases themselves are not managed by this provider.
 
 ~> **Note:** The ` + "`" + `default` + "`" + ` resource group is managed by the ` + "`" + `risingwavecloud_cluster` + "`" + ` resource
 and cannot be created or imported here. Use this resource only for additional named resource groups,
@@ -263,8 +225,7 @@ To import a resource group, follow the steps below:
 
   ~> **Note:** Reference the cluster instead of hardcoding its ID, as shown above. This is how
   Terraform learns that the resource group has to be created after the cluster and deleted before it.
-  Databases have to be deleted before the resource group they run on, so reference this resource's
-  ` + "`" + `name` + "`" + ` from the ` + "`" + `risingwavecloud_database` + "`" + ` resources that use it.
+  Deleting a resource group fails while databases still run in it: drop those databases first.
 
 3. Run the import command:
 

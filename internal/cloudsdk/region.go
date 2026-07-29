@@ -21,7 +21,6 @@ var (
 	ErrBYOCClusterNotFound   = errors.New("BYOC cluster not found")
 	ErrClusterUserNotFound   = errors.New("cluster user not found")
 	ErrPrivateLinkNotFound   = errors.New("private link not found")
-	ErrDatabaseNotFound      = errors.New("database not found")
 	ErrResourceGroupNotFound = errors.New("resource group not found")
 )
 
@@ -105,12 +104,6 @@ type RegionServiceClientInterface interface {
 	DeletePrivateLinkAwait(ctx context.Context, nsID, privateLinkID uuid.UUID) error
 
 	GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmtv2.ManagedCluster, error)
-
-	GetDatabases(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.Database, error)
-
-	CreateDatabase(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateDatabaseRequestBody) (*apigen_mgmtv2.Database, error)
-
-	DeleteDatabase(ctx context.Context, nsID uuid.UUID, databaseName string) error
 
 	GetResourceGroups(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.ResourceGroupDetails, error)
 
@@ -521,6 +514,8 @@ func (c *RegionServiceClient) GetBYOCCluster(ctx context.Context, name string) (
 	return res.JSON200, nil
 }
 
+// GetDatabases lists the databases of a cluster. Databases are not managed by this provider,
+// this is only used to tell the user which databases keep a resource group from being deleted.
 func (c *RegionServiceClient) GetDatabases(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.Database, error) {
 	var (
 		offset uint64 = 0
@@ -552,31 +547,6 @@ func (c *RegionServiceClient) GetDatabases(ctx context.Context, nsID uuid.UUID) 
 		offset = p.Offset + uint64(len(res.JSON200.Databases))
 	}
 	return databases, nil
-}
-
-func (c *RegionServiceClient) CreateDatabase(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateDatabaseRequestBody) (*apigen_mgmtv2.Database, error) {
-	res, err := c.mgmtV2Client.PostTenantsNsIdDatabasesWithResponse(ctx, nsID, req)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to call API to create database")
-	}
-	if res.StatusCode() == http.StatusNotFound {
-		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
-	}
-	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
-		return nil, err
-	}
-	return res.JSON200, nil
-}
-
-func (c *RegionServiceClient) DeleteDatabase(ctx context.Context, nsID uuid.UUID, databaseName string) error {
-	res, err := c.mgmtV2Client.DeleteTenantsNsIdDatabasesDatabaseNameWithResponse(ctx, nsID, databaseName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to call API to delete database %s", databaseName)
-	}
-	if res.StatusCode() == http.StatusNotFound {
-		return nil
-	}
-	return apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body))
 }
 
 func (c *RegionServiceClient) GetResourceGroups(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.ResourceGroupDetails, error) {
@@ -670,6 +640,31 @@ func (c *RegionServiceClient) UpdateResourceGroupAwait(ctx context.Context, nsID
 	return c.waitResourceGroupResource(ctx, nsID, resourceGroup, req.Resource)
 }
 
+// resourceGroupDeletionError explains a rejected resource group deletion. The platform
+// refuses to remove the compute nodes a database still runs on, but the error does not say
+// which databases those are, and they are not managed by this provider either.
+func (c *RegionServiceClient) resourceGroupDeletionError(ctx context.Context, nsID uuid.UUID, resourceGroup, body string) error {
+	err := errors.Errorf("failed to delete resource group %s: %s", resourceGroup, body)
+
+	databases, listErr := c.GetDatabases(ctx, nsID)
+	if listErr != nil {
+		return err
+	}
+	var names []string
+	for _, db := range databases {
+		if db.ResourceGroup == resourceGroup {
+			names = append(names, db.Name)
+		}
+	}
+	if len(names) == 0 {
+		return err
+	}
+	return errors.Errorf(
+		"failed to delete resource group %s: %s. The following database(s) still run in it and have to be dropped first: %s",
+		resourceGroup, body, strings.Join(names, ", "),
+	)
+}
+
 func (c *RegionServiceClient) DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error {
 	res, err := c.mgmtV2Client.DeleteTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup)
 	if err != nil {
@@ -677,6 +672,9 @@ func (c *RegionServiceClient) DeleteResourceGroupAwait(ctx context.Context, nsID
 	}
 	if res.StatusCode() == http.StatusNotFound {
 		return nil
+	}
+	if res.StatusCode() == http.StatusBadRequest {
+		return c.resourceGroupDeletionError(ctx, nsID, resourceGroup, string(res.Body))
 	}
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
 		return err
