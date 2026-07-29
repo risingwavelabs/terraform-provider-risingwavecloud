@@ -15,13 +15,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 )
-
-// defaultResourceGroup is the resource group that always exists in a cluster and is
-// used when a database is created without specifying a resource group.
-const defaultResourceGroup = "default"
 
 // Assert provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &DatabaseResource{}
@@ -159,8 +156,8 @@ func databaseToDataModel(clusterNsID uuid.UUID, database *apigen_mgmtv2.Database
 
 func parseDatabaseIdentifier(databaseResourceID string, diags *diag.Diagnostics) (nsID uuid.UUID, name string) {
 	arr := strings.SplitN(databaseResourceID, ".", 2)
-	if len(arr) != 2 {
-		diags.AddError("Invalid ID", fmt.Sprintf("Cannot parse database ID: %s", databaseResourceID))
+	if len(arr) != 2 || len(arr[1]) == 0 {
+		diags.AddError("Invalid ID", fmt.Sprintf("Cannot parse database ID: %s, expected format: [cluster ID].[database name]", databaseResourceID))
 		return
 	}
 	var err error
@@ -192,6 +189,13 @@ func (r *DatabaseResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	database, err := r.client.GetDatabase(ctx, nsID, name)
 	if err != nil {
+		// the database (or the whole cluster) is gone: report it as deleted instead of failing
+		// every future plan and forcing the user to remove it from the state manually.
+		if errors.Is(err, cloudsdk.ErrDatabaseNotFound) || errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			tflog.Info(ctx, fmt.Sprintf("database %s not found, removing it from the state", data.ID.ValueString()))
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Unable to read database", err.Error())
 		return
 	}
@@ -230,6 +234,13 @@ func (r *DatabaseResource) Delete(ctx context.Context, req resource.DeleteReques
 	}
 
 	if err := r.client.DeleteDatabase(ctx, nsID, name); err != nil {
+		// the cluster is already gone, so is the database. This happens when the cluster is not
+		// deleted through terraform, or when the configuration does not let terraform know that
+		// this database belongs to the cluster.
+		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			tflog.Info(ctx, fmt.Sprintf("cluster %s not found, the database is already deleted", nsID.String()))
+			return
+		}
 		resp.Diagnostics.AddError("Unable to delete database", err.Error())
 		return
 	}

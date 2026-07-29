@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,10 @@ import (
 	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/utils/ptr"
 )
+
+// defaultResourceGroup is the resource group that every cluster has, it is not tracked in
+// the fake resource group state because its lifecycle is bound to the cluster.
+const defaultResourceGroup = "default"
 
 func UseFakeBackend() bool {
 	return len(os.Getenv("RWC_MOCK")) != 0
@@ -482,6 +487,12 @@ func (acc *FakeCloudClient) CreateDatabase(ctx context.Context, clusterNsID uuid
 	if err != nil {
 		return nil, err
 	}
+	// the default resource group always exists, any other one must be created first.
+	if resourceGroup != defaultResourceGroup {
+		if _, err := c.GetResourceGroup(resourceGroup); err != nil {
+			return nil, err
+		}
+	}
 	db := &apigen_mgmtv2.Database{
 		Name:          name,
 		ResourceGroup: resourceGroup,
@@ -511,6 +522,24 @@ func (acc *FakeCloudClient) GetResourceGroup(ctx context.Context, clusterNsID uu
 	return c.GetResourceGroup(name)
 }
 
+// resolveComputeCache mimics the platform resolving the compute cache size from the
+// component type, so that a component type change also changes this computed attribute.
+func resolveComputeCache(componentTypeID string, requested *apigen_mgmtv2.TenantResourceComputeCache) apigen_mgmtv2.TenantResourceComputeCache {
+	if requested != nil {
+		return *requested
+	}
+	for _, c := range availableComponentTypes {
+		if c.Id == componentTypeID {
+			cpu, err := strconv.Atoi(c.Cpu)
+			if err != nil {
+				break
+			}
+			return apigen_mgmtv2.TenantResourceComputeCache{SizeGb: cpu * 20}
+		}
+	}
+	return apigen_mgmtv2.TenantResourceComputeCache{SizeGb: 20}
+}
+
 func reqResourceGroupToDetails(req apigen_mgmtv2.ComponentResourceRequest, computeCache *apigen_mgmtv2.TenantResourceComputeCache, name string) *apigen_mgmtv2.ResourceGroupDetails {
 	var resource apigen_mgmtv2.ComponentResource
 	if comp := componentReqToComponent(&req); comp != nil {
@@ -521,14 +550,10 @@ func reqResourceGroupToDetails(req apigen_mgmtv2.ComponentResourceRequest, compu
 			Replica:         req.Replica,
 		}
 	}
-	cache := apigen_mgmtv2.TenantResourceComputeCache{}
-	if computeCache != nil {
-		cache = *computeCache
-	}
 	return &apigen_mgmtv2.ResourceGroupDetails{
 		Name:         name,
 		Resource:     resource,
-		ComputeCache: cache,
+		ComputeCache: resolveComputeCache(req.ComponentTypeId, computeCache),
 	}
 }
 
@@ -538,6 +563,12 @@ func (acc *FakeCloudClient) CreateResourceGroupAwait(ctx context.Context, cluste
 	c, err := state.GetClusterByNsID(clusterNsID)
 	if err != nil {
 		return nil, err
+	}
+	if req.Name == defaultResourceGroup {
+		return nil, errors.Errorf("the %s resource group already exists", defaultResourceGroup)
+	}
+	if _, err := c.GetResourceGroup(req.Name); err == nil {
+		return nil, errors.Errorf("resource group %s already exists", req.Name)
 	}
 	g := reqResourceGroupToDetails(req.Resource, req.ComputeCache, req.Name)
 	c.AddResourceGroup(g)
@@ -551,10 +582,12 @@ func (acc *FakeCloudClient) UpdateResourceGroupAwait(ctx context.Context, cluste
 	if err != nil {
 		return nil, err
 	}
-	if _, err := c.GetResourceGroup(resourceGroup); err != nil {
+	previous, err := c.GetResourceGroup(resourceGroup)
+	if err != nil {
 		return nil, err
 	}
 	g := reqResourceGroupToDetails(req.Resource, nil, resourceGroup)
+	g.DatabaseCount = previous.DatabaseCount
 	c.AddResourceGroup(g)
 	return g, nil
 }
@@ -565,6 +598,12 @@ func (acc *FakeCloudClient) DeleteResourceGroupAwait(ctx context.Context, cluste
 	c, err := state.GetClusterByNsID(clusterNsID)
 	if err != nil {
 		return err
+	}
+	// the platform refuses to remove the compute nodes a database still runs on.
+	for _, db := range c.GetDatabases() {
+		if db.ResourceGroup == resourceGroup {
+			return errors.Errorf("resource group %s is still used by database %s", resourceGroup, db.Name)
+		}
 	}
 	c.DeleteResourceGroup(resourceGroup)
 	return nil

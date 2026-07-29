@@ -6,26 +6,29 @@ description: |-
   An additional (non-default) resource group in a RisingWave cluster. Resource groups isolate
   streaming workloads onto their own compute nodes.
   ~> Note: The default resource group is managed by the risingwavecloud_cluster resource
-  and cannot be managed here. Use this resource only for additional named resource groups.
+  and cannot be created or imported here. Use this resource only for additional named resource groups,
+  and the cluster's spec to rescale the default one.
   Creating, rescaling, and deleting a resource group triggers a cluster rescale, so these operations
-  are asynchronous and Terraform waits for the cluster to become healthy again.
+  are asynchronous and Terraform waits for the cluster to become healthy again. A cluster can only run
+  one rescale at a time: the provider serializes the resource group changes of a cluster, so applying
+  several of them takes as long as the sum of their rescales.
   Import a Resource Group
   To import a resource group, follow the steps below:
   
   Get the UUID of the corresponding cluster from the RisingWave Cloud platform.
   Write a resource definition to import the resource group. For example:
   
-    resource "risingwavecloud_resource_group" "test" {
-      depends_on = [risingwavecloud_cluster.mycluster]
-  
-      cluster_id        = "cluster-id"
+    resource "risingwavecloud_resource_group" "streaming" {
+      cluster_id        = risingwavecloud_cluster.mycluster.id
       name              = "streaming-rg"
       component_type_id = "p-1c4g"
       replica           = 1
     }
   
-  ~> Note: When destroying all resources, make sure Terraform is aware of the dependency between
-  the cluster and the resource group. Deleting a resource group fails if databases are still using it.
+  ~> Note: Reference the cluster instead of hardcoding its ID, as shown above. This is how
+  Terraform learns that the resource group has to be created after the cluster and deleted before it.
+  Databases have to be deleted before the resource group they run on, so reference this resource's
+  name from the risingwavecloud_database resources that use it.
   Run the import command:
   
   terraform import risingwavecloud_resource_group.test <cluster_id>.<resource_group_name>
@@ -37,10 +40,13 @@ An additional (non-default) resource group in a RisingWave cluster. Resource gro
 streaming workloads onto their own compute nodes.
 
 ~> **Note:** The `default` resource group is managed by the `risingwavecloud_cluster` resource
-and cannot be managed here. Use this resource only for additional named resource groups.
+and cannot be created or imported here. Use this resource only for additional named resource groups,
+and the cluster's `spec` to rescale the default one.
 
 Creating, rescaling, and deleting a resource group triggers a cluster rescale, so these operations
-are asynchronous and Terraform waits for the cluster to become healthy again.
+are asynchronous and Terraform waits for the cluster to become healthy again. A cluster can only run
+one rescale at a time: the provider serializes the resource group changes of a cluster, so applying
+several of them takes as long as the sum of their rescales.
 
 ## Import a Resource Group
 
@@ -51,18 +57,18 @@ To import a resource group, follow the steps below:
 2. Write a resource definition to import the resource group. For example:
 
 ```hcl
-  resource "risingwavecloud_resource_group" "test" {
-    depends_on = [risingwavecloud_cluster.mycluster]
-
-    cluster_id        = "cluster-id"
+  resource "risingwavecloud_resource_group" "streaming" {
+    cluster_id        = risingwavecloud_cluster.mycluster.id
     name              = "streaming-rg"
     component_type_id = "p-1c4g"
     replica           = 1
   }
   ```
 
-  ~> **Note:** When destroying all resources, make sure Terraform is aware of the dependency between
-  the cluster and the resource group. Deleting a resource group fails if databases are still using it.
+  ~> **Note:** Reference the cluster instead of hardcoding its ID, as shown above. This is how
+  Terraform learns that the resource group has to be created after the cluster and deleted before it.
+  Databases have to be deleted before the resource group they run on, so reference this resource's
+  `name` from the `risingwavecloud_database` resources that use it.
 
 3. Run the import command:
 

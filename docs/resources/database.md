@@ -6,8 +6,11 @@ description: |-
   A database in a RisingWave cluster.
   A database is created synchronously. Optionally, you can pin the database's streaming jobs to a
   specific resource group with the resource_group argument (defaults to the default resource group).
-  ~> Note: Deleting this resource drops the database and all of its data. All of the resource's
-  attributes are immutable: changing any of them re-creates the database.
+  !> Data loss: the RisingWave Cloud API cannot move an existing database, so all of the
+  attributes of this resource are immutable. Changing any of them, including resource_group,
+  drops the database with all of its data and creates an empty one. Deleting the resource drops the
+  database as well. Check the plan before applying, and use a lifecycle block with
+  prevent_destroy = true to protect a production database.
   Import a Database
   To import a database, follow the steps below:
   
@@ -15,16 +18,16 @@ description: |-
   Write a resource definition to import the database. For example:
   
     resource "risingwavecloud_database" "test" {
-      depends_on = [risingwavecloud_cluster.mycluster]
-  
-      cluster_id     = "cluster-id"
+      cluster_id     = risingwavecloud_cluster.mycluster.id
       name           = "test_db"
-      resource_group = "default"
+      resource_group = risingwavecloud_resource_group.streaming.name
     }
   
-  ~> Note: When destroying all resources, make sure Terraform is aware of the dependency between
-  the cluster and the database. If the cluster is deleted before the database, the deletion of the
-  database will fail. Use the depends_on argument or reference the cluster's output.
+  ~> Note: Reference the cluster and the resource group instead of hardcoding their values, as
+  shown above. This is how Terraform learns that the database has to be created after them and
+  deleted before them. Dropping a database whose cluster is already gone, or dropping a resource
+  group a database still runs on, fails. Use depends_on if the IDs must be
+  hardcoded.
   Run the import command:
   
   terraform import risingwavecloud_database.test <cluster_id>.<database_name>
@@ -37,8 +40,11 @@ A database in a RisingWave cluster.
 A database is created synchronously. Optionally, you can pin the database's streaming jobs to a
 specific resource group with the `resource_group` argument (defaults to the `default` resource group).
 
-~> **Note:** Deleting this resource drops the database and all of its data. All of the resource's
-attributes are immutable: changing any of them re-creates the database.
+!> **Data loss:** the RisingWave Cloud API cannot move an existing database, so all of the
+attributes of this resource are immutable. Changing any of them, including `resource_group`,
+drops the database with all of its data and creates an empty one. Deleting the resource drops the
+database as well. Check the plan before applying, and use a `lifecycle` block with
+`prevent_destroy = true` to protect a production database.
 
 ## Import a Database
 
@@ -50,17 +56,17 @@ To import a database, follow the steps below:
 
 ```hcl
   resource "risingwavecloud_database" "test" {
-    depends_on = [risingwavecloud_cluster.mycluster]
-
-    cluster_id     = "cluster-id"
+    cluster_id     = risingwavecloud_cluster.mycluster.id
     name           = "test_db"
-    resource_group = "default"
+    resource_group = risingwavecloud_resource_group.streaming.name
   }
   ```
 
-  ~> **Note:** When destroying all resources, make sure Terraform is aware of the dependency between
-  the cluster and the database. If the cluster is deleted before the database, the deletion of the
-  database will fail. Use the `depends_on` argument or reference the cluster's output.
+  ~> **Note:** Reference the cluster and the resource group instead of hardcoding their values, as
+  shown above. This is how Terraform learns that the database has to be created after them and
+  deleted before them. Dropping a database whose cluster is already gone, or dropping a resource
+  group a database still runs on, fails. Use `depends_on` if the IDs must be
+  hardcoded.
 
 3. Run the import command:
 

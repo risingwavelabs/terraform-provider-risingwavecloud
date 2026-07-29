@@ -15,9 +15,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/pkg/errors"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmtv2 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v2"
 )
+
+// defaultResourceGroup is the resource group that always exists in a cluster and is
+// used when a database is created without specifying a resource group. Its lifecycle is
+// bound to the cluster, so it is managed by the cluster resource.
+const defaultResourceGroup = "default"
 
 // Assert provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ResourceGroupResource{}
@@ -39,6 +45,54 @@ type ResourceGroupModel struct {
 	ComponentTypeID    types.String `tfsdk:"component_type_id"`
 	Replica            types.Int64  `tfsdk:"replica"`
 	ComputeCacheSizeGB types.Int64  `tfsdk:"compute_cache_size_gb"`
+}
+
+// unknownOnComponentTypeChange marks a computed attribute as unknown when the component
+// type changes. Terraform carries the prior value of a computed attribute into the plan,
+// so without this the platform re-resolving the value during an update would make the
+// applied state differ from the plan ("provider produced inconsistent result after apply").
+type unknownOnComponentTypeChange struct{}
+
+func (m unknownOnComponentTypeChange) Description(ctx context.Context) string {
+	return "The value is resolved by the platform again once the component type changes."
+}
+
+func (m unknownOnComponentTypeChange) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (m unknownOnComponentTypeChange) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+	// nothing to carry over on create, and nothing to plan on destroy.
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var stateComponentType, planComponentType types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("component_type_id"), &stateComponentType)...)
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("component_type_id"), &planComponentType)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !stateComponentType.Equal(planComponentType) {
+		resp.PlanValue = types.Int64Unknown()
+	}
+}
+
+// checkNotDefaultResourceGroup rejects the default resource group: it is created and
+// rescaled through the cluster resource, managing it here would mean two resources own the
+// same object and a destroy would try to remove a resource group the cluster requires.
+func checkNotDefaultResourceGroup(name string, diags *diag.Diagnostics) {
+	if name != defaultResourceGroup {
+		return
+	}
+	diags.AddError(
+		"Cannot manage the default resource group",
+		fmt.Sprintf(
+			"The %q resource group is managed by the risingwavecloud_cluster resource. Use the cluster's spec to rescale it.",
+			defaultResourceGroup,
+		),
+	)
 }
 
 func (r *ResourceGroupResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -84,6 +138,7 @@ func (r *ResourceGroupResource) Schema(ctx context.Context, req resource.SchemaR
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
+					unknownOnComponentTypeChange{},
 				},
 			},
 		},
@@ -123,11 +178,8 @@ func (r *ResourceGroupResource) Create(ctx context.Context, req resource.CreateR
 		resp.Diagnostics.AddError("name is missing", "name is required to create the resource group")
 		return
 	}
-	if name == defaultResourceGroup {
-		resp.Diagnostics.AddError(
-			"Cannot manage the default resource group",
-			"The \"default\" resource group is managed by the risingwavecloud_cluster resource. Use a different name.",
-		)
+	checkNotDefaultResourceGroup(name, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	if len(data.ComponentTypeID.ValueString()) == 0 {
@@ -171,8 +223,8 @@ func resourceGroupToDataModel(clusterNsID uuid.UUID, group *apigen_mgmtv2.Resour
 
 func parseResourceGroupIdentifier(resourceGroupResourceID string, diags *diag.Diagnostics) (nsID uuid.UUID, name string) {
 	arr := strings.SplitN(resourceGroupResourceID, ".", 2)
-	if len(arr) != 2 {
-		diags.AddError("Invalid ID", fmt.Sprintf("Cannot parse resource group ID: %s", resourceGroupResourceID))
+	if len(arr) != 2 || len(arr[1]) == 0 {
+		diags.AddError("Invalid ID", fmt.Sprintf("Cannot parse resource group ID: %s, expected format: [cluster ID].[resource group name]", resourceGroupResourceID))
 		return
 	}
 	var err error
@@ -204,6 +256,13 @@ func (r *ResourceGroupResource) Read(ctx context.Context, req resource.ReadReque
 
 	group, err := r.client.GetResourceGroup(ctx, nsID, name)
 	if err != nil {
+		// the resource group (or the whole cluster) is gone: report it as deleted instead of
+		// failing every future plan and forcing the user to remove it from the state manually.
+		if errors.Is(err, cloudsdk.ErrResourceGroupNotFound) || errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			tflog.Info(ctx, fmt.Sprintf("resource group %s not found, removing it from the state", data.ID.ValueString()))
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Unable to read resource group", err.Error())
 		return
 	}
@@ -267,6 +326,13 @@ func (r *ResourceGroupResource) Delete(ctx context.Context, req resource.DeleteR
 	}
 
 	if err := r.client.DeleteResourceGroupAwait(ctx, nsID, name); err != nil {
+		// the cluster is already gone, so is the resource group. This happens when the cluster
+		// is not deleted through terraform, or when the configuration does not let terraform
+		// know that this resource group belongs to the cluster.
+		if errors.Is(err, cloudsdk.ErrClusterNotFound) {
+			tflog.Info(ctx, fmt.Sprintf("cluster %s not found, the resource group is already deleted", nsID.String()))
+			return
+		}
 		resp.Diagnostics.AddError("Unable to delete resource group", err.Error())
 		return
 	}
@@ -274,6 +340,11 @@ func (r *ResourceGroupResource) Delete(ctx context.Context, req resource.DeleteR
 
 func (r *ResourceGroupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	nsID, name := parseResourceGroupIdentifier(req.ID, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	checkNotDefaultResourceGroup(name, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
