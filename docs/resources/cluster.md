@@ -140,7 +140,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 Optional:
 
 - `compactor` (Attributes) The compactor component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--compactor))
-- `compute` (Attributes) The compute component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--compute))
+- `compute` (Attributes) The compute component specification. Required for Invited and BYOC tier clusters. These are the compute nodes of the cluster's `default` resource group. Additional resource groups are managed with the `risingwavecloud_cluster_resource_group` resource and are not reflected here, so creating or rescaling one does not show up as a change of this attribute. (see [below for nested schema](#nestedatt--spec--compute))
 - `frontend` (Attributes) The frontend component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--frontend))
 - `meta` (Attributes) The meta component specification. Required for Invited and BYOC tier clusters. (see [below for nested schema](#nestedatt--spec--meta))
 - `metastore_type` (String) The metastore type of the cluster.

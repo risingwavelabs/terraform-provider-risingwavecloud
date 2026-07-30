@@ -244,8 +244,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						Attributes: map[string]schema.Attribute{
 							"default_node_group": defauleNodeGroupAttribute,
 						},
-						Optional:            true,
-						MarkdownDescription: "The compute component specification. Required for Invited and BYOC tier clusters.",
+						Optional: true,
+						MarkdownDescription: "The compute component specification. Required for Invited and BYOC tier clusters. " +
+							"These are the compute nodes of the cluster's `default` resource group. Additional resource " +
+							"groups are managed with the `risingwavecloud_cluster_resource_group` resource and are not " +
+							"reflected here, so creating or rescaling one does not show up as a change of this attribute.",
 					},
 					"compactor": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
