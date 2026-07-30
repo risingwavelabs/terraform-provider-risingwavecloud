@@ -32,8 +32,8 @@ func TestClusterResourceGroupResource(t *testing.T) {
 		return nil
 	}
 
-	config := func(componentTypeID string, replica int) string {
-		return testResourceGroupCluster(clusterName) +
+	config := func(clusterComputeReplica int, componentTypeID string, replica int) string {
+		return testResourceGroupCluster(clusterName, clusterComputeReplica) +
 			testResourceGroup(componentTypeID, replica)
 	}
 
@@ -43,7 +43,7 @@ func TestClusterResourceGroupResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read: cluster + resource group
 			{
-				Config: config("p-1c4g", 1),
+				Config: config(1, "p-1c4g", 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					captureClusterID,
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_resource_group.test", "id"),
@@ -59,7 +59,7 @@ func TestClusterResourceGroupResource(t *testing.T) {
 			},
 			// Import
 			{
-				Config:       config("p-1c4g", 1),
+				Config:       config(1, "p-1c4g", 1),
 				ResourceName: "risingwavecloud_cluster_resource_group.test",
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					return fmt.Sprintf("%s.streaming-rg", clusterID.String()), nil
@@ -69,7 +69,7 @@ func TestClusterResourceGroupResource(t *testing.T) {
 			},
 			// Update: rescale replica 1 -> 2
 			{
-				Config: config("p-1c4g", 2),
+				Config: config(1, "p-1c4g", 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "replica", "2"),
 				),
@@ -78,11 +78,23 @@ func TestClusterResourceGroupResource(t *testing.T) {
 			// platform from the component type, so it must be re-planned as unknown instead of
 			// keeping the value of the previous component type.
 			{
-				Config: config("p-2c8g", 2),
+				Config: config(1, "p-2c8g", 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "component_type_id", "p-2c8g"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "replica", "2"),
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_resource_group.test", "compute_cache_size_gb"),
+				),
+			},
+			// Rescale the cluster itself while the resource group exists. The request that
+			// changes the cluster's components carries no resource group at all, so this guards
+			// against the platform rebuilding the tenant's resource spec from it and dropping
+			// the resource groups it did not mention.
+			{
+				Config: config(2, "p-2c8g", 2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compute.default_node_group.replica", "2"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "component_type_id", "p-2c8g"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_resource_group.test", "replica", "2"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -97,7 +109,7 @@ func TestClusterResourceGroupResource(t *testing.T) {
 // The values below have to exist in the target environment. To refresh them, check
 // `GET <region mgmt url>/api/v1/tiers` for the tiers, component types and meta store types,
 // and `GET <region mgmt url>/api/v1/tenant/tags` for the current RisingWave version.
-func testResourceGroupCluster(name string) string {
+func testResourceGroupCluster(name string, computeReplica int) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster" "test" {
 	region   = "%s"
@@ -109,7 +121,7 @@ resource "risingwavecloud_cluster" "test" {
 			default_node_group = {
 				cpu     = "1"
 				memory  = "4 GB"
-				replica = 1
+				replica = %d
 			}
 		}
 		compactor = {
@@ -135,7 +147,7 @@ resource "risingwavecloud_cluster" "test" {
 		}
 	}
 }
-`, testResourceGroupRegion, name, testResourceGroupVersion)
+`, testResourceGroupRegion, name, testResourceGroupVersion, computeReplica)
 }
 
 func testResourceGroup(componentTypeID string, replica int) string {
