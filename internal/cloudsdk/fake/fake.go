@@ -524,6 +524,10 @@ func (acc *FakeCloudClient) CreateResourceGroupAwait(ctx context.Context, cluste
 	if req.Name == defaultResourceGroup {
 		return nil, errors.Errorf("the %s resource group already exists", defaultResourceGroup)
 	}
+	// the platform reserves this prefix for its serverless backfill extension.
+	if strings.HasPrefix(req.Name, "backfill") {
+		return nil, errors.New("Invalid name, resource group name cannot start with 'backfill'")
+	}
 	if _, err := c.GetResourceGroup(req.Name); err == nil {
 		return nil, errors.Errorf("resource group %s already exists", req.Name)
 	}

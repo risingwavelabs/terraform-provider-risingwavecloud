@@ -33,6 +33,10 @@ const defaultResourceGroup = "default"
 // unambiguous.
 var resourceGroupNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,18}[a-z0-9])?$`)
 
+// resourceGroupBackfillPrefix is reserved by the platform for the resource groups of its
+// serverless backfill extension, and rejected on create.
+const resourceGroupBackfillPrefix = "backfill"
+
 // resourceGroupNameValidator checks a resource group name against the platform's rules.
 type resourceGroupNameValidator struct{}
 
@@ -48,7 +52,8 @@ func (v resourceGroupNameValidator) ValidateString(ctx context.Context, req vali
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
-	if name := req.ConfigValue.ValueString(); !resourceGroupNamePattern.MatchString(name) {
+	name := req.ConfigValue.ValueString()
+	if !resourceGroupNamePattern.MatchString(name) {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid resource group name",
@@ -58,6 +63,30 @@ func (v resourceGroupNameValidator) ValidateString(ctx context.Context, req vali
 				resourceGroupNamePattern, name,
 			),
 		)
+		return
+	}
+	if reserved := reservedResourceGroupName(name); reserved != "" {
+		resp.Diagnostics.AddAttributeError(req.Path, "Reserved resource group name", reserved)
+	}
+}
+
+// reservedResourceGroupName returns why a name is reserved by the platform, or an empty string
+// if it can be used. The platform rejects both on create, and neither may be adopted through
+// import: they belong to the cluster resource and to the platform's own extensions.
+func reservedResourceGroupName(name string) string {
+	switch {
+	case name == defaultResourceGroup:
+		return fmt.Sprintf(
+			"The %q resource group is managed by the risingwavecloud_cluster resource. Use the cluster's spec to rescale it.",
+			defaultResourceGroup,
+		)
+	case strings.HasPrefix(name, resourceGroupBackfillPrefix):
+		return fmt.Sprintf(
+			"Resource group names starting with %q are reserved by the platform for its serverless backfill extension. Got: %q",
+			resourceGroupBackfillPrefix, name,
+		)
+	default:
+		return ""
 	}
 }
 
@@ -90,7 +119,7 @@ func (v positiveReplicaValidator) ValidateInt64(ctx context.Context, req validat
 var _ resource.Resource = &ClusterResourceGroupResource{}
 var _ resource.ResourceWithImportState = &ClusterResourceGroupResource{}
 
-func NewResourceGroupResource() resource.Resource {
+func NewClusterResourceGroupResource() resource.Resource {
 	return &ClusterResourceGroupResource{}
 }
 
@@ -145,20 +174,13 @@ func (m unknownOnComponentTypeChange) PlanModifyInt64(ctx context.Context, req p
 	}
 }
 
-// checkNotDefaultResourceGroup rejects the default resource group: it is created and
-// rescaled through the cluster resource, managing it here would mean two resources own the
-// same object and a destroy would try to remove a resource group the cluster requires.
-func checkNotDefaultResourceGroup(name string, diags *diag.Diagnostics) {
-	if name != defaultResourceGroup {
-		return
+// checkReservedResourceGroupName rejects the resource groups this resource must not own. The
+// schema validator already covers the configuration; this also guards import, which takes a
+// raw id and never runs the validators.
+func checkReservedResourceGroupName(name string, diags *diag.Diagnostics) {
+	if reserved := reservedResourceGroupName(name); reserved != "" {
+		diags.AddError("Reserved resource group name", reserved)
 	}
-	diags.AddError(
-		"Cannot manage the default resource group",
-		fmt.Sprintf(
-			"The %q resource group is managed by the risingwavecloud_cluster resource. Use the cluster's spec to rescale it.",
-			defaultResourceGroup,
-		),
-	)
 }
 
 func (r *ClusterResourceGroupResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -178,8 +200,10 @@ func (r *ClusterResourceGroupResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"cluster_id": schema.StringAttribute{
-				MarkdownDescription: "The NsID (namespace id) of the cluster.",
-				Required:            true,
+				MarkdownDescription: "The NsID (namespace id) of the cluster. It must be a cluster with a separate " +
+					"compute component (the `Invited` or `BYOC` tier, not the standalone `Standard` tier) running " +
+					"RisingWave `v2.3.0` or later.",
+				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -187,7 +211,8 @@ func (r *ClusterResourceGroupResource) Schema(ctx context.Context, req resource.
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the resource group, unique within the cluster. It must be 1 to 20 " +
 					"characters of lower case letters, digits and dashes, starting and ending with a letter or a digit. " +
-					"The \"default\" resource group is managed by the cluster resource and cannot be managed here.",
+					"Two names are reserved: \"default\", which is managed by the `risingwavecloud_cluster` resource, and " +
+					"anything starting with \"backfill\", which the platform uses for its serverless backfill extension.",
 				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -250,7 +275,7 @@ func (r *ClusterResourceGroupResource) Create(ctx context.Context, req resource.
 
 	name := data.Name.ValueString()
 	// the name format and the replica range are enforced by the schema validators.
-	checkNotDefaultResourceGroup(name, &resp.Diagnostics)
+	checkReservedResourceGroupName(name, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -424,7 +449,7 @@ func (r *ClusterResourceGroupResource) ImportState(ctx context.Context, req reso
 		return
 	}
 
-	checkNotDefaultResourceGroup(name, &resp.Diagnostics)
+	checkReservedResourceGroupName(name, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

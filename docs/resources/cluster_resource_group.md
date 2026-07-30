@@ -7,9 +7,16 @@ description: |-
   compute nodes of its own, used to isolate streaming workloads from each other.
   This resource only manages the compute capacity. Assigning a database to a resource group is done in
   SQL when the database is created, and the databases themselves are not managed by this provider.
+  !> Not every cluster can host a resource group. The cluster must have a separate compute
+  component, which means the Invited or BYOC tier: a Standard tier cluster runs
+  standalone and the platform rejects resource groups on it. Note that Standard is the default
+  tier of risingwavecloud_cluster for SaaS clusters. The cluster also has to run RisingWave
+  v2.3.0 or later. Neither can be checked while planning, since the cluster may not exist yet, so
+  a mismatch surfaces as an error during apply.
   ~> Note: The default resource group is managed by the risingwavecloud_cluster resource
   and cannot be created or imported here. Use this resource only for additional named resource groups,
-  and the cluster's spec to rescale the default one.
+  and the cluster's spec to rescale the default one. Names starting with backfill are
+  reserved by the platform for its serverless backfill extension and are rejected as well.
   Creating, rescaling, and deleting a resource group triggers a cluster rescale, so these operations
   are asynchronous and Terraform waits for the cluster to become healthy again. A cluster can only run
   one rescale at a time: the provider serializes the resource group changes of a cluster, so applying
@@ -43,9 +50,17 @@ compute nodes of its own, used to isolate streaming workloads from each other.
 This resource only manages the compute capacity. Assigning a database to a resource group is done in
 SQL when the database is created, and the databases themselves are not managed by this provider.
 
+!> **Not every cluster can host a resource group.** The cluster must have a separate compute
+component, which means the `Invited` or `BYOC` tier: a `Standard` tier cluster runs
+standalone and the platform rejects resource groups on it. Note that `Standard` is the default
+tier of `risingwavecloud_cluster` for SaaS clusters. The cluster also has to run RisingWave
+`v2.3.0` or later. Neither can be checked while planning, since the cluster may not exist yet, so
+a mismatch surfaces as an error during apply.
+
 ~> **Note:** The `default` resource group is managed by the `risingwavecloud_cluster` resource
 and cannot be created or imported here. Use this resource only for additional named resource groups,
-and the cluster's `spec` to rescale the default one.
+and the cluster's `spec` to rescale the default one. Names starting with `backfill` are
+reserved by the platform for its serverless backfill extension and are rejected as well.
 
 Creating, rescaling, and deleting a resource group triggers a cluster rescale, so these operations
 are asynchronous and Terraform waits for the cluster to become healthy again. A cluster can only run
@@ -86,9 +101,9 @@ terraform import risingwavecloud_cluster_resource_group.test <cluster_id>.<resou
 
 ### Required
 
-- `cluster_id` (String) The NsID (namespace id) of the cluster.
+- `cluster_id` (String) The NsID (namespace id) of the cluster. It must be a cluster with a separate compute component (the `Invited` or `BYOC` tier, not the standalone `Standard` tier) running RisingWave `v2.3.0` or later.
 - `component_type_id` (String) The compute node component type ID (e.g. "p-1c4g") used by the resource group. Available component types depend on the cluster tier.
-- `name` (String) The name of the resource group, unique within the cluster. It must be 1 to 20 characters of lower case letters, digits and dashes, starting and ending with a letter or a digit. The "default" resource group is managed by the cluster resource and cannot be managed here.
+- `name` (String) The name of the resource group, unique within the cluster. It must be 1 to 20 characters of lower case letters, digits and dashes, starting and ending with a letter or a digit. Two names are reserved: "default", which is managed by the `risingwavecloud_cluster` resource, and anything starting with "backfill", which the platform uses for its serverless backfill extension.
 - `replica` (Number) The number of compute node replicas in the resource group. At least 1; the maximum depends on the component type.
 
 ### Read-Only

@@ -88,15 +88,22 @@ func TestClusterResourceGroupToDataModel(t *testing.T) {
 	assert.Equal(t, int64(20), data.ComputeCacheSizeGB.ValueInt64())
 }
 
-// the default resource group belongs to the cluster resource: managing it here would give it
-// two owners and a destroy would try to remove a resource group the cluster requires.
-func TestCheckNotDefaultResourceGroup(t *testing.T) {
-	var diags diag.Diagnostics
-	checkNotDefaultResourceGroup("streaming-rg", &diags)
-	assert.False(t, diags.HasError())
+// `default` belongs to the cluster resource: managing it here would give it two owners and a
+// destroy would remove a resource group the cluster requires. The `backfill` prefix belongs to
+// the platform's serverless backfill extension. This check also guards import, where the schema
+// validators never run.
+func TestCheckReservedResourceGroupName(t *testing.T) {
+	for _, name := range []string{"streaming-rg", "backfil", "default-rg", "my-backfill"} {
+		var diags diag.Diagnostics
+		checkReservedResourceGroupName(name, &diags)
+		assert.False(t, diags.HasError(), "%q should be allowed", name)
+	}
 
-	checkNotDefaultResourceGroup(defaultResourceGroup, &diags)
-	assert.True(t, diags.HasError())
+	for _, name := range []string{defaultResourceGroup, "backfill", "backfill-rg", "backfillrg"} {
+		var diags diag.Diagnostics
+		checkReservedResourceGroupName(name, &diags)
+		assert.True(t, diags.HasError(), "%q should be reserved", name)
+	}
 }
 
 // The pattern mirrors what the platform enforces, checked against prod us-east-1:
@@ -118,6 +125,12 @@ func TestResourceGroupNameValidator(t *testing.T) {
 		{name: "trailing-dash-", valid: false},
 		{name: "under_score", valid: false},
 		{name: "123456789012345678901", valid: false}, // 21 characters
+		// reserved by the platform, rejected at plan time rather than by the API
+		{name: "default", valid: false},
+		{name: "backfill", valid: false},
+		{name: "backfill-rg", valid: false},
+		{name: "backfillrg", valid: false},
+		{name: "my-backfill", valid: true}, // only the prefix is reserved
 	}
 
 	for _, tt := range tests {

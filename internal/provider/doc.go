@@ -197,9 +197,17 @@ compute nodes of its own, used to isolate streaming workloads from each other.
 This resource only manages the compute capacity. Assigning a database to a resource group is done in
 SQL when the database is created, and the databases themselves are not managed by this provider.
 
+!> **Not every cluster can host a resource group.** The cluster must have a separate compute
+component, which means the ` + "`" + `Invited` + "`" + ` or ` + "`" + `BYOC` + "`" + ` tier: a ` + "`" + `Standard` + "`" + ` tier cluster runs
+standalone and the platform rejects resource groups on it. Note that ` + "`" + `Standard` + "`" + ` is the default
+tier of ` + "`" + `risingwavecloud_cluster` + "`" + ` for SaaS clusters. The cluster also has to run RisingWave
+` + "`" + `v2.3.0` + "`" + ` or later. Neither can be checked while planning, since the cluster may not exist yet, so
+a mismatch surfaces as an error during apply.
+
 ~> **Note:** The ` + "`" + `default` + "`" + ` resource group is managed by the ` + "`" + `risingwavecloud_cluster` + "`" + ` resource
 and cannot be created or imported here. Use this resource only for additional named resource groups,
-and the cluster's ` + "`" + `spec` + "`" + ` to rescale the default one.
+and the cluster's ` + "`" + `spec` + "`" + ` to rescale the default one. Names starting with ` + "`" + `backfill` + "`" + ` are
+reserved by the platform for its serverless backfill extension and are rejected as well.
 
 Creating, rescaling, and deleting a resource group triggers a cluster rescale, so these operations
 are asynchronous and Terraform waits for the cluster to become healthy again. A cluster can only run
