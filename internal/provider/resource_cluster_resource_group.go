@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pkg/errors"
@@ -24,6 +26,65 @@ import (
 // used when a database is created without specifying a resource group. Its lifecycle is
 // bound to the cluster, so it is managed by the cluster resource.
 const defaultResourceGroup = "default"
+
+// resourceGroupNamePattern mirrors what the platform accepts, so that an invalid name is
+// reported at plan time instead of coming back as an API error halfway through an apply.
+// Note that it allows no dots, which is what makes the `[cluster ID].[name]` resource id
+// unambiguous.
+var resourceGroupNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,18}[a-z0-9])?$`)
+
+// resourceGroupNameValidator checks a resource group name against the platform's rules.
+type resourceGroupNameValidator struct{}
+
+func (v resourceGroupNameValidator) Description(ctx context.Context) string {
+	return fmt.Sprintf("value must match %s", resourceGroupNamePattern)
+}
+
+func (v resourceGroupNameValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v resourceGroupNameValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	if name := req.ConfigValue.ValueString(); !resourceGroupNamePattern.MatchString(name) {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid resource group name",
+			fmt.Sprintf(
+				"A resource group name must match %s: lower case letters, digits and dashes, "+
+					"1 to 20 characters, starting and ending with a letter or a digit. Got: %q",
+				resourceGroupNamePattern, name,
+			),
+		)
+	}
+}
+
+// positiveReplicaValidator rejects replica counts the platform cannot serve. The upper bound
+// depends on the component type and is left to the platform.
+type positiveReplicaValidator struct{}
+
+func (v positiveReplicaValidator) Description(ctx context.Context) string {
+	return "value must be at least 1"
+}
+
+func (v positiveReplicaValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v positiveReplicaValidator) ValidateInt64(ctx context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	if replica := req.ConfigValue.ValueInt64(); replica < 1 {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid replica count",
+			fmt.Sprintf("A resource group needs at least one compute node replica, got: %d", replica),
+		)
+	}
+}
 
 // Assert provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ClusterResourceGroupResource{}
@@ -124,10 +185,15 @@ func (r *ClusterResourceGroupResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the resource group. The name is unique within the cluster. The \"default\" resource group is managed by the cluster resource and cannot be managed here.",
-				Required:            true,
+				MarkdownDescription: "The name of the resource group, unique within the cluster. It must be 1 to 20 " +
+					"characters of lower case letters, digits and dashes, starting and ending with a letter or a digit. " +
+					"The \"default\" resource group is managed by the cluster resource and cannot be managed here.",
+				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					resourceGroupNameValidator{},
 				},
 			},
 			"component_type_id": schema.StringAttribute{
@@ -135,8 +201,12 @@ func (r *ClusterResourceGroupResource) Schema(ctx context.Context, req resource.
 				Required:            true,
 			},
 			"replica": schema.Int64Attribute{
-				MarkdownDescription: "The number of compute node replicas in the resource group.",
-				Required:            true,
+				MarkdownDescription: "The number of compute node replicas in the resource group. At least 1; the " +
+					"maximum depends on the component type.",
+				Required: true,
+				Validators: []validator.Int64{
+					positiveReplicaValidator{},
+				},
 			},
 			"compute_cache_size_gb": schema.Int64Attribute{
 				MarkdownDescription: "The compute cache size in GB. It is resolved by the platform and cannot be set.",
@@ -179,22 +249,25 @@ func (r *ClusterResourceGroupResource) Create(ctx context.Context, req resource.
 	}
 
 	name := data.Name.ValueString()
-	if len(name) == 0 {
-		resp.Diagnostics.AddError("name is missing", "name is required to create the resource group")
-		return
-	}
+	// the name format and the replica range are enforced by the schema validators.
 	checkNotDefaultResourceGroup(name, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
-		return
-	}
-	if len(data.ComponentTypeID.ValueString()) == 0 {
-		resp.Diagnostics.AddError("component_type_id is missing", "component_type_id is required to create the resource group")
 		return
 	}
 
 	nsID, err := uuid.Parse(data.ClusterID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("cluster_id is invalid", fmt.Sprintf("Cannot parse cluster ID %s", data.ClusterID.String()))
+		return
+	}
+
+	// Record the identifier before waiting for the rescale. The request that follows is
+	// accepted long before the compute nodes are up, so if the wait fails or times out the
+	// resource group exists on the platform. Without an id in the state terraform would forget
+	// about it and the next apply would fail trying to create it again; with one, the resource
+	// is tainted and the next apply can replace or destroy it.
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), fmt.Sprintf("%s.%s", nsID.String(), name))...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -226,6 +299,8 @@ func clusterResourceGroupToDataModel(clusterNsID uuid.UUID, group *apigen_mgmtv2
 	data.ComputeCacheSizeGB = types.Int64Value(int64(group.ComputeCache.SizeGb))
 }
 
+// parseClusterResourceGroupIdentifier splits `[cluster ID].[resource group name]`. The split is
+// unambiguous because a resource group name cannot contain a dot, see resourceGroupNamePattern.
 func parseClusterResourceGroupIdentifier(resourceGroupResourceID string, diags *diag.Diagnostics) (nsID uuid.UUID, name string) {
 	arr := strings.SplitN(resourceGroupResourceID, ".", 2)
 	if len(arr) != 2 || len(arr[1]) == 0 {

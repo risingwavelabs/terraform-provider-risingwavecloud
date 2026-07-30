@@ -88,8 +88,8 @@ terraform import risingwavecloud_cluster_resource_group.test <cluster_id>.<resou
 
 - `cluster_id` (String) The NsID (namespace id) of the cluster.
 - `component_type_id` (String) The compute node component type ID (e.g. "p-1c4g") used by the resource group. Available component types depend on the cluster tier.
-- `name` (String) The name of the resource group. The name is unique within the cluster. The "default" resource group is managed by the cluster resource and cannot be managed here.
-- `replica` (Number) The number of compute node replicas in the resource group.
+- `name` (String) The name of the resource group, unique within the cluster. It must be 1 to 20 characters of lower case letters, digits and dashes, starting and ending with a letter or a digit. The "default" resource group is managed by the cluster resource and cannot be managed here.
+- `replica` (Number) The number of compute node replicas in the resource group. At least 1; the maximum depends on the component type.
 
 ### Read-Only
 

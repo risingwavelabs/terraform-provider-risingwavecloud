@@ -145,6 +145,29 @@ func (c *RegionServiceClient) waitClusterHealthy(ctx context.Context, nsID uuid.
 	return nil
 }
 
+// waitClusterIdle waits until the cluster can accept a rescale request. The platform rejects
+// one while another is in flight, with `400 {"msg":"Cluster is not running"}`, and the caller's
+// per-cluster lock only covers a single provider process: a second terraform run, an aliased
+// provider or somebody working in the console can all put the cluster in that state.
+func (c *RegionServiceClient) waitClusterIdle(ctx context.Context, nsID uuid.UUID) error {
+	var current apigen_mgmtv2.TenantStatus
+	if err := wait.Poll(ctx, func() (bool, error) {
+		cluster, err := c.GetClusterByNsID(ctx, nsID)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to get the cluster info")
+		}
+		current = cluster.Status
+		return current == apigen_mgmtv2.Running && cluster.HealthStatus == apigen_mgmtv2.Healthy, nil
+	}, PollingResourceGroupOperation); err != nil {
+		return errors.Wrapf(
+			err,
+			"the cluster is not ready to be rescaled, current status: %s, target status: %s",
+			current, apigen_mgmtv2.Running,
+		)
+	}
+	return nil
+}
+
 // waitClusterRescaled waits for an accepted rescale request to be fully applied. Waiting
 // for the healthy status alone is not enough: the cluster still reports itself as healthy
 // for a short while after the request is accepted, so wait for it to leave the healthy
@@ -572,6 +595,9 @@ func (c *RegionServiceClient) waitResourceGroupResource(
 }
 
 func (c *RegionServiceClient) CreateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	if err := c.waitClusterIdle(ctx, nsID); err != nil {
+		return nil, err
+	}
 	res, err := c.mgmtV2Client.PostTenantsNsIdResourceGroupsWithResponse(ctx, nsID, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call API to create resource group")
@@ -589,6 +615,9 @@ func (c *RegionServiceClient) CreateResourceGroupAwait(ctx context.Context, nsID
 }
 
 func (c *RegionServiceClient) UpdateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	if err := c.waitClusterIdle(ctx, nsID); err != nil {
+		return nil, err
+	}
 	res, err := c.mgmtV2Client.PostTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup, req)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to call API to update resource group %s", resourceGroup)
@@ -606,6 +635,9 @@ func (c *RegionServiceClient) UpdateResourceGroupAwait(ctx context.Context, nsID
 }
 
 func (c *RegionServiceClient) DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error {
+	if err := c.waitClusterIdle(ctx, nsID); err != nil {
+		return err
+	}
 	res, err := c.mgmtV2Client.DeleteTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup)
 	if err != nil {
 		return errors.Wrapf(err, "failed to call API to delete resource group %s", resourceGroup)

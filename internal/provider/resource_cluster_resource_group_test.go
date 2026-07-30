@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -95,6 +97,67 @@ func TestCheckNotDefaultResourceGroup(t *testing.T) {
 
 	checkNotDefaultResourceGroup(defaultResourceGroup, &diags)
 	assert.True(t, diags.HasError())
+}
+
+// The pattern mirrors what the platform enforces, checked against prod us-east-1:
+// "resource group name should match '[a-z0-9]([a-z0-9-]{0,18}[a-z0-9])?'". Validating it here
+// turns an apply-time API error into a plan-time one.
+func TestResourceGroupNameValidator(t *testing.T) {
+	tests := []struct {
+		name  string
+		valid bool
+	}{
+		{name: "streaming-rg", valid: true},
+		{name: "rg1", valid: true},
+		{name: "a", valid: true},
+		{name: "12345678901234567890", valid: true}, // 20 characters, the maximum
+		{name: "", valid: false},
+		{name: "Verify-MixedCase", valid: false}, // rejected by the platform
+		{name: "verify.dot", valid: false},       // rejected by the platform, and a dot would break the id
+		{name: "-leading-dash", valid: false},
+		{name: "trailing-dash-", valid: false},
+		{name: "under_score", valid: false},
+		{name: "123456789012345678901", valid: false}, // 21 characters
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &validator.StringResponse{}
+			resourceGroupNameValidator{}.ValidateString(context.Background(), validator.StringRequest{
+				Path:        path.Root("name"),
+				ConfigValue: types.StringValue(tt.name),
+			}, resp)
+
+			assert.Equal(t, tt.valid, !resp.Diagnostics.HasError())
+		})
+	}
+}
+
+// The platform rejects a resource group with no replica: "request 0 replica(s) not valid for
+// resource group. Exceeds the maximum allowed value or less than or equal to 0". The upper
+// bound depends on the component type and stays with the platform.
+func TestPositiveReplicaValidator(t *testing.T) {
+	tests := []struct {
+		replica int64
+		valid   bool
+	}{
+		{replica: 1, valid: true},
+		{replica: 8, valid: true},
+		{replica: 0, valid: false},
+		{replica: -1, valid: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("replica=%d", tt.replica), func(t *testing.T) {
+			resp := &validator.Int64Response{}
+			positiveReplicaValidator{}.ValidateInt64(context.Background(), validator.Int64Request{
+				Path:        path.Root("replica"),
+				ConfigValue: types.Int64Value(tt.replica),
+			}, resp)
+
+			assert.Equal(t, tt.valid, !resp.Diagnostics.HasError())
+		})
+	}
 }
 
 func clusterResourceGroupSchema(ctx context.Context, t *testing.T) schema.Schema {
