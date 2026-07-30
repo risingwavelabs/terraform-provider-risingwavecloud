@@ -49,8 +49,13 @@ type ClusterResourceGroupModel struct {
 
 // unknownOnComponentTypeChange marks a computed attribute as unknown when the component
 // type changes. Terraform carries the prior value of a computed attribute into the plan,
-// so without this the platform re-resolving the value during an update would make the
-// applied state differ from the plan ("provider produced inconsistent result after apply").
+// so if the platform re-resolves the value during an update, the applied state differs from
+// the plan and terraform fails with "provider produced inconsistent result after apply".
+//
+// This is a precaution rather than a fix for an observed failure: the platform currently
+// returns the same compute cache size for every component type, so the value happens not to
+// change today. The cost is a "(known after apply)" on that attribute when the component type
+// changes; the alternative is a hard error the user cannot work around if that ever changes.
 type unknownOnComponentTypeChange struct{}
 
 func (m unknownOnComponentTypeChange) Description(ctx context.Context) string {
@@ -134,7 +139,7 @@ func (r *ClusterResourceGroupResource) Schema(ctx context.Context, req resource.
 				Required:            true,
 			},
 			"compute_cache_size_gb": schema.Int64Attribute{
-				MarkdownDescription: "The compute cache size in GB, resolved by the platform based on the component type.",
+				MarkdownDescription: "The compute cache size in GB. It is resolved by the platform and cannot be set.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),

@@ -475,8 +475,12 @@ func (acc *FakeCloudClient) GetResourceGroup(ctx context.Context, clusterNsID uu
 	return c.GetResourceGroup(name)
 }
 
-// resolveComputeCache mimics the platform resolving the compute cache size from the
-// component type, so that a component type change also changes this computed attribute.
+// resolveComputeCache resolves the compute cache size from the component type.
+//
+// This deliberately diverges from the platform, which currently returns a constant 100 GB
+// regardless of the component type (verified against prod us-east-1 for p-1c4g and p-2c8g).
+// Varying it here is what gives the acceptance test a component type change that also changes
+// a computed attribute, which is the case the compute_cache_size_gb plan modifier handles.
 func resolveComputeCache(componentTypeID string, requested *apigen_mgmtv2.TenantResourceComputeCache) apigen_mgmtv2.TenantResourceComputeCache {
 	if requested != nil {
 		return *requested

@@ -10,16 +10,21 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// TestResourceGroupResource exercises the resource_group resource on top of a managed
-// cluster: create, read, import, rescaling it and moving it to another component type.
-func TestResourceGroupResource(t *testing.T) {
+const (
+	testResourceGroupRegion  = "us-east-1"
+	testResourceGroupVersion = "v3.0.1"
+)
+
+// TestClusterResourceGroupResource exercises the cluster_resource_group resource on top of a
+// managed cluster: create, read, import, rescaling it and moving it to another component type.
+func TestClusterResourceGroupResource(t *testing.T) {
 	clusterName := fmt.Sprintf("tf%srg", getTestNamespace(t))
 	cloud := initCloudSDK(t)
 
 	var clusterID uuid.UUID
 
 	captureClusterID := func(s *terraform.State) error {
-		cluster, err := cloud.GetClusterByRegionAndName(context.Background(), "us-east-1", clusterName)
+		cluster, err := cloud.GetClusterByRegionAndName(context.Background(), testResourceGroupRegion, clusterName)
 		if err != nil {
 			return err
 		}
@@ -28,7 +33,7 @@ func TestResourceGroupResource(t *testing.T) {
 	}
 
 	config := func(componentTypeID string, replica int) string {
-		return testClusterResourceConfig_newVersion(clusterName) +
+		return testResourceGroupCluster(clusterName) +
 			testResourceGroup(componentTypeID, replica)
 	}
 
@@ -83,6 +88,54 @@ func TestResourceGroupResource(t *testing.T) {
 			// Delete testing automatically occurs in TestCase
 		},
 	})
+}
+
+// testResourceGroupCluster is the smallest cluster a resource group can live on: resource
+// groups add compute nodes, so the cluster needs a tier with a separate compute component
+// (a Standard tier cluster runs standalone and has none).
+//
+// The values below have to exist in the target environment. To refresh them, check
+// `GET <region mgmt url>/api/v1/tiers` for the tiers, component types and meta store types,
+// and `GET <region mgmt url>/api/v1/tenant/tags` for the current RisingWave version.
+func testResourceGroupCluster(name string) string {
+	return fmt.Sprintf(`
+resource "risingwavecloud_cluster" "test" {
+	region   = "%s"
+	name     = "%s"
+	version  = "%s"
+	tier     = "Invited"
+	spec     = {
+		compute = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		compactor = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		frontend = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+		meta = {
+			default_node_group = {
+				cpu     = "1"
+				memory  = "4 GB"
+				replica = 1
+			}
+		}
+	}
+}
+`, testResourceGroupRegion, name, testResourceGroupVersion)
 }
 
 func testResourceGroup(componentTypeID string, replica int) string {

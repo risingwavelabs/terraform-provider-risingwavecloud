@@ -93,5 +93,5 @@ terraform import risingwavecloud_cluster_resource_group.test <cluster_id>.<resou
 
 ### Read-Only
 
-- `compute_cache_size_gb` (Number) The compute cache size in GB, resolved by the platform based on the component type.
+- `compute_cache_size_gb` (Number) The compute cache size in GB. It is resolved by the platform and cannot be set.
 - `id` (String) The global identifier for the resource: [cluster ID].[resource group name]
