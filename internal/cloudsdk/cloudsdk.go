@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -82,6 +83,21 @@ type CloudClientInterface interface {
 	DeletePrivateLinkAwait(ctx context.Context, clusterNsID uuid.UUID, privateLinkID uuid.UUID) error
 
 	GetBYOCCluster(ctx context.Context, region string, name string) (*apigen_mgmtv2.ManagedCluster, error)
+
+	/* Resource Group */
+
+	// GetResourceGroup returns the resource group of the given name in the cluster.
+	GetResourceGroup(ctx context.Context, clusterNsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	// CreateResourceGroupAwait creates a resource group and waits for the cluster rescale to complete.
+	CreateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	// UpdateResourceGroupAwait rescales a resource group and waits for the cluster rescale to complete.
+	UpdateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	// DeleteResourceGroupAwait deletes a resource group and waits for the deletion to complete. it
+	// returns nil if the resource group is deleted successfully or not found.
+	DeleteResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string) error
 }
 
 type CloudClient struct {
@@ -89,6 +105,25 @@ type CloudClient struct {
 	accClient  *apigen_acc.ClientWithResponses
 	apiKeyPair string
 	regions    map[string]RegionServiceClientInterface
+
+	// rescaleLocks holds one mutex per cluster NsID (uuid.UUID -> *sync.Mutex).
+	rescaleLocks sync.Map
+}
+
+// lockClusterRescale serializes the operations that rescale a cluster. Rescaling is
+// exclusive on the platform side and every request waits for the whole cluster to become
+// healthy again, while terraform applies independent resources concurrently: without this
+// lock two resource groups of the same cluster (or a resource group and the cluster spec
+// itself) would trigger overlapping rescales. The returned function releases the lock.
+func (c *CloudClient) lockClusterRescale(nsID uuid.UUID) func() {
+	v, _ := c.rescaleLocks.LoadOrStore(nsID, &sync.Mutex{})
+	mu, ok := v.(*sync.Mutex)
+	if !ok {
+		// unreachable: nothing else is ever stored in this map.
+		return func() {}
+	}
+	mu.Lock()
+	return mu.Unlock
 }
 
 func NewCloudClient(ctx context.Context, endpoint, apiKey, apiSecret, tfPluginVersion string) (CloudClientInterface, error) {
@@ -256,6 +291,8 @@ func (c *CloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uu
 }
 
 func (c *CloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostTenantResourcesRequestBody) error {
+	defer c.lockClusterRescale(nsID)()
+
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, nsID)
 	if err != nil {
 		return err
@@ -451,4 +488,51 @@ func (c *CloudClient) GetBYOCCluster(ctx context.Context, region string, name st
 		return nil, err
 	}
 	return rs.GetBYOCCluster(ctx, name)
+}
+
+func (c *CloudClient) GetResourceGroup(ctx context.Context, clusterNsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	groups, err := rs.GetResourceGroups(ctx, info.NsId)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range groups {
+		if g.Name == name {
+			return ptr.Ptr(g), nil
+		}
+	}
+	return nil, errors.Wrapf(ErrResourceGroupNotFound, "resource group %s in cluster %s", name, clusterNsID.String())
+}
+
+func (c *CloudClient) CreateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	defer c.lockClusterRescale(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.CreateResourceGroupAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) UpdateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	defer c.lockClusterRescale(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.UpdateResourceGroupAwait(ctx, info.NsId, resourceGroup, req)
+}
+
+func (c *CloudClient) DeleteResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string) error {
+	defer c.lockClusterRescale(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DeleteResourceGroupAwait(ctx, info.NsId, resourceGroup)
 }

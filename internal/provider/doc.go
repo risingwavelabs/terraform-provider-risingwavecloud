@@ -190,6 +190,58 @@ terraform import risingwavecloud_privatelink.test <privatelink_id>
 ` + "```" + `
 `
 
+var clusterResourceGroupMarkdownDescription = `
+An additional (non-default) resource group in a RisingWave cluster. A resource group is a set of
+compute nodes of its own, used to isolate streaming workloads from each other.
+
+This resource only manages the compute capacity. Assigning a database to a resource group is done in
+SQL when the database is created, and the databases themselves are not managed by this provider.
+
+!> **Not every cluster can host a resource group.** The cluster must have a separate compute
+component, which means the ` + "`" + `Invited` + "`" + ` or ` + "`" + `BYOC` + "`" + ` tier: a ` + "`" + `Standard` + "`" + ` tier cluster runs
+standalone and the platform rejects resource groups on it. Note that ` + "`" + `Standard` + "`" + ` is the default
+tier of ` + "`" + `risingwavecloud_cluster` + "`" + ` for SaaS clusters. The cluster also has to run RisingWave
+` + "`" + `v2.3.0` + "`" + ` or later. Neither can be checked while planning, since the cluster may not exist yet, so
+a mismatch surfaces as an error during apply.
+
+~> **Note:** The ` + "`" + `default` + "`" + ` resource group is managed by the ` + "`" + `risingwavecloud_cluster` + "`" + ` resource
+and cannot be created or imported here. Use this resource only for additional named resource groups,
+and the cluster's ` + "`" + `spec` + "`" + ` to rescale the default one. Names starting with ` + "`" + `backfill` + "`" + ` are
+reserved by the platform for its serverless backfill extension and are rejected as well.
+
+Creating, rescaling, and deleting a resource group triggers a cluster rescale, so these operations
+are asynchronous and Terraform waits for the cluster to become healthy again. A cluster can only run
+one rescale at a time: the provider serializes the resource group changes of a cluster, so applying
+several of them takes as long as the sum of their rescales.
+
+## Import a Resource Group
+
+To import a resource group, follow the steps below:
+
+1. Get the UUID of the corresponding cluster from the RisingWave Cloud platform.
+
+2. Write a resource definition to import the resource group. For example:
+
+` + "```hcl" + `
+  resource "risingwavecloud_cluster_resource_group" "streaming" {
+    cluster_id        = risingwavecloud_cluster.mycluster.id
+    name              = "streaming-rg"
+    component_type_id = "p-1c4g"
+    replica           = 1
+  }
+  ` + "```" + `
+
+  ~> **Note:** Reference the cluster instead of hardcoding its ID, as shown above. This is how
+  Terraform learns that the resource group has to be created after the cluster and deleted before it.
+  Deleting a resource group fails while databases still run in it: drop those databases first.
+
+3. Run the import command:
+
+` + "```shell" + `
+terraform import risingwavecloud_cluster_resource_group.test <cluster_id>.<resource_group_name>
+` + "```" + `
+`
+
 var clusterUserMarkdownDescription = `
 A database user in a RisingWave cluster. The username and password of the dabase user are used to
 connect to the RisingWave cluster.

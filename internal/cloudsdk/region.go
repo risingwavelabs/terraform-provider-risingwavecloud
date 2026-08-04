@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	ErrClusterNotFound     = errors.New("cluster not found")
-	ErrBYOCClusterNotFound = errors.New("BYOC cluster not found")
-	ErrClusterUserNotFound = errors.New("cluster user not found")
-	ErrPrivateLinkNotFound = errors.New("private link not found")
+	ErrClusterNotFound       = errors.New("cluster not found")
+	ErrBYOCClusterNotFound   = errors.New("BYOC cluster not found")
+	ErrClusterUserNotFound   = errors.New("cluster user not found")
+	ErrPrivateLinkNotFound   = errors.New("private link not found")
+	ErrResourceGroupNotFound = errors.New("resource group not found")
 )
 
 const (
@@ -51,6 +52,21 @@ var (
 	PollingPrivateLinkDeletion = wait.PollingParams{
 		Timeout:  5 * time.Minute,
 		Interval: 3 * time.Second,
+	}
+
+	// Resource group create/update/delete trigger a cluster rescale, so reuse the
+	// tenant-scale timeout budget.
+	PollingResourceGroupOperation = wait.PollingParams{
+		Timeout:  15 * time.Minute,
+		Interval: 3 * time.Second,
+	}
+
+	// A rescale request is accepted asynchronously: the cluster keeps reporting the healthy
+	// status for a short while before the rescale actually starts. Wait for that transition
+	// so that waiting for "healthy" does not return before the rescale even began.
+	PollingRescaleStart = wait.PollingParams{
+		Timeout:  30 * time.Second,
+		Interval: 2 * time.Second,
 	}
 )
 
@@ -88,6 +104,14 @@ type RegionServiceClientInterface interface {
 	DeletePrivateLinkAwait(ctx context.Context, nsID, privateLinkID uuid.UUID) error
 
 	GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmtv2.ManagedCluster, error)
+
+	GetResourceGroups(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.ResourceGroupDetails, error)
+
+	CreateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	UpdateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
+
+	DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error
 }
 
 type RegionServiceClient struct {
@@ -119,6 +143,47 @@ func (c *RegionServiceClient) waitClusterHealthy(ctx context.Context, nsID uuid.
 		return errors.Wrapf(err, "failed to wait for the cluster, current health status: %s, target health status: %s", currHealth, apigen_mgmtv2.Healthy)
 	}
 	return nil
+}
+
+// waitClusterIdle waits until the cluster can accept a rescale request. The platform rejects
+// one while another is in flight, with `400 {"msg":"Cluster is not running"}`, and the caller's
+// per-cluster lock only covers a single provider process: a second terraform run, an aliased
+// provider or somebody working in the console can all put the cluster in that state.
+func (c *RegionServiceClient) waitClusterIdle(ctx context.Context, nsID uuid.UUID) error {
+	var current apigen_mgmtv2.TenantStatus
+	if err := wait.Poll(ctx, func() (bool, error) {
+		cluster, err := c.GetClusterByNsID(ctx, nsID)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to get the cluster info")
+		}
+		current = cluster.Status
+		return current == apigen_mgmtv2.Running && cluster.HealthStatus == apigen_mgmtv2.Healthy, nil
+	}, PollingResourceGroupOperation); err != nil {
+		return errors.Wrapf(
+			err,
+			"the cluster is not ready to be rescaled, current status: %s, target status: %s",
+			current, apigen_mgmtv2.Running,
+		)
+	}
+	return nil
+}
+
+// waitClusterRescaled waits for an accepted rescale request to be fully applied. Waiting
+// for the healthy status alone is not enough: the cluster still reports itself as healthy
+// for a short while after the request is accepted, so wait for it to leave the healthy
+// status first. Not observing that transition is not an error, the rescale may already be
+// done by the time we start polling.
+func (c *RegionServiceClient) waitClusterRescaled(ctx context.Context, nsID uuid.UUID) error {
+	if err := wait.Poll(ctx, func() (bool, error) {
+		cluster, err := c.GetClusterByNsID(ctx, nsID)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to get the cluster info")
+		}
+		return cluster.HealthStatus != apigen_mgmtv2.Healthy, nil
+	}, PollingRescaleStart); err != nil && !errors.Is(err, wait.ErrWaitTimeout) {
+		return err
+	}
+	return c.waitClusterHealthy(ctx, nsID)
 }
 
 // this is used only when the cluster ID is unknown.
@@ -470,4 +535,132 @@ func (c *RegionServiceClient) GetBYOCCluster(ctx context.Context, name string) (
 		return nil, err
 	}
 	return res.JSON200, nil
+}
+
+func (c *RegionServiceClient) GetResourceGroups(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.ResourceGroupDetails, error) {
+	res, err := c.mgmtV2Client.GetTenantsNsIdResourceGroupsWithResponse(ctx, nsID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get resource groups")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
+	}
+	return res.JSON200.ResourceGroups, nil
+}
+
+func (c *RegionServiceClient) getResourceGroup(ctx context.Context, nsID uuid.UUID, name string) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	groups, err := c.GetResourceGroups(ctx, nsID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range groups {
+		if g.Name == name {
+			return ptr.Ptr(g), nil
+		}
+	}
+	return nil, errors.Wrapf(ErrResourceGroupNotFound, "resource group %s", name)
+}
+
+// waitResourceGroupResource waits for the resource group to report the requested resource
+// spec. The returned details are written to the terraform state, so they must reflect the
+// applied spec instead of the one the cluster is rescaling away from.
+func (c *RegionServiceClient) waitResourceGroupResource(
+	ctx context.Context, nsID uuid.UUID, name string, expected apigen_mgmtv2.ComponentResourceRequest,
+) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	var rtn *apigen_mgmtv2.ResourceGroupDetails
+	if err := wait.Poll(ctx, func() (bool, error) {
+		g, err := c.getResourceGroup(ctx, nsID, name)
+		if err != nil {
+			if errors.Is(err, ErrResourceGroupNotFound) {
+				return false, nil
+			}
+			return false, err
+		}
+		if g.Resource.ComponentTypeId != expected.ComponentTypeId || g.Resource.Replica != expected.Replica {
+			return false, nil
+		}
+		rtn = g
+		return true, nil
+	}, PollingResourceGroupOperation); err != nil {
+		return nil, errors.Wrapf(
+			err,
+			"failed to wait for the resource group %s to report component type %s with %d replica(s)",
+			name, expected.ComponentTypeId, expected.Replica,
+		)
+	}
+	return rtn, nil
+}
+
+func (c *RegionServiceClient) CreateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	if err := c.waitClusterIdle(ctx, nsID); err != nil {
+		return nil, err
+	}
+	res, err := c.mgmtV2Client.PostTenantsNsIdResourceGroupsWithResponse(ctx, nsID, req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to create resource group")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return nil, err
+	}
+	if err := c.waitClusterRescaled(ctx, nsID); err != nil {
+		return nil, err
+	}
+	return c.waitResourceGroupResource(ctx, nsID, req.Name, req.Resource)
+}
+
+func (c *RegionServiceClient) UpdateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
+	if err := c.waitClusterIdle(ctx, nsID); err != nil {
+		return nil, err
+	}
+	res, err := c.mgmtV2Client.PostTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup, req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to call API to update resource group %s", resourceGroup)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrResourceGroupNotFound, "resource group %s", resourceGroup)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return nil, err
+	}
+	if err := c.waitClusterRescaled(ctx, nsID); err != nil {
+		return nil, err
+	}
+	return c.waitResourceGroupResource(ctx, nsID, resourceGroup, req.Resource)
+}
+
+func (c *RegionServiceClient) DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error {
+	if err := c.waitClusterIdle(ctx, nsID); err != nil {
+		return err
+	}
+	res, err := c.mgmtV2Client.DeleteTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx, nsID, resourceGroup)
+	if err != nil {
+		return errors.Wrapf(err, "failed to call API to delete resource group %s", resourceGroup)
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil
+	}
+	// A rejected deletion (the databases running in the group have to be dropped first) comes
+	// back as 400 with a message that already names them, so pass the body through as is.
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
+	}
+	if err := c.waitClusterRescaled(ctx, nsID); err != nil {
+		return err
+	}
+	return wait.Poll(ctx, func() (bool, error) {
+		_, err := c.getResourceGroup(ctx, nsID, resourceGroup)
+		if err != nil {
+			if errors.Is(err, ErrResourceGroupNotFound) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	}, PollingResourceGroupOperation)
 }

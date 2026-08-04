@@ -83,6 +83,21 @@ func (mr *MockCloudClientInterfaceMockRecorder) CreatePrivateLinkAwait(arg0, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePrivateLinkAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).CreatePrivateLinkAwait), arg0, arg1, arg2)
 }
 
+// CreateResourceGroupAwait mocks base method.
+func (m *MockCloudClientInterface) CreateResourceGroupAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.CreateResourceGroupsRequestBody) (*apigen0.ResourceGroupDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateResourceGroupAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*apigen0.ResourceGroupDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateResourceGroupAwait indicates an expected call of CreateResourceGroupAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) CreateResourceGroupAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateResourceGroupAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateResourceGroupAwait), arg0, arg1, arg2)
+}
+
 // DeleteClusterByNsIDAwait mocks base method.
 func (m *MockCloudClientInterface) DeleteClusterByNsIDAwait(arg0 context.Context, arg1 uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -123,6 +138,20 @@ func (m *MockCloudClientInterface) DeletePrivateLinkAwait(arg0 context.Context, 
 func (mr *MockCloudClientInterfaceMockRecorder) DeletePrivateLinkAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePrivateLinkAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DeletePrivateLinkAwait), arg0, arg1, arg2)
+}
+
+// DeleteResourceGroupAwait mocks base method.
+func (m *MockCloudClientInterface) DeleteResourceGroupAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResourceGroupAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteResourceGroupAwait indicates an expected call of DeleteResourceGroupAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) DeleteResourceGroupAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroupAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DeleteResourceGroupAwait), arg0, arg1, arg2)
 }
 
 // GetAvailableComponentTypes mocks base method.
@@ -245,6 +274,21 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetPrivateLinks(arg0 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPrivateLinks", reflect.TypeOf((*MockCloudClientInterface)(nil).GetPrivateLinks), arg0)
 }
 
+// GetResourceGroup mocks base method.
+func (m *MockCloudClientInterface) GetResourceGroup(arg0 context.Context, arg1 uuid.UUID, arg2 string) (*apigen0.ResourceGroupDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetResourceGroup", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*apigen0.ResourceGroupDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetResourceGroup indicates an expected call of GetResourceGroup.
+func (mr *MockCloudClientInterfaceMockRecorder) GetResourceGroup(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceGroup", reflect.TypeOf((*MockCloudClientInterface)(nil).GetResourceGroup), arg0, arg1, arg2)
+}
+
 // GetTiers mocks base method.
 func (m *MockCloudClientInterface) GetTiers(arg0 context.Context, arg1 string) ([]apigen.Tier, error) {
 	m.ctrl.T.Helper()
@@ -314,6 +358,21 @@ func (m *MockCloudClientInterface) UpdateClusterUserPassword(arg0 context.Contex
 func (mr *MockCloudClientInterfaceMockRecorder) UpdateClusterUserPassword(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateClusterUserPassword", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateClusterUserPassword), arg0, arg1, arg2, arg3)
+}
+
+// UpdateResourceGroupAwait mocks base method.
+func (m *MockCloudClientInterface) UpdateResourceGroupAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string, arg3 apigen0.UpdateResourceGroupsRequestBody) (*apigen0.ResourceGroupDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateResourceGroupAwait", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*apigen0.ResourceGroupDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateResourceGroupAwait indicates an expected call of UpdateResourceGroupAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) UpdateResourceGroupAwait(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateResourceGroupAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateResourceGroupAwait), arg0, arg1, arg2, arg3)
 }
 
 // UpdateRisingWaveConfigByNsIDAwait mocks base method.
