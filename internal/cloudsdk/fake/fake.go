@@ -268,7 +268,7 @@ func (acc *FakeCloudClient) GetClusterUser(ctx context.Context, nsID uuid.UUID, 
 	return c.GetClusterUser(username)
 }
 
-func (acc *FakeCloudClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmtv2.DBUser, error) {
+func (acc *FakeCloudClient) CreateClusterUser(ctx context.Context, nsID uuid.UUID, username, password string, createDB, superUser, createUser bool) (*apigen_mgmtv2.DBUser, error) {
 	debugFuncCaller()
 
 	c, err := state.GetClusterByNsID(nsID)
@@ -277,10 +277,13 @@ func (acc *FakeCloudClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID
 	}
 
 	dbuser := &apigen_mgmtv2.DBUser{
-		Usecreatedb: createDB,
-		Username:    username,
-		Usesysid:    uint64((time.Now().Unix() << 10) + int64(rand.Int31n(1024))),
-		Usesuper:    superUser,
+		Usecreatedb:   createDB,
+		Username:      username,
+		Usesysid:      uint64((time.Now().Unix() << 10) + int64(rand.Int31n(1024))),
+		Usesuper:      superUser,
+		Usecreateuser: createUser,
+		// the platform creates users with CREATE USER, which implies LOGIN.
+		Canlogin: true,
 	}
 
 	c.AddClusterUser(dbuser)

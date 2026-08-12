@@ -91,9 +91,11 @@ terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
 
 ### Optional
 
-- `create_db` (Boolean) The create db flag for the user
-- `super_user` (Boolean) The super user flag for the user
+- `create_db` (Boolean) Whether the user may create databases (`CREATEDB`). Cannot be changed after the user is created.
+- `create_user` (Boolean) Whether the user may create other users and roles (`CREATEUSER`, the legacy spelling of `CREATEROLE`). This is the "Allow creating roles" option in the RisingWave Cloud portal. Cannot be changed after the user is created.
+- `super_user` (Boolean) Whether the user is a superuser (`SUPERUSER`). Cannot be changed after the user is created.
 
 ### Read-Only
 
+- `can_login` (Boolean) Whether the user may log in (`LOGIN`). Users created here can always log in, so this is reported by the platform rather than configured.
 - `id` (String) The global identifier for the resource: [cluster ID].[username]

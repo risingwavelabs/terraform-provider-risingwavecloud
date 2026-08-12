@@ -59,7 +59,7 @@ type CloudClientInterface interface {
 
 	GetClusterUser(ctx context.Context, clusterNsID uuid.UUID, username string) (*apigen_mgmtv2.DBUser, error)
 
-	CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmtv2.DBUser, error)
+	CreateClusterUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser, createUser bool) (*apigen_mgmtv2.DBUser, error)
 
 	UpdateClusterUserPassword(ctx context.Context, clusterNsID uuid.UUID, username, password string) error
 
@@ -330,16 +330,17 @@ func (c *CloudClient) GetClusterUser(ctx context.Context, clusterNsID uuid.UUID,
 	return nil, errors.Errorf("user %s not found in cluster %s", username, clusterNsID.String())
 }
 
-func (c *CloudClient) CreateCluserUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser bool) (*apigen_mgmtv2.DBUser, error) {
+func (c *CloudClient) CreateClusterUser(ctx context.Context, clusterNsID uuid.UUID, username, password string, createDB, superUser, createUser bool) (*apigen_mgmtv2.DBUser, error) {
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
 		return nil, err
 	}
-	u, err := rs.CreateCluserUser(ctx, info.NsId, apigen_mgmtv2.CreateDBUserRequestBody{
-		Username:  username,
-		Password:  password,
-		Createdb:  createDB,
-		Superuser: superUser,
+	u, err := rs.CreateClusterUser(ctx, info.NsId, apigen_mgmtv2.CreateDBUserRequestBody{
+		Username:   username,
+		Password:   password,
+		Createdb:   createDB,
+		Superuser:  superUser,
+		Createuser: ptr.Ptr(createUser),
 	})
 	if err != nil {
 		if errors.Is(err, ErrClusterNotFound) {

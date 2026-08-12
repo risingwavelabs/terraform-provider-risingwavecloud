@@ -38,21 +38,6 @@ func (m *MockCloudClientInterface) EXPECT() *MockCloudClientInterfaceMockRecorde
 	return m.recorder
 }
 
-// CreateCluserUser mocks base method.
-func (m *MockCloudClientInterface) CreateCluserUser(arg0 context.Context, arg1 uuid.UUID, arg2, arg3 string, arg4, arg5 bool) (*apigen0.DBUser, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateCluserUser", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(*apigen0.DBUser)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateCluserUser indicates an expected call of CreateCluserUser.
-func (mr *MockCloudClientInterfaceMockRecorder) CreateCluserUser(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateCluserUser", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateCluserUser), arg0, arg1, arg2, arg3, arg4, arg5)
-}
-
 // CreateClusterAwait mocks base method.
 func (m *MockCloudClientInterface) CreateClusterAwait(arg0 context.Context, arg1 string, arg2 apigen0.TenantRequestRequestBody) (*apigen0.Tenant, error) {
 	m.ctrl.T.Helper()
@@ -66,6 +51,21 @@ func (m *MockCloudClientInterface) CreateClusterAwait(arg0 context.Context, arg1
 func (mr *MockCloudClientInterfaceMockRecorder) CreateClusterAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateClusterAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateClusterAwait), arg0, arg1, arg2)
+}
+
+// CreateClusterUser mocks base method.
+func (m *MockCloudClientInterface) CreateClusterUser(arg0 context.Context, arg1 uuid.UUID, arg2, arg3 string, arg4, arg5, arg6 bool) (*apigen0.DBUser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateClusterUser", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret0, _ := ret[0].(*apigen0.DBUser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateClusterUser indicates an expected call of CreateClusterUser.
+func (mr *MockCloudClientInterfaceMockRecorder) CreateClusterUser(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateClusterUser", reflect.TypeOf((*MockCloudClientInterface)(nil).CreateClusterUser), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
 // CreatePrivateLinkAwait mocks base method.
