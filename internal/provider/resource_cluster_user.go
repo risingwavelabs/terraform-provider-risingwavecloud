@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
@@ -20,6 +21,7 @@ import (
 // Assert provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ClusterUserResource{}
 var _ resource.ResourceWithImportState = &ClusterUserResource{}
+var _ resource.ResourceWithValidateConfig = &ClusterUserResource{}
 
 func NewClusterUserResource() resource.Resource {
 	return &ClusterUserResource{}
@@ -31,14 +33,27 @@ type ClusterUserResource struct {
 
 type ClusterUserModel struct {
 	// [cluster ID].[username]
-	ID         types.String `tfsdk:"id"`
-	ClusterID  types.String `tfsdk:"cluster_id"`
-	Username   types.String `tfsdk:"username"`
-	Password   types.String `tfsdk:"password"`
-	CreateDB   types.Bool   `tfsdk:"create_db"`
-	SuperUser  types.Bool   `tfsdk:"super_user"`
-	CreateUser types.Bool   `tfsdk:"create_user"`
-	CanLogin   types.Bool   `tfsdk:"can_login"`
+	ID        types.String `tfsdk:"id"`
+	ClusterID types.String `tfsdk:"cluster_id"`
+	Username  types.String `tfsdk:"username"`
+	Password  types.String `tfsdk:"password"`
+	// PasswordWO is always null here: terraform never puts a write-only value in the plan or
+	// the state. The field exists because the model has to mirror the schema; the value is
+	// read from the configuration in Create and Update. Never assign to it.
+	PasswordWO        types.String `tfsdk:"password_wo"`
+	PasswordWOVersion types.Int64  `tfsdk:"password_wo_version"`
+	CreateDB          types.Bool   `tfsdk:"create_db"`
+	SuperUser         types.Bool   `tfsdk:"super_user"`
+	CreateUser        types.Bool   `tfsdk:"create_user"`
+	CanLogin          types.Bool   `tfsdk:"can_login"`
+}
+
+// readWriteOnlyPassword returns the write-only password from the configuration. Write-only
+// values only exist there, never in the plan or the state.
+func readWriteOnlyPassword(ctx context.Context, config tfsdk.Config, diags *diag.Diagnostics) string {
+	var password types.String
+	diags.Append(config.GetAttribute(ctx, path.Root("password_wo"), &password)...)
+	return password.ValueString()
 }
 
 func (r *ClusterUserResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -63,9 +78,25 @@ func (r *ClusterUserResource) Schema(ctx context.Context, req resource.SchemaReq
 				Required:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "The password for connecting to the cluster",
-				Required:            true,
-				Sensitive:           true,
+				MarkdownDescription: "The password for connecting to the cluster. This value is stored in the Terraform " +
+					"state in plain text; use `password_wo` instead if the state must not hold the secret.",
+				Optional:  true,
+				Sensitive: true,
+			},
+			"password_wo": schema.StringAttribute{
+				MarkdownDescription: "The password for connecting to the cluster, as a " +
+					"[write-only argument](https://developer.hashicorp.com/terraform/language/manage-sensitive-data/write-only): " +
+					"Terraform sends it to the provider but stores it in neither the plan nor the state. Requires Terraform " +
+					"1.11 or later, and must be set together with `password_wo_version`. Conflicts with `password`.",
+				Optional:  true,
+				Sensitive: true,
+				WriteOnly: true,
+			},
+			"password_wo_version": schema.Int64Attribute{
+				MarkdownDescription: "The version of `password_wo`. Terraform cannot detect a change in a value it does " +
+					"not store, so increment this whenever `password_wo` changes to have the new password applied. Must be " +
+					"set together with `password_wo`.",
+				Optional: true,
 			},
 			"super_user": schema.BoolAttribute{
 				MarkdownDescription: "Whether the user is a superuser (`SUPERUSER`). Cannot be changed after the user is created.",
@@ -116,6 +147,48 @@ func (r *ClusterUserResource) Configure(ctx context.Context, req resource.Config
 	r.client = client
 }
 
+// ValidateConfig enforces the relationship between the two ways of supplying a password. The
+// framework has no declarative equivalent without pulling in terraform-plugin-framework-validators.
+func (r *ClusterUserResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data ClusterUserModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// A value that is unknown at this point still counts as supplied: it comes from a variable
+	// or from another resource, and rejecting it here would reject a valid configuration.
+	var (
+		hasPassword  = !data.Password.IsNull()
+		hasWriteOnly = !data.PasswordWO.IsNull()
+		hasVersion   = !data.PasswordWOVersion.IsNull()
+	)
+
+	switch {
+	case hasPassword && hasWriteOnly:
+		resp.Diagnostics.AddError(
+			"Conflicting password arguments",
+			"Only one of \"password\" and \"password_wo\" can be set. \"password_wo\" keeps the password out of the "+
+				"Terraform state and requires Terraform 1.11 or later.",
+		)
+	case !hasPassword && !hasWriteOnly:
+		resp.Diagnostics.AddError(
+			"Missing password",
+			"One of \"password\" or \"password_wo\" must be set to create a cluster user.",
+		)
+	}
+
+	if hasWriteOnly != hasVersion {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password_wo_version"),
+			"Incomplete write-only password",
+			"\"password_wo\" and \"password_wo_version\" must be set together. Terraform cannot detect a change in a "+
+				"write-only value, so the version is what tells the provider to apply a new password.",
+		)
+	}
+}
+
 func (r *ClusterUserResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterUserModel
 
@@ -135,13 +208,21 @@ func (r *ClusterUserResource) Create(ctx context.Context, req resource.CreateReq
 		createUser = data.CreateUser.ValueBool()
 	)
 
+	// the write-only password never reaches the plan, only the configuration holds it.
+	if data.Password.IsNull() {
+		password = readWriteOnlyPassword(ctx, req.Config, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	if len(username) == 0 {
 		resp.Diagnostics.AddError("Username is required", "Username is required")
 		return
 	}
 
 	if len(password) == 0 {
-		resp.Diagnostics.AddError("Password is required", "Username is required")
+		resp.Diagnostics.AddError("Password is required", "A password is required to create a cluster user")
 		return
 	}
 
@@ -279,7 +360,27 @@ func (r *ClusterUserResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	if data.Password != state.Password {
+	// Which password to send, if any:
+	//
+	//   - the write-only value is invisible to terraform, so its version argument is the only
+	//     signal that it changed
+	//   - the plain attribute changing to null means the practitioner moved to password_wo,
+	//     not that they want an empty password
+	switch {
+	case !data.PasswordWOVersion.Equal(state.PasswordWOVersion):
+		password := readWriteOnlyPassword(ctx, req.Config, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if len(password) == 0 {
+			resp.Diagnostics.AddError("Password is required", "password_wo cannot be empty")
+			return
+		}
+		if err := r.client.UpdateClusterUserPassword(ctx, stateNsID, stateUsername, password); err != nil {
+			resp.Diagnostics.AddError("Unable to update cluster user password", err.Error())
+			return
+		}
+	case !data.Password.IsNull() && !data.Password.Equal(state.Password):
 		if err := r.client.UpdateClusterUserPassword(ctx, stateNsID, stateUsername, data.Password.ValueString()); err != nil {
 			resp.Diagnostics.AddError("Unable to update cluster user password", err.Error())
 			return

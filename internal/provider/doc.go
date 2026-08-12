@@ -246,8 +246,32 @@ var clusterUserMarkdownDescription = `
 A database user in a RisingWave cluster. The username and password of the dabase user are used to
 connect to the RisingWave cluster.
 
-~> **Note:** Username and password will be stored in the state file in plain text.
+## Keeping the password out of the state
+
+` + "`" + `password` + "`" + ` is stored in the state file in plain text.
 [Read more about sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
+
+With Terraform 1.11 or later, use ` + "`" + `password_wo` + "`" + ` instead. It is a
+[write-only argument](https://developer.hashicorp.com/terraform/language/manage-sensitive-data/write-only):
+Terraform passes the value to the provider but records it in neither the plan nor the state.
+
+` + "```hcl" + `
+  resource "risingwavecloud_cluster_user" "test" {
+    cluster_id = risingwavecloud_cluster.mycluster.id
+    username   = "test-user"
+
+    password_wo         = var.user_password
+    password_wo_version = 1
+  }
+  ` + "```" + `
+
+Because the value is never stored, Terraform cannot tell that it changed. Increment
+` + "`" + `password_wo_version` + "`" + ` whenever the password changes; that is what makes the provider apply
+it. Changing ` + "`" + `password_wo` + "`" + ` on its own does nothing.
+
+~> **Note:** Moving an existing user from ` + "`" + `password` + "`" + ` to ` + "`" + `password_wo` + "`" + ` also removes the
+stored password from the state on the next apply, since the attribute becomes null. Terraform 1.10
+and earlier cannot use write-only arguments and must keep using ` + "`" + `password` + "`" + `.
 
 ## Import a Cluster User
 
