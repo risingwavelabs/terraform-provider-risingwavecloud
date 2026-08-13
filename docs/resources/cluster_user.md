@@ -5,8 +5,27 @@ subcategory: ""
 description: |-
   A database user in a RisingWave cluster. The username and password of the dabase user are used to
   connect to the RisingWave cluster.
-  ~> Note: Username and password will be stored in the state file in plain text.
+  Keeping the password out of the state
+  password is stored in the state file in plain text.
   Read more about sensitive data in state https://www.terraform.io/docs/state/sensitive-data.html.
+  With Terraform 1.11 or later, use password_wo instead. It is a
+  write-only argument https://developer.hashicorp.com/terraform/language/manage-sensitive-data/write-only:
+  Terraform passes the value to the provider but records it in neither the plan nor the state.
+  
+    resource "risingwavecloud_cluster_user" "test" {
+      cluster_id = risingwavecloud_cluster.mycluster.id
+      username   = "test-user"
+  
+      password_wo         = var.user_password
+      password_wo_version = 1
+    }
+  
+  Because the value is never stored, Terraform cannot tell that it changed. Increment
+  password_wo_version whenever the password changes; that is what makes the provider apply
+  it. Changing password_wo on its own does nothing.
+  ~> Note: Moving an existing user from password to password_wo also removes the
+  stored password from the state on the next apply, since the attribute becomes null. Terraform 1.10
+  and earlier cannot use write-only arguments and must keep using password.
   Import a Cluster User
   To import a cluster user, follow the steps below:
   
@@ -40,8 +59,32 @@ description: |-
 A database user in a RisingWave cluster. The username and password of the dabase user are used to
 connect to the RisingWave cluster.
 
-~> **Note:** Username and password will be stored in the state file in plain text.
+## Keeping the password out of the state
+
+`password` is stored in the state file in plain text.
 [Read more about sensitive data in state](https://www.terraform.io/docs/state/sensitive-data.html).
+
+With Terraform 1.11 or later, use `password_wo` instead. It is a
+[write-only argument](https://developer.hashicorp.com/terraform/language/manage-sensitive-data/write-only):
+Terraform passes the value to the provider but records it in neither the plan nor the state.
+
+```hcl
+  resource "risingwavecloud_cluster_user" "test" {
+    cluster_id = risingwavecloud_cluster.mycluster.id
+    username   = "test-user"
+
+    password_wo         = var.user_password
+    password_wo_version = 1
+  }
+  ```
+
+Because the value is never stored, Terraform cannot tell that it changed. Increment
+`password_wo_version` whenever the password changes; that is what makes the provider apply
+it. Changing `password_wo` on its own does nothing.
+
+~> **Note:** Moving an existing user from `password` to `password_wo` also removes the
+stored password from the state on the next apply, since the attribute becomes null. Terraform 1.10
+and earlier cannot use write-only arguments and must keep using `password`.
 
 ## Import a Cluster User
 
@@ -81,12 +124,25 @@ terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
 ## Example Usage
 
 ```terraform
+variable "user_password" {
+  type      = string
+  sensitive = true
+}
+
 resource "risingwavecloud_cluster_user" "test" {
   # Reference the cluster instead of hardcoding its ID, so that Terraform creates the
   # cluster first and deletes the user before the cluster.
   cluster_id = risingwavecloud_cluster.mycluster.id
   username   = "test-user"
-  password   = "test-password"
+
+  # A write-only argument: Terraform passes the value to the provider but stores it in
+  # neither the plan nor the state. Requires Terraform 1.11 or later. Use `password`
+  # instead on older versions, at the cost of keeping the secret in the state file.
+  password_wo = var.user_password
+
+  # Terraform cannot detect a change in a value it does not store, so increment this
+  # whenever the password changes. Changing `password_wo` on its own does nothing.
+  password_wo_version = 1
 
   # Role attributes. The API can only change a password afterwards, so these are fixed
   # once the user exists: changing one is reported as an error rather than planned as a
@@ -103,13 +159,17 @@ resource "risingwavecloud_cluster_user" "test" {
 ### Required
 
 - `cluster_id` (String) The NsID (namespace id) of the cluster.
-- `password` (String, Sensitive) The password for connecting to the cluster
 - `username` (String) The username for connecting to the cluster. The username is unique within the cluster.
 
 ### Optional
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
 - `create_db` (Boolean) Whether the user may create databases (`CREATEDB`). Cannot be changed after the user is created.
 - `create_user` (Boolean) Whether the user may create other users and roles (`CREATEUSER`, the legacy spelling of `CREATEROLE`). This is the "Allow creating roles" option in the RisingWave Cloud portal. Cannot be changed after the user is created.
+- `password` (String, Sensitive) The password for connecting to the cluster. This value is stored in the Terraform state in plain text; use `password_wo` instead if the state must not hold the secret.
+- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The password for connecting to the cluster, as a [write-only argument](https://developer.hashicorp.com/terraform/language/manage-sensitive-data/write-only): Terraform sends it to the provider but stores it in neither the plan nor the state. Requires Terraform 1.11 or later, and must be set together with `password_wo_version`. Conflicts with `password`.
+- `password_wo_version` (Number) The version of `password_wo`. Terraform cannot detect a change in a value it does not store, so increment this whenever `password_wo` changes to have the new password applied. Must be set together with `password_wo`.
 - `super_user` (Boolean) Whether the user is a superuser (`SUPERUSER`). Cannot be changed after the user is created.
 
 ### Read-Only
