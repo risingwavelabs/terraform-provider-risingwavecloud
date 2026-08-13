@@ -31,12 +31,14 @@ type ClusterUserResource struct {
 
 type ClusterUserModel struct {
 	// [cluster ID].[username]
-	ID        types.String `tfsdk:"id"`
-	ClusterID types.String `tfsdk:"cluster_id"`
-	Username  types.String `tfsdk:"username"`
-	Password  types.String `tfsdk:"password"`
-	CreateDB  types.Bool   `tfsdk:"create_db"`
-	SuperUser types.Bool   `tfsdk:"super_user"`
+	ID         types.String `tfsdk:"id"`
+	ClusterID  types.String `tfsdk:"cluster_id"`
+	Username   types.String `tfsdk:"username"`
+	Password   types.String `tfsdk:"password"`
+	CreateDB   types.Bool   `tfsdk:"create_db"`
+	SuperUser  types.Bool   `tfsdk:"super_user"`
+	CreateUser types.Bool   `tfsdk:"create_user"`
+	CanLogin   types.Bool   `tfsdk:"can_login"`
 }
 
 func (r *ClusterUserResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -66,16 +68,29 @@ func (r *ClusterUserResource) Schema(ctx context.Context, req resource.SchemaReq
 				Sensitive:           true,
 			},
 			"super_user": schema.BoolAttribute{
-				MarkdownDescription: "The super user flag for the user",
+				MarkdownDescription: "Whether the user is a superuser (`SUPERUSER`). Cannot be changed after the user is created.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),
 			},
 			"create_db": schema.BoolAttribute{
-				MarkdownDescription: "The create db flag for the user",
+				MarkdownDescription: "Whether the user may create databases (`CREATEDB`). Cannot be changed after the user is created.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),
+			},
+			"create_user": schema.BoolAttribute{
+				MarkdownDescription: "Whether the user may create other users and roles (`CREATEUSER`, the legacy spelling of " +
+					"`CREATEROLE`). This is the \"Allow creating roles\" option in the RisingWave Cloud portal. Cannot be " +
+					"changed after the user is created.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+			},
+			"can_login": schema.BoolAttribute{
+				MarkdownDescription: "Whether the user may log in (`LOGIN`). Users created here can always log in, so this " +
+					"is reported by the platform rather than configured.",
+				Computed: true,
 			},
 		},
 	}
@@ -113,17 +128,12 @@ func (r *ClusterUserResource) Create(ctx context.Context, req resource.CreateReq
 		username  = data.Username.ValueString()
 		password  = data.Password.ValueString()
 		clusterID = data.ClusterID.ValueString()
-		createDB  = false
-		superUser = false
+		// the role flags all default to false in the schema, and ValueBool reports false for a
+		// null or unknown value anyway, so they can be read directly.
+		createDB   = data.CreateDB.ValueBool()
+		superUser  = data.SuperUser.ValueBool()
+		createUser = data.CreateUser.ValueBool()
 	)
-
-	if !(data.CreateDB.IsUnknown() || data.CreateDB.IsNull()) {
-		createDB = data.CreateDB.ValueBool()
-	}
-
-	if !(data.SuperUser.IsUnknown() || data.CreateDB.IsNull()) {
-		superUser = data.SuperUser.ValueBool()
-	}
 
 	if len(username) == 0 {
 		resp.Diagnostics.AddError("Username is required", "Username is required")
@@ -141,7 +151,7 @@ func (r *ClusterUserResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createdUser, err := r.client.CreateCluserUser(ctx, nsID, username, password, createDB, superUser)
+	createdUser, err := r.client.CreateClusterUser(ctx, nsID, username, password, createDB, superUser, createUser)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create cluster user", err.Error())
 		return
@@ -178,6 +188,8 @@ func clusterUserToDataModel(clusterNsID uuid.UUID, user *apigen_mgmtv2.DBUser, d
 	data.ClusterID = types.StringValue(clusterNsID.String())
 	data.CreateDB = types.BoolValue(user.Usecreatedb)
 	data.SuperUser = types.BoolValue(user.Usesuper)
+	data.CreateUser = types.BoolValue(user.Usecreateuser)
+	data.CanLogin = types.BoolValue(user.Canlogin)
 	data.Username = types.StringValue(user.Username)
 }
 
@@ -252,6 +264,17 @@ func (r *ClusterUserResource) Update(ctx context.Context, req resource.UpdateReq
 		resp.Diagnostics.AddError(
 			"Cannot update immutable field",
 			fmt.Sprintf("SuperUser cannot be updated, previous: %s, new: %s", state.SuperUser, data.SuperUser),
+		)
+		return
+	}
+
+	// the API can only update a password, so the role flags are fixed once the user exists.
+	// Recreating the user would drop it along with everything granted to it, so this is
+	// reported as an error rather than planned as a replacement.
+	if data.CreateUser != state.CreateUser {
+		resp.Diagnostics.AddError(
+			"Cannot update immutable field",
+			fmt.Sprintf("CreateUser cannot be updated, previous: %s, new: %s", state.CreateUser, data.CreateUser),
 		)
 		return
 	}

@@ -124,6 +124,9 @@ func TestClusterResource_Standard(t *testing.T) {
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "password", "test-password"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "create_db", "true"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "super_user", "true"),
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "create_user", "true"),
+					// reported by the platform, never configured: CREATE USER implies LOGIN.
+					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.test", "can_login", "true"),
 				),
 			},
 			// import user
@@ -304,12 +307,13 @@ resource "risingwavecloud_cluster" "test" {
 func testClusterUser(password string) string {
 	return fmt.Sprintf(`
 resource "risingwavecloud_cluster_user" "test" {
-	cluster_id = risingwavecloud_cluster.test.id
-	username   = "test-user"
-	password   = "%s"
-	super_user = true
-	create_db  = true
-}	
+	cluster_id  = risingwavecloud_cluster.test.id
+	username    = "test-user"
+	password    = "%s"
+	super_user  = true
+	create_db   = true
+	create_user = true
+}
 `, password)
 }
 

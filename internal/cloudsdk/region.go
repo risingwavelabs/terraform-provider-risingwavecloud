@@ -91,7 +91,7 @@ type RegionServiceClientInterface interface {
 
 	GetClusterUsers(ctx context.Context, nsID uuid.UUID) ([]apigen_mgmtv2.DBUser, error)
 
-	CreateCluserUser(ctx context.Context, nsID uuid.UUID, params apigen_mgmtv2.CreateDBUserRequestBody) (*apigen_mgmtv2.DBUser, error)
+	CreateClusterUser(ctx context.Context, nsID uuid.UUID, params apigen_mgmtv2.CreateDBUserRequestBody) (*apigen_mgmtv2.DBUser, error)
 
 	UpdateClusterUserPassword(ctx context.Context, nsID uuid.UUID, username, password string) error
 
@@ -416,7 +416,7 @@ func (c *RegionServiceClient) GetClusterUsers(ctx context.Context, nsID uuid.UUI
 	return rtn, nil
 }
 
-func (c *RegionServiceClient) CreateCluserUser(ctx context.Context, nsID uuid.UUID, params apigen_mgmtv2.CreateDBUserRequestBody) (*apigen_mgmtv2.DBUser, error) {
+func (c *RegionServiceClient) CreateClusterUser(ctx context.Context, nsID uuid.UUID, params apigen_mgmtv2.CreateDBUserRequestBody) (*apigen_mgmtv2.DBUser, error) {
 	res, err := c.mgmtV2Client.PostTenantsNsIdDatabaseUsersWithResponse(ctx, nsID, params)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call API to create cluster user")
