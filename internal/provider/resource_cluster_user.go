@@ -360,28 +360,33 @@ func (r *ClusterUserResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	// Which password to send, if any:
+	// Which password to send, if any. A nil result means there is nothing to send, which is
+	// not the same as an empty one.
 	//
 	//   - the write-only value is invisible to terraform, so its version argument is the only
 	//     signal that it changed
 	//   - the plain attribute changing to null means the practitioner moved to password_wo,
 	//     not that they want an empty password
+	var newPassword *string
+
 	switch {
 	case !data.PasswordWOVersion.Equal(state.PasswordWOVersion):
 		password := readWriteOnlyPassword(ctx, req.Config, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		if len(password) == 0 {
-			resp.Diagnostics.AddError("Password is required", "password_wo cannot be empty")
-			return
-		}
-		if err := r.client.UpdateClusterUserPassword(ctx, stateNsID, stateUsername, password); err != nil {
-			resp.Diagnostics.AddError("Unable to update cluster user password", err.Error())
-			return
-		}
+		newPassword = &password
 	case !data.Password.IsNull() && !data.Password.Equal(state.Password):
-		if err := r.client.UpdateClusterUserPassword(ctx, stateNsID, stateUsername, data.Password.ValueString()); err != nil {
+		password := data.Password.ValueString()
+		newPassword = &password
+	}
+
+	if newPassword != nil {
+		if len(*newPassword) == 0 {
+			resp.Diagnostics.AddError("Password is required", "The new password cannot be empty")
+			return
+		}
+		if err := r.client.UpdateClusterUserPassword(ctx, stateNsID, stateUsername, *newPassword); err != nil {
 			resp.Diagnostics.AddError("Unable to update cluster user password", err.Error())
 			return
 		}
