@@ -61,6 +61,13 @@ var (
 		Interval: 3 * time.Second,
 	}
 
+	// Changing the allowed IAM roles does not rescale anything, it only reconfigures access,
+	// so it settles in seconds rather than minutes.
+	PollingAllowedIamRoleOperation = wait.PollingParams{
+		Timeout:  5 * time.Minute,
+		Interval: 2 * time.Second,
+	}
+
 	// A rescale request is accepted asynchronously: the cluster keeps reporting the healthy
 	// status for a short while before the rescale actually starts. Wait for that transition
 	// so that waiting for "healthy" does not return before the rescale even began.
@@ -112,6 +119,12 @@ type RegionServiceClientInterface interface {
 	UpdateResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error)
 
 	DeleteResourceGroupAwait(ctx context.Context, nsID uuid.UUID, resourceGroup string) error
+
+	GetAllowedIamRoles(ctx context.Context, nsID uuid.UUID) ([]string, error)
+
+	AddAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error
+
+	RemoveAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error
 }
 
 type RegionServiceClient struct {
@@ -663,4 +676,85 @@ func (c *RegionServiceClient) DeleteResourceGroupAwait(ctx context.Context, nsID
 		}
 		return false, nil
 	}, PollingResourceGroupOperation)
+}
+
+// allowedIamRoles reports the ARNs currently permitted to assume a role into the customer's
+// account, together with the state the platform is in while applying a change.
+func (c *RegionServiceClient) allowedIamRoles(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.GetTenantAllowedIamRolesResponseBody, error) {
+	res, err := c.mgmtV2Client.GetTenantsNsIdAllowedIamRolesWithResponse(ctx, nsID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call API to get the allowed IAM roles")
+	}
+	if res.StatusCode() == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrClusterNotFound, "cluster %s not found", nsID)
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusOK, string(res.Body)); err != nil {
+		return nil, err
+	}
+	return res.JSON200, nil
+}
+
+func (c *RegionServiceClient) GetAllowedIamRoles(ctx context.Context, nsID uuid.UUID) ([]string, error) {
+	roles, err := c.allowedIamRoles(ctx, nsID)
+	if err != nil {
+		return nil, err
+	}
+	return roles.RoleArns, nil
+}
+
+// waitAllowedIamRoles waits for an accepted change to be applied, and reports what the
+// platform ended up with. `Failed` is terminal: polling on would only spend the whole budget
+// to report a timeout instead of the failure the platform already knows about.
+func (c *RegionServiceClient) waitAllowedIamRoles(ctx context.Context, nsID uuid.UUID) error {
+	if err := wait.Poll(ctx, func() (bool, error) {
+		roles, err := c.allowedIamRoles(ctx, nsID)
+		if err != nil {
+			return false, err
+		}
+		switch roles.Status {
+		case apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusReady:
+			return true, nil
+		case apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusFailed:
+			return false, errors.Errorf("the platform failed to apply the allowed IAM roles of cluster %s", nsID)
+		default:
+			return false, nil
+		}
+	}, PollingAllowedIamRoleOperation); err != nil {
+		return errors.Wrap(err, "failed to wait for the allowed IAM roles to be applied")
+	}
+	return nil
+}
+
+func (c *RegionServiceClient) AddAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
+	res, err := c.mgmtV2Client.PostTenantsNsIdAllowedIamRolesWithResponse(ctx, nsID, apigen_mgmtv2.TenantAllowedIamRoleRequestBody{
+		RoleArn: roleArn,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to call API to allow the IAM role %s", roleArn)
+	}
+	// the role is already allowed, which is the state the caller asked for
+	if res.StatusCode() == http.StatusConflict {
+		return nil
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
+	}
+	return c.waitAllowedIamRoles(ctx, nsID)
+}
+
+func (c *RegionServiceClient) RemoveAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
+	res, err := c.mgmtV2Client.DeleteTenantsNsIdAllowedIamRolesWithResponse(ctx, nsID, apigen_mgmtv2.TenantAllowedIamRoleRequestBody{
+		RoleArn: roleArn,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to call API to remove the IAM role %s", roleArn)
+	}
+	// already gone, which is the state the caller asked for
+	if res.StatusCode() == http.StatusNotFound {
+		return nil
+	}
+	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
+		return err
+	}
+	return c.waitAllowedIamRoles(ctx, nsID)
 }

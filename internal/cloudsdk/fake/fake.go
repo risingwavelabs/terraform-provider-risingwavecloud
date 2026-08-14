@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -22,6 +23,9 @@ import (
 // defaultResourceGroup is the resource group that every cluster has, it is not tracked in
 // the fake resource group state because its lifecycle is bound to the cluster.
 const defaultResourceGroup = "default"
+
+// allowedIamRoleArnPattern mirrors the format the platform enforces.
+var allowedIamRoleArnPattern = regexp.MustCompile(`^arn:aws:iam::\d{12}:role/\S+$`)
 
 func UseFakeBackend() bool {
 	return len(os.Getenv("RWC_MOCK")) != 0
@@ -564,5 +568,41 @@ func (acc *FakeCloudClient) DeleteResourceGroupAwait(ctx context.Context, cluste
 		return err
 	}
 	c.DeleteResourceGroup(resourceGroup)
+	return nil
+}
+
+func (acc *FakeCloudClient) GetAllowedIamRoles(ctx context.Context, clusterNsID uuid.UUID) ([]string, error) {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetAllowedIamRoles(), nil
+}
+
+func (acc *FakeCloudClient) AddAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	// the platform validates the shape of the ARN before anything else
+	if !allowedIamRoleArnPattern.MatchString(roleArn) {
+		return errors.Errorf("validate arn failed: invalid target format, expected format: arn:aws:iam::{account}:role/{role_name}")
+	}
+	c.AddAllowedIamRole(roleArn)
+	return nil
+}
+
+func (acc *FakeCloudClient) RemoveAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error {
+	debugFuncCaller()
+
+	c, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	c.RemoveAllowedIamRole(roleArn)
 	return nil
 }

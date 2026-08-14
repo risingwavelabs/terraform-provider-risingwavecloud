@@ -308,3 +308,29 @@ terraform import risingwavecloud_cluster_user.test <cluster_id>.<username>
   ~> **Note:** The password is set to NULL in the state file after the import. Terraform will show a password change
   when you run ` + "`" + `terraform plan` + "`" + `. 
 `
+
+var clusterAllowedIamRolesMarkdownDescription = `
+The IAM roles allowed to reach a RisingWave cluster's resources through AWS
+[assume role](https://docs.risingwave.com/cloud/iam-role-assume), known as **Allowed Principals**
+in the RisingWave Cloud console, under **Network Access**.
+
+Granting a role here lets RisingWave Cloud obtain temporary credentials by calling ` + "`" + `sts:AssumeRole` + "`" + `
+on a role in your AWS account, so that no long-lived access key has to be stored.
+
+!> **This resource owns the whole list.** An ARN added anywhere else, in the console for example,
+is removed on the next apply. That is deliberate for an access control list: an entry nobody
+declared is drift worth correcting rather than tolerating. Import the cluster's existing list
+first if it already has principals you want to keep.
+
+~> **Note:** The mechanism is specific to AWS, so this resource applies to clusters running there.
+Each ARN must have the form ` + "`" + `arn:aws:iam::{account}:role/{role_name}` + "`" + `, which the provider
+checks while planning.
+
+## Import the allowed principals of a cluster
+
+The resource is identified by the cluster it belongs to, since a cluster has exactly one list:
+
+` + "```shell" + `
+terraform import risingwavecloud_cluster_allowed_iam_roles.test <cluster_id>
+` + "```" + `
+`

@@ -98,6 +98,20 @@ type CloudClientInterface interface {
 	// DeleteResourceGroupAwait deletes a resource group and waits for the deletion to complete. it
 	// returns nil if the resource group is deleted successfully or not found.
 	DeleteResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string) error
+
+	/* Allowed IAM Roles */
+
+	// GetAllowedIamRoles returns the IAM role ARNs allowed to access the cluster's resources
+	// through the assume role mechanism.
+	GetAllowedIamRoles(ctx context.Context, clusterNsID uuid.UUID) ([]string, error)
+
+	// AddAllowedIamRoleAwait allows an IAM role and waits for the change to be applied. it
+	// returns nil if the role is already allowed.
+	AddAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error
+
+	// RemoveAllowedIamRoleAwait disallows an IAM role and waits for the change to be applied.
+	// it returns nil if the role is not allowed in the first place.
+	RemoveAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error
 }
 
 type CloudClient struct {
@@ -536,4 +550,28 @@ func (c *CloudClient) DeleteResourceGroupAwait(ctx context.Context, clusterNsID 
 		return err
 	}
 	return rs.DeleteResourceGroupAwait(ctx, info.NsId, resourceGroup)
+}
+
+func (c *CloudClient) GetAllowedIamRoles(ctx context.Context, clusterNsID uuid.UUID) ([]string, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.GetAllowedIamRoles(ctx, info.NsId)
+}
+
+func (c *CloudClient) AddAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.AddAllowedIamRoleAwait(ctx, info.NsId, roleArn)
+}
+
+func (c *CloudClient) RemoveAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.RemoveAllowedIamRoleAwait(ctx, info.NsId, roleArn)
 }
