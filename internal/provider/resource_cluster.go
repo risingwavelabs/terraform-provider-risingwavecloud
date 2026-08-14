@@ -194,7 +194,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"tier": schema.StringAttribute{
-				MarkdownDescription: "The tier of your RisingWave cluster. Supported values: `Standard`, `Invited`, `BYOC`. " +
+				MarkdownDescription: "The tier of your RisingWave cluster, for example `Standard`, `Invited` or `BYOC`. " +
+					"Which tiers exist, and which of them your organisation may use, is decided by the platform; " +
+					"an unavailable one is rejected when the cluster is created. " +
 					"Defaults to `Standard` for SaaS clusters and `BYOC` when a `byoc` block is present. " +
 					"Cannot be changed after creation.",
 				Optional: true,
@@ -575,18 +577,23 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 			data.Tier = types.StringValue(string(apigen_mgmtv2.TierIdStandard))
 		}
 	} else {
+		// Only the coherence between `tier` and the `byoc` block is checked here. Which tiers
+		// exist, and which of them an organisation may use, is the platform's to decide and it
+		// answers with a clear error: a list kept here would only go stale, and it did — it
+		// rejected the `Test` tier that the platform has been offering all along.
 		tier := apigen_mgmtv2.TierId(data.Tier.ValueString())
 		if isBYOC && tier != apigen_mgmtv2.TierIdBYOC {
 			resp.Diagnostics.AddError(
 				"Invalid tier for BYOC cluster",
-				fmt.Sprintf("BYOC clusters must use the BYOC tier, got: %s", tier),
+				fmt.Sprintf("A cluster with a byoc block must use the BYOC tier, got: %s", tier),
 			)
 			return
 		}
-		if !isBYOC && tier != apigen_mgmtv2.TierIdStandard && tier != apigen_mgmtv2.TierIdInvited {
+		if !isBYOC && tier == apigen_mgmtv2.TierIdBYOC {
 			resp.Diagnostics.AddError(
-				"Invalid tier for SaaS cluster",
-				fmt.Sprintf("SaaS clusters must use either Standard or Invited tier, got: %s", tier),
+				"Missing byoc block",
+				"The BYOC tier describes a cluster running in your own environment, so it needs a byoc "+
+					"block naming that environment.",
 			)
 			return
 		}
@@ -740,13 +747,9 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	if cluster.Tier != apigen_mgmtv2.TierIdStandard && cluster.Tier != apigen_mgmtv2.TierIdInvited && cluster.Tier != apigen_mgmtv2.TierIdBYOC {
-		resp.Diagnostics.AddError(
-			"Invalid tier",
-			"Supported tiers are: Standard, Invited, BYOC",
-		)
-		return
-	}
+	// The tier the platform reports is recorded as it comes. Refusing to read a cluster because
+	// of its tier left no way out: the cluster exists, so every plan and every refresh failed
+	// until it was removed from the state by hand.
 	var byocCluster *apigen_mgmtv2.ManagedCluster
 	if cluster.ClusterName != "" {
 		byocCluster, err = r.client.GetBYOCCluster(ctx, cluster.Region, cluster.ClusterName)

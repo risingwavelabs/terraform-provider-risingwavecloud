@@ -126,7 +126,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 ### Optional
 
 - `byoc` (Attributes) The BYOC (Bring Your Own Cloud) configuration of the cluster. These fields are only used in BYOC clusters. (see [below for nested schema](#nestedatt--byoc))
-- `tier` (String) The tier of your RisingWave cluster. Supported values: `Standard`, `Invited`, `BYOC`. Defaults to `Standard` for SaaS clusters and `BYOC` when a `byoc` block is present. Cannot be changed after creation.
+- `tier` (String) The tier of your RisingWave cluster, for example `Standard`, `Invited` or `BYOC`. Which tiers exist, and which of them your organisation may use, is decided by the platform; an unavailable one is rejected when the cluster is created. Defaults to `Standard` for SaaS clusters and `BYOC` when a `byoc` block is present. Cannot be changed after creation.
 - `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registry of RisingWave Labs.The newest stable version will be used if this field is not present.
 
 ### Read-Only
