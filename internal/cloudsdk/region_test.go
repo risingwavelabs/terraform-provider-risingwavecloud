@@ -80,23 +80,27 @@ func TestAllowedIamRoleMutationWaitsForReady(t *testing.T) {
 		PollingAllowedIamRoleOperation = previousPolling
 	})
 
+	const roleArn = "arn:aws:iam::123456789012:role/test"
+
 	tests := []struct {
-		name   string
-		method string
-		mutate func(context.Context, *RegionServiceClient, uuid.UUID) error
+		name    string
+		method  string
+		present bool // whether the role is on the list before the mutation
+		mutate  func(context.Context, *RegionServiceClient, uuid.UUID) error
 	}{
 		{
 			name:   "add",
 			method: http.MethodPost,
 			mutate: func(ctx context.Context, client *RegionServiceClient, nsID uuid.UUID) error {
-				return client.AddAllowedIamRoleAwait(ctx, nsID, "arn:aws:iam::123456789012:role/test")
+				return client.AddAllowedIamRoleAwait(ctx, nsID, roleArn)
 			},
 		},
 		{
-			name:   "remove",
-			method: http.MethodDelete,
+			name:    "remove",
+			method:  http.MethodDelete,
+			present: true,
 			mutate: func(ctx context.Context, client *RegionServiceClient, nsID uuid.UUID) error {
-				return client.RemoveAllowedIamRoleAwait(ctx, nsID, "arn:aws:iam::123456789012:role/test")
+				return client.RemoveAllowedIamRoleAwait(ctx, nsID, roleArn)
 			},
 		},
 	}
@@ -106,6 +110,7 @@ func TestAllowedIamRoleMutationWaitsForReady(t *testing.T) {
 			nsID := uuid.Must(uuid.NewRandom())
 			var methods []string
 			getCalls := 0
+			present := tt.present
 
 			client := newTestRegionServiceClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/tenants/"+nsID.String()+"/allowedIamRoles", r.URL.Path)
@@ -117,9 +122,13 @@ func TestAllowedIamRoleMutationWaitsForReady(t *testing.T) {
 					if getCalls == 1 {
 						status = apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusPending
 					}
+					roleArns := []string{}
+					if present {
+						roleArns = append(roleArns, roleArn)
+					}
 					w.Header().Set("Content-Type", "application/json")
 					require.NoError(t, json.NewEncoder(w).Encode(apigen_mgmtv2.GetTenantAllowedIamRolesResponseBody{
-						RoleArns: []string{},
+						RoleArns: roleArns,
 						Status:   status,
 					}))
 					return
@@ -127,6 +136,7 @@ func TestAllowedIamRoleMutationWaitsForReady(t *testing.T) {
 
 				assert.Equal(t, tt.method, r.Method)
 				assert.GreaterOrEqual(t, getCalls, 2, "the policy must be ready before the mutation")
+				present = !tt.present
 				w.WriteHeader(http.StatusAccepted)
 			}))
 
@@ -134,6 +144,51 @@ func TestAllowedIamRoleMutationWaitsForReady(t *testing.T) {
 			assert.Equal(t, []string{http.MethodGet, http.MethodGet, tt.method, http.MethodGet}, methods)
 		})
 	}
+}
+
+// A status of `Ready` is not on its own proof that a change has landed: a read that happens
+// before the platform has moved the status answers with the list as it was. The wait therefore
+// looks at the membership, so a stale answer keeps it polling instead of finishing early.
+func TestAllowedIamRoleMutationWaitsForTheListToChange(t *testing.T) {
+	previousPolling := PollingAllowedIamRoleOperation
+	PollingAllowedIamRoleOperation = wait.PollingParams{
+		Timeout:  time.Second,
+		Interval: time.Millisecond,
+	}
+	t.Cleanup(func() {
+		PollingAllowedIamRoleOperation = previousPolling
+	})
+
+	const roleArn = "arn:aws:iam::123456789012:role/test"
+
+	nsID := uuid.Must(uuid.NewRandom())
+	getsAfterPost := 0
+	posted := false
+
+	client := newTestRegionServiceClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			posted = true
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+
+		roleArns := []string{}
+		if posted {
+			getsAfterPost++
+			// the first read after the request is accepted still reports the old list
+			if getsAfterPost > 1 {
+				roleArns = append(roleArns, roleArn)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(apigen_mgmtv2.GetTenantAllowedIamRolesResponseBody{
+			RoleArns: roleArns,
+			Status:   apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusReady,
+		}))
+	}))
+
+	require.NoError(t, client.AddAllowedIamRoleAwait(context.Background(), nsID, roleArn))
+	assert.Greater(t, getsAfterPost, 1, "the stale answer must not end the wait")
 }
 
 func TestAllowedIamRoleMutationStopsOnFailedStatus(t *testing.T) {

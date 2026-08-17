@@ -3,6 +3,7 @@ package cloudsdk
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -702,34 +703,65 @@ func (c *RegionServiceClient) GetAllowedIamRoles(ctx context.Context, nsID uuid.
 	return roles.RoleArns, nil
 }
 
-// waitAllowedIamRoles waits until the IAM policy can accept another change. `Failed` is
-// terminal: polling on would only spend the whole budget to report a timeout instead of the
-// failure the platform already knows about.
+// pollAllowedIamRoles checks once before polling, since wait.Poll sleeps for a whole interval
+// before its first attempt and every mutation would otherwise pay for it twice.
+func pollAllowedIamRoles(ctx context.Context, check func() (bool, error)) error {
+	if done, err := check(); err != nil || done {
+		return err
+	}
+	return wait.Poll(ctx, check, PollingAllowedIamRoleOperation)
+}
+
+// readyAllowedIamRoles reports whether the policy has settled, and gives up on `Failed`:
+// polling on would only spend the whole budget to report a timeout instead of the failure the
+// platform already knows about.
+func (c *RegionServiceClient) readyAllowedIamRoles(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.GetTenantAllowedIamRolesResponseBody, bool, error) {
+	roles, err := c.allowedIamRoles(ctx, nsID)
+	if err != nil {
+		return nil, false, err
+	}
+	switch roles.Status {
+	case apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusReady:
+		return roles, true, nil
+	case apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusFailed:
+		return nil, false, errors.Errorf("the platform failed to apply the allowed IAM roles of cluster %s", nsID)
+	default:
+		return roles, false, nil
+	}
+}
+
+// waitAllowedIamRoles waits until the IAM policy can accept another change. The platform
+// answers a request that overlaps another with a 500, so this runs before every mutation.
 func (c *RegionServiceClient) waitAllowedIamRoles(ctx context.Context, nsID uuid.UUID) error {
-	ready := func() (bool, error) {
-		roles, err := c.allowedIamRoles(ctx, nsID)
-		if err != nil {
+	if err := pollAllowedIamRoles(ctx, func() (bool, error) {
+		_, ready, err := c.readyAllowedIamRoles(ctx, nsID)
+		return ready, err
+	}); err != nil {
+		return errors.Wrap(err, "failed to wait for the allowed IAM roles to settle")
+	}
+	return nil
+}
+
+// waitAllowedIamRoleApplied waits until the list itself shows the change, not merely until the
+// status says the policy has settled.
+//
+// The two are not the same. A check that runs right after a request is accepted can read a
+// status that has not moved yet, and answer with the list as it was. The platform updates the
+// record before the status today, so this is a belt rather than a fix, but membership is the
+// thing the caller actually asked about and it does not depend on that ordering holding.
+func (c *RegionServiceClient) waitAllowedIamRoleApplied(ctx context.Context, nsID uuid.UUID, roleArn string, want bool) error {
+	if err := pollAllowedIamRoles(ctx, func() (bool, error) {
+		roles, ready, err := c.readyAllowedIamRoles(ctx, nsID)
+		if err != nil || !ready {
 			return false, err
 		}
-		switch roles.Status {
-		case apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusReady:
-			return true, nil
-		case apigen_mgmtv2.GetTenantAllowedIamRolesResponseBodyStatusFailed:
-			return false, errors.Errorf("the platform failed to apply the allowed IAM roles of cluster %s", nsID)
-		default:
-			return false, nil
+		return slices.Contains(roles.RoleArns, roleArn) == want, nil
+	}); err != nil {
+		verb := "allowed"
+		if !want {
+			verb = "removed"
 		}
-	}
-
-	// Check immediately so a ready policy does not incur a polling interval before every
-	// mutation. If another operation is still in flight, keep polling until it settles.
-	if done, err := ready(); err != nil {
-		return errors.Wrap(err, "failed to wait for the allowed IAM roles to be applied")
-	} else if done {
-		return nil
-	}
-	if err := wait.Poll(ctx, ready, PollingAllowedIamRoleOperation); err != nil {
-		return errors.Wrap(err, "failed to wait for the allowed IAM roles to be applied")
+		return errors.Wrapf(err, "failed to wait for the IAM role %s to be %s", roleArn, verb)
 	}
 	return nil
 }
@@ -751,7 +783,7 @@ func (c *RegionServiceClient) AddAllowedIamRoleAwait(ctx context.Context, nsID u
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
 		return err
 	}
-	return c.waitAllowedIamRoles(ctx, nsID)
+	return c.waitAllowedIamRoleApplied(ctx, nsID, roleArn, true)
 }
 
 func (c *RegionServiceClient) RemoveAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
@@ -771,5 +803,5 @@ func (c *RegionServiceClient) RemoveAllowedIamRoleAwait(ctx context.Context, nsI
 	if err := apigen.ExpectStatusCodeWithMessage(res, http.StatusAccepted, string(res.Body)); err != nil {
 		return err
 	}
-	return c.waitAllowedIamRoles(ctx, nsID)
+	return c.waitAllowedIamRoleApplied(ctx, nsID, roleArn, false)
 }
