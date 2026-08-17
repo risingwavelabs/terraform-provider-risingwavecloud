@@ -702,11 +702,11 @@ func (c *RegionServiceClient) GetAllowedIamRoles(ctx context.Context, nsID uuid.
 	return roles.RoleArns, nil
 }
 
-// waitAllowedIamRoles waits for an accepted change to be applied, and reports what the
-// platform ended up with. `Failed` is terminal: polling on would only spend the whole budget
-// to report a timeout instead of the failure the platform already knows about.
+// waitAllowedIamRoles waits until the IAM policy can accept another change. `Failed` is
+// terminal: polling on would only spend the whole budget to report a timeout instead of the
+// failure the platform already knows about.
 func (c *RegionServiceClient) waitAllowedIamRoles(ctx context.Context, nsID uuid.UUID) error {
-	if err := wait.Poll(ctx, func() (bool, error) {
+	ready := func() (bool, error) {
 		roles, err := c.allowedIamRoles(ctx, nsID)
 		if err != nil {
 			return false, err
@@ -719,13 +719,25 @@ func (c *RegionServiceClient) waitAllowedIamRoles(ctx context.Context, nsID uuid
 		default:
 			return false, nil
 		}
-	}, PollingAllowedIamRoleOperation); err != nil {
+	}
+
+	// Check immediately so a ready policy does not incur a polling interval before every
+	// mutation. If another operation is still in flight, keep polling until it settles.
+	if done, err := ready(); err != nil {
+		return errors.Wrap(err, "failed to wait for the allowed IAM roles to be applied")
+	} else if done {
+		return nil
+	}
+	if err := wait.Poll(ctx, ready, PollingAllowedIamRoleOperation); err != nil {
 		return errors.Wrap(err, "failed to wait for the allowed IAM roles to be applied")
 	}
 	return nil
 }
 
 func (c *RegionServiceClient) AddAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
+	if err := c.waitAllowedIamRoles(ctx, nsID); err != nil {
+		return err
+	}
 	res, err := c.mgmtV2Client.PostTenantsNsIdAllowedIamRolesWithResponse(ctx, nsID, apigen_mgmtv2.TenantAllowedIamRoleRequestBody{
 		RoleArn: roleArn,
 	})
@@ -743,6 +755,9 @@ func (c *RegionServiceClient) AddAllowedIamRoleAwait(ctx context.Context, nsID u
 }
 
 func (c *RegionServiceClient) RemoveAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
+	if err := c.waitAllowedIamRoles(ctx, nsID); err != nil {
+		return err
+	}
 	res, err := c.mgmtV2Client.DeleteTenantsNsIdAllowedIamRolesWithResponse(ctx, nsID, apigen_mgmtv2.TenantAllowedIamRoleRequestBody{
 		RoleArn: roleArn,
 	})
