@@ -1,6 +1,7 @@
 package fake
 
 import (
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -22,14 +23,18 @@ type ClusterState struct {
 
 	// resource group name -> resource group
 	resourceGroups map[string]*apigen_mgmtv2.ResourceGroupDetails
+
+	// IAM role ARNs allowed to assume a role into the customer's account
+	allowedIamRoles map[string]bool
 }
 
 func NewClusterState(tenant *apigen_mgmtv2.Tenant) *ClusterState {
 	return &ClusterState{
-		tenant:         tenant,
-		users:          map[string]*apigen_mgmtv2.DBUser{},
-		privateLinks:   map[string]*apigen_mgmtv2.PrivateLink{},
-		resourceGroups: map[string]*apigen_mgmtv2.ResourceGroupDetails{},
+		tenant:          tenant,
+		users:           map[string]*apigen_mgmtv2.DBUser{},
+		privateLinks:    map[string]*apigen_mgmtv2.PrivateLink{},
+		resourceGroups:  map[string]*apigen_mgmtv2.ResourceGroupDetails{},
+		allowedIamRoles: map[string]bool{},
 	}
 }
 
@@ -225,4 +230,30 @@ func init() {
 
 func GetFakerState() *GlobalState {
 	return &state
+}
+
+func (c *ClusterState) GetAllowedIamRoles() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	rtn := make([]string, 0, len(c.allowedIamRoles))
+	for arn := range c.allowedIamRoles {
+		rtn = append(rtn, arn)
+	}
+	sort.Strings(rtn)
+	return rtn
+}
+
+func (c *ClusterState) AddAllowedIamRole(roleArn string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.allowedIamRoles[roleArn] = true
+}
+
+func (c *ClusterState) RemoveAllowedIamRole(roleArn string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.allowedIamRoles, roleArn)
 }

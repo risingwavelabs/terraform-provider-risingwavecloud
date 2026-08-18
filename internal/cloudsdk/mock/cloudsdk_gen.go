@@ -38,6 +38,20 @@ func (m *MockCloudClientInterface) EXPECT() *MockCloudClientInterfaceMockRecorde
 	return m.recorder
 }
 
+// AddAllowedIamRoleAwait mocks base method.
+func (m *MockCloudClientInterface) AddAllowedIamRoleAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddAllowedIamRoleAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddAllowedIamRoleAwait indicates an expected call of AddAllowedIamRoleAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) AddAllowedIamRoleAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddAllowedIamRoleAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).AddAllowedIamRoleAwait), arg0, arg1, arg2)
+}
+
 // CreateClusterAwait mocks base method.
 func (m *MockCloudClientInterface) CreateClusterAwait(arg0 context.Context, arg1 string, arg2 apigen0.TenantRequestRequestBody) (*apigen0.Tenant, error) {
 	m.ctrl.T.Helper()
@@ -152,6 +166,21 @@ func (m *MockCloudClientInterface) DeleteResourceGroupAwait(arg0 context.Context
 func (mr *MockCloudClientInterfaceMockRecorder) DeleteResourceGroupAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroupAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DeleteResourceGroupAwait), arg0, arg1, arg2)
+}
+
+// GetAllowedIamRoles mocks base method.
+func (m *MockCloudClientInterface) GetAllowedIamRoles(arg0 context.Context, arg1 uuid.UUID) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllowedIamRoles", arg0, arg1)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllowedIamRoles indicates an expected call of GetAllowedIamRoles.
+func (mr *MockCloudClientInterfaceMockRecorder) GetAllowedIamRoles(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllowedIamRoles", reflect.TypeOf((*MockCloudClientInterface)(nil).GetAllowedIamRoles), arg0, arg1)
 }
 
 // GetAvailableComponentTypes mocks base method.
@@ -316,6 +345,20 @@ func (m *MockCloudClientInterface) Ping(arg0 context.Context) error {
 func (mr *MockCloudClientInterfaceMockRecorder) Ping(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockCloudClientInterface)(nil).Ping), arg0)
+}
+
+// RemoveAllowedIamRoleAwait mocks base method.
+func (m *MockCloudClientInterface) RemoveAllowedIamRoleAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveAllowedIamRoleAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveAllowedIamRoleAwait indicates an expected call of RemoveAllowedIamRoleAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) RemoveAllowedIamRoleAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveAllowedIamRoleAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).RemoveAllowedIamRoleAwait), arg0, arg1, arg2)
 }
 
 // UpdateClusterImageByNsIDAwait mocks base method.
