@@ -18,9 +18,10 @@ const (
 // shrinking it, importing it, and emptying it.
 func TestClusterAllowedIamRolesResource(t *testing.T) {
 	clusterName := fmt.Sprintf("tf%siam", getTestNamespace(t))
+	spec := testClusterSpec(t, initCloudSDK(t))
 
 	config := func(arns ...string) string {
-		return testResourceGroupCluster(clusterName, 1) + testAllowedIamRoles(arns...)
+		return spec.terraform(clusterName, 1) + testAllowedIamRoles(arns...)
 	}
 
 	resource.Test(t, resource.TestCase{

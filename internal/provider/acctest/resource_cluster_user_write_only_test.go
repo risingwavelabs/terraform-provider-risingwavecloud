@@ -13,6 +13,7 @@ import (
 // on the main one.
 func TestClusterUserWriteOnlyPassword(t *testing.T) {
 	clusterName := fmt.Sprintf("tf%swopw", getTestNamespace(t))
+	spec := testClusterSpec(t, initCloudSDK(t))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -23,7 +24,7 @@ func TestClusterUserWriteOnlyPassword(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create with a write-only password
 			{
-				Config: testResourceGroupCluster(clusterName, 1) + testClusterUserWriteOnly("first-password", 1),
+				Config: spec.terraform(clusterName, 1) + testClusterUserWriteOnly("first-password", 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("risingwavecloud_cluster_user.wo", "id"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.wo", "username", "wo-user"),
@@ -36,7 +37,7 @@ func TestClusterUserWriteOnlyPassword(t *testing.T) {
 			},
 			// Rotating the password means changing the value and its version together
 			{
-				Config: testResourceGroupCluster(clusterName, 1) + testClusterUserWriteOnly("second-password", 2),
+				Config: spec.terraform(clusterName, 1) + testClusterUserWriteOnly("second-password", 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster_user.wo", "password_wo_version", "2"),
 					resource.TestCheckNoResourceAttr("risingwavecloud_cluster_user.wo", "password_wo"),
@@ -45,7 +46,7 @@ func TestClusterUserWriteOnlyPassword(t *testing.T) {
 			// A new value without a new version is deliberately ignored: terraform cannot see
 			// the change, so there is nothing to plan and the step must stay empty.
 			{
-				Config:   testResourceGroupCluster(clusterName, 1) + testClusterUserWriteOnly("third-password", 2),
+				Config:   spec.terraform(clusterName, 1) + testClusterUserWriteOnly("third-password", 2),
 				PlanOnly: true,
 			},
 		},
