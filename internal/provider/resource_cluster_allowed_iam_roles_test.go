@@ -4,9 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,4 +62,45 @@ func TestRoleArnSetValidator(t *testing.T) {
 	}, resp)
 
 	assert.True(t, resp.Diagnostics.HasError(), "a bad element anywhere in the set must be reported")
+}
+
+// fakeAllowedIamRolesClient records the order of the calls a change makes.
+type fakeAllowedIamRolesClient struct {
+	cloudsdk.CloudClientInterface
+
+	current []string
+	calls   []string
+}
+
+func (c *fakeAllowedIamRolesClient) GetAllowedIamRoles(ctx context.Context, nsID uuid.UUID) ([]string, error) {
+	return c.current, nil
+}
+
+func (c *fakeAllowedIamRolesClient) AddAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
+	c.calls = append(c.calls, "add "+roleArn)
+	return nil
+}
+
+func (c *fakeAllowedIamRolesClient) RemoveAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error {
+	c.calls = append(c.calls, "remove "+roleArn)
+	return nil
+}
+
+// Replacing the list must free the outgoing entries before claiming room for the incoming
+// ones: holding both at once runs into the platform's maximum, and it would leave the roles on
+// their way out allowed alongside their replacements.
+func TestApplyAllowedIamRolesRemovesBeforeAdding(t *testing.T) {
+	const (
+		keep = "arn:aws:iam::123456789012:role/keep"
+		gone = "arn:aws:iam::123456789012:role/gone"
+		want = "arn:aws:iam::123456789012:role/want"
+	)
+
+	client := &fakeAllowedIamRolesClient{current: []string{keep, gone}}
+	r := &ClusterAllowedIamRolesResource{client: client}
+
+	err := r.applyAllowedIamRoles(context.Background(), uuid.Must(uuid.NewRandom()), client.current, []string{keep, want})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"remove " + gone, "add " + want}, client.calls)
 }

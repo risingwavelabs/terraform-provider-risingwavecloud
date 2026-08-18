@@ -184,20 +184,24 @@ func (r *ClusterAllowedIamRolesResource) applyAllowedIamRoles(
 		inCurrent[arn] = true
 	}
 
-	for _, arn := range desired {
-		if inCurrent[arn] {
-			continue
-		}
-		if err := r.client.AddAllowedIamRoleAwait(ctx, nsID, arn); err != nil {
-			return errors.Wrapf(err, "failed to allow the IAM role %s", arn)
-		}
-	}
+	// Removals come first. Replacing a list with an equally long one would otherwise need room
+	// for both at once, which runs into whatever maximum the platform enforces, and it would
+	// leave the outgoing roles allowed alongside the incoming ones in the meantime. Going the
+	// other way only ever grants less than either the old list or the new one.
 	for _, arn := range current {
 		if inDesired[arn] {
 			continue
 		}
 		if err := r.client.RemoveAllowedIamRoleAwait(ctx, nsID, arn); err != nil {
 			return errors.Wrapf(err, "failed to remove the IAM role %s", arn)
+		}
+	}
+	for _, arn := range desired {
+		if inCurrent[arn] {
+			continue
+		}
+		if err := r.client.AddAllowedIamRoleAwait(ctx, nsID, arn); err != nil {
+			return errors.Wrapf(err, "failed to allow the IAM role %s", arn)
 		}
 	}
 	return nil
