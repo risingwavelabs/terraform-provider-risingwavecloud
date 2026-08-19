@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmtv1 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/fake"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,6 +28,10 @@ import (
 const (
 	defaultTestRegion = "us-east-1"
 	defaultTestTier   = "Invited"
+
+	// The fake accepts any version, so the upgrade step has a pair to move between there.
+	fakeUpgradeFrom = "v2.0.5"
+	fakeUpgradeTo   = "v2.1.2"
 
 	// smallestNodeCPU is 0.5 RWU. Only the CPU is named, and the memory that the tier pairs
 	// with it is taken as given, so this does not have to track how the platform sizes memory.
@@ -143,67 +149,88 @@ func testClusterSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterS
 	return spec
 }
 
-// terraform renders the cluster resource. `version` is deliberately absent so that the
-// platform picks the newest stable release.
-func (s clusterSpec) terraform(name string, computeReplica int) string {
-	if s.IsStandalone() {
-		return fmt.Sprintf(`
-resource "risingwavecloud_cluster" "test" {
-	region = "%s"
-	name   = "%s"
-	tier   = "%s"
-	spec = {
-		standalone = {
-			default_node_group = {
-				cpu     = "%s"
-				memory  = "%s"
-				replica = 1
-			}
-		}
+// testUpgradeVersions returns the pair of RisingWave versions the upgrade step moves between.
+//
+// The platform reports a single image tag -- the version it hands out -- and has no endpoint
+// that lists the older ones it would still accept, so a version to upgrade *from* cannot be
+// discovered. It therefore has to be named: setting both TEST_VERSION_FROM and TEST_VERSION_TO
+// to versions the target environment accepts turns the upgrade step on, and without them the
+// step is skipped. The fake accepts any version, so a mock run keeps covering the upgrade.
+func testUpgradeVersions() (from, to string, ok bool) {
+	if fake.UseFakeBackend() {
+		return fakeUpgradeFrom, fakeUpgradeTo, true
 	}
+	from, to = os.Getenv("TEST_VERSION_FROM"), os.Getenv("TEST_VERSION_TO")
+	return from, to, from != "" && to != ""
 }
-`, testRegion(), name, testTier(), s.Standalone.CPU, s.Standalone.Memory)
-	}
 
-	return fmt.Sprintf(`
-resource "risingwavecloud_cluster" "test" {
-	region = "%s"
-	name   = "%s"
-	tier   = "%s"
-	spec = {
-		compute = {
+// clusterOptions is what the acceptance tests vary about the cluster they run on. Everything
+// else -- region, tier, node sizes -- comes from the environment.
+type clusterOptions struct {
+	Name string
+
+	// Version is left empty unless a test is about versions, so the platform picks the newest
+	// stable release rather than the test pinning one that ages out of the environment.
+	Version string
+
+	ComputeReplica   int
+	CompactorReplica int
+
+	// RisingWaveConfig is the cluster's TOML configuration, rendered as a heredoc.
+	RisingWaveConfig string
+}
+
+// render writes the cluster resource. A tier that runs a single standalone node has none of the
+// separate components, so the replica counts do not apply there.
+func (s clusterSpec) render(o clusterOptions) string {
+	nodeGroup := func(component string, n nodeSpec, replica int) string {
+		if replica < 1 {
+			replica = 1
+		}
+		return fmt.Sprintf(`		%s = {
 			default_node_group = {
-				cpu     = "%s"
-				memory  = "%s"
+				cpu     = %q
+				memory  = %q
 				replica = %d
 			}
 		}
-		compactor = {
-			default_node_group = {
-				cpu     = "%s"
-				memory  = "%s"
-				replica = 1
-			}
-		}
-		frontend = {
-			default_node_group = {
-				cpu     = "%s"
-				memory  = "%s"
-				replica = 1
-			}
-		}
-		meta = {
-			default_node_group = {
-				cpu     = "%s"
-				memory  = "%s"
-				replica = 1
-			}
-		}
+`, component, n.CPU, n.Memory, replica)
 	}
+
+	var b strings.Builder
+	b.WriteString("\nresource \"risingwavecloud_cluster\" \"test\" {\n")
+	fmt.Fprintf(&b, "\tregion = %q\n", testRegion())
+	fmt.Fprintf(&b, "\tname   = %q\n", o.Name)
+	fmt.Fprintf(&b, "\ttier   = %q\n", string(testTier()))
+	if o.Version != "" {
+		fmt.Fprintf(&b, "\tversion = %q\n", o.Version)
+	}
+	b.WriteString("\tspec = {\n")
+
+	if s.IsStandalone() {
+		b.WriteString(nodeGroup("standalone", *s.Standalone, 1))
+	} else {
+		b.WriteString(nodeGroup("compute", s.Compute, o.ComputeReplica))
+		b.WriteString(nodeGroup("compactor", s.Compactor, o.CompactorReplica))
+		b.WriteString(nodeGroup("frontend", s.Frontend, 1))
+		b.WriteString(nodeGroup("meta", s.Meta, 1))
+	}
+
+	// The meta store is deliberately not requested; see testClusterSpec.
+	if o.RisingWaveConfig != "" {
+		b.WriteString("\t\trisingwave_config = <<-EOT\n")
+		for _, line := range strings.Split(strings.TrimRight(o.RisingWaveConfig, "\n"), "\n") {
+			fmt.Fprintf(&b, "\t\t%s\n", line)
+		}
+		b.WriteString("\t\tEOT\n")
+	}
+
+	b.WriteString("\t}\n}\n")
+	return b.String()
 }
-`, testRegion(), name, testTier(),
-		s.Compute.CPU, s.Compute.Memory, computeReplica,
-		s.Compactor.CPU, s.Compactor.Memory,
-		s.Frontend.CPU, s.Frontend.Memory,
-		s.Meta.CPU, s.Meta.Memory)
+
+// terraform renders a cluster with nothing but the compute replica varied, which is all most
+// tests need.
+func (s clusterSpec) terraform(name string, computeReplica int) string {
+	return s.render(clusterOptions{Name: name, ComputeReplica: computeReplica})
 }
