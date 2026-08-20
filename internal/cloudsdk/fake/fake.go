@@ -110,6 +110,12 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 
 var availableComponentTypes = []apigen_mgmtv1.AvailableComponentType{
 	{
+		Id:      "p-0.5c2g",
+		Cpu:     "0.5",
+		Memory:  "2 GB",
+		Maximum: 3,
+	},
+	{
 		Id:      "p-1c4g",
 		Cpu:     "1",
 		Memory:  "4 GB",
@@ -159,6 +165,18 @@ func (acc *FakeCloudClient) GetTiers(ctx context.Context, _ string) ([]apigen_mg
 		},
 		{
 			Id:                      ptr.Ptr(apigen_mgmtv1.Invited),
+			AvailableMetaNodes:      availableComponentTypes,
+			AvailableComputeNodes:   availableComponentTypes,
+			AvailableCompactorNodes: availableComponentTypes,
+			AvailableFrontendNodes:  availableComponentTypes,
+			AvailableMetaStore:      availableMetaStore,
+		},
+		{
+			// The tier the acceptance tests default to. It is offered the same component types
+			// as the others here: on the platform it has a single compute size, but the fake is
+			// the only place where the component type change is exercised at all, so keeping two
+			// sizes buys coverage that a faithful copy would lose.
+			Id:                      ptr.Ptr(apigen_mgmtv1.TierId("Test")),
 			AvailableMetaNodes:      availableComponentTypes,
 			AvailableComputeNodes:   availableComponentTypes,
 			AvailableCompactorNodes: availableComponentTypes,
@@ -494,11 +512,12 @@ func resolveComputeCache(componentTypeID string, requested *apigen_mgmtv2.Tenant
 	}
 	for _, c := range availableComponentTypes {
 		if c.Id == componentTypeID {
-			cpu, err := strconv.Atoi(c.Cpu)
+			// a size is not always a whole number of CPUs: the smallest one is 0.5
+			cpu, err := strconv.ParseFloat(c.Cpu, 64)
 			if err != nil {
 				break
 			}
-			return apigen_mgmtv2.TenantResourceComputeCache{SizeGb: cpu * 20}
+			return apigen_mgmtv2.TenantResourceComputeCache{SizeGb: int(cpu * 20)}
 		}
 	}
 	return apigen_mgmtv2.TenantResourceComputeCache{SizeGb: 20}

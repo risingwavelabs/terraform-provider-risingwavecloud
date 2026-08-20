@@ -213,10 +213,19 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Required:            true,
 			},
 			"version": schema.StringAttribute{
-				MarkdownDescription: "The RisingWave cluster version." +
-					"It is used to fetch the image from the official image registry of RisingWave Labs." +
-					"The newest stable version will be used if this field is not present.",
+				MarkdownDescription: "The RisingWave cluster version. " +
+					"It is used to fetch the image from the official image registry of RisingWave Labs. " +
+					"The newest stable version is used if this field is not present, and the version the " +
+					"platform chose is then recorded in the state, so a later release does not silently " +
+					"upgrade the cluster.",
 				Optional: true,
+				// Computed because the platform fills this in when the configuration leaves it out.
+				// Without it, omitting the version fails every apply with "provider produced
+				// inconsistent result after apply: .version: was null, but now ...".
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"byoc": schema.SingleNestedAttribute{
 				MarkdownDescription: "The BYOC (Bring Your Own Cloud) configuration of the cluster. " +
