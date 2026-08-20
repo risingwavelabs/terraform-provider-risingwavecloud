@@ -64,9 +64,9 @@ func (acc *FakeCloudClient) GetClusterByRegionAndName(ctx context.Context, regio
 	debugFuncCaller()
 
 	r := state.GetRegionState(region)
-	for _, c := range r.clusters {
-		if c.tenant.TenantName == name {
-			return c.tenant, nil
+	for _, c := range r.GetClusters() {
+		if tenant := c.GetTenant(); tenant.TenantName == name {
+			return tenant, nil
 		}
 	}
 	return nil, errors.Wrapf(cloudsdk.ErrClusterNotFound, "cluster %s not found", name)
@@ -79,7 +79,7 @@ func (acc *FakeCloudClient) GetClusterByNsID(ctx context.Context, nsID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-	return cluster.tenant, nil
+	return cluster.GetTenant(), nil
 }
 
 func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region string, req apigen_mgmtv2.TenantRequestRequestBody) (*apigen_mgmtv2.Tenant, error) {
@@ -229,7 +229,7 @@ func (acc *FakeCloudClient) DeleteClusterByNsIDAwait(ctx context.Context, nsID u
 		}
 	}
 
-	state.GetRegionState(c.tenant.Region).DeleteCluster(nsID)
+	state.GetRegionState(c.GetTenant().Region).DeleteCluster(nsID)
 
 	return nil
 }
@@ -389,7 +389,7 @@ func (acc *FakeCloudClient) GetPrivateLinks(ctx context.Context) ([]cloudsdk.Pri
 	debugFuncCaller()
 
 	var plis []cloudsdk.PrivateLinkInfo
-	for _, r := range state.regionStates {
+	for _, r := range state.regions() {
 		for _, c := range r.GetClusters() {
 			for _, pl := range c.GetPrivateLinks() {
 				plis = append(plis, cloudsdk.PrivateLinkInfo{
@@ -405,7 +405,7 @@ func (acc *FakeCloudClient) GetPrivateLinks(ctx context.Context) ([]cloudsdk.Pri
 func (acc *FakeCloudClient) GetPrivateLink(ctx context.Context, privateLinkID uuid.UUID) (*cloudsdk.PrivateLinkInfo, error) {
 	debugFuncCaller()
 
-	for _, r := range state.regionStates {
+	for _, r := range state.regions() {
 		for _, c := range r.GetClusters() {
 			pl, err := c.GetPrivateLink(privateLinkID)
 			if err == nil {
@@ -462,7 +462,7 @@ func (acc *FakeCloudClient) DeletePrivateLinkAwait(ctx context.Context, clusterN
 func (acc *FakeCloudClient) GetPrivateLinkByName(ctx context.Context, connectionName string) (*cloudsdk.PrivateLinkInfo, error) {
 	debugFuncCaller()
 
-	for _, r := range state.regionStates {
+	for _, r := range state.regions() {
 		for _, c := range r.GetClusters() {
 			for _, pl := range c.GetPrivateLinks() {
 				if pl.ConnectionName == connectionName {

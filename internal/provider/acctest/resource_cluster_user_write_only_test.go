@@ -12,6 +12,12 @@ import (
 // 1.5 to 1.7, so this lives in its own test case with a version gate instead of as extra steps
 // on the main one.
 func TestClusterUserWriteOnlyPassword(t *testing.T) {
+	// Each test builds its own cluster, and the cluster is almost all of the runtime: about
+	// thirteen of the twenty-odd minutes a test takes go into provisioning one and tearing it
+	// down, because this tier's meta store is a dedicated RDS instance. Run them at the same
+	// time and the suite costs the slowest test rather than the sum of all of them.
+	t.Parallel()
+
 	clusterName := fmt.Sprintf("tf%swopw", getTestNamespace(t))
 	spec := testClusterSpec(t, initCloudSDK(t))
 
