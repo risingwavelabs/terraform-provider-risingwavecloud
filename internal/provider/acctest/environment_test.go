@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
 	apigen_mgmtv1 "github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk/apigen/mgmt/v1"
@@ -89,17 +92,50 @@ func (s clusterSpec) NextComputeTypeAfter(id string) (string, bool) {
 // IsStandalone reports whether the tier runs a single node rather than separate components.
 func (s clusterSpec) IsStandalone() bool { return s.Standalone != nil }
 
+// The shape of the target tier cannot change while a run is in flight, so it is read once and
+// shared. With the tests running in parallel this also keeps them from asking the platform the
+// same seven questions four times over.
+var (
+	clusterSpecOnce    sync.Once
+	clusterSpecValue   clusterSpec
+	clusterSpecSummary string
+	clusterSpecErr     error
+)
+
 // testClusterSpec reads the sizes of the target tier. It fails the test rather than falling
 // back to a guess, because a guess would fail later with a much less obvious message.
 func testClusterSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterSpec {
 	t.Helper()
 
+	clusterSpecOnce.Do(func() {
+		clusterSpecValue, clusterSpecSummary, clusterSpecErr = resolveClusterSpec(cloud)
+	})
+
+	// Every caller asserts, not just whichever one happened to win the race, so a tier that
+	// cannot be read fails all of them rather than one.
+	require.NoErrorf(t, clusterSpecErr, "cannot read the shape of tier %s in %s", testTier(), testRegion())
+	t.Log(clusterSpecSummary)
+
+	return clusterSpecValue
+}
+
+// resolveClusterSpec asks the platform for the sizes. It returns an error instead of failing a
+// test, because its result is shared and the test that triggered the call is not the only one
+// that depends on it.
+func resolveClusterSpec(cloud cloudsdk.CloudClientInterface) (clusterSpec, string, error) {
 	ctx := context.Background()
 	region, tier := testRegion(), testTier()
 
+	var firstErr error
 	sizes := func(component string) []apigen_mgmtv1.AvailableComponentType {
+		if firstErr != nil {
+			return nil
+		}
 		types, err := cloud.GetAvailableComponentTypes(ctx, region, tier, component)
-		require.NoErrorf(t, err, "cannot list %s types of tier %s in %s", component, tier, region)
+		if err != nil {
+			firstErr = errors.Wrapf(err, "cannot list %s types of tier %s in %s", component, tier, region)
+			return nil
+		}
 		return types
 	}
 
@@ -108,14 +144,15 @@ func testClusterSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterS
 	// them run on a larger node.
 	smallest := func(component string) nodeSpec {
 		types := sizes(component)
-		require.NotEmptyf(t, types, "tier %s offers no %s component in %s", tier, component, region)
+		if firstErr != nil {
+			return nodeSpec{}
+		}
 		for _, n := range types {
 			if n.Cpu == smallestNodeCPU {
 				return nodeSpec{ID: n.Id, CPU: n.Cpu, Memory: n.Memory}
 			}
 		}
-		require.FailNowf(t, "no smallest node",
-			"tier %s offers no %s CPU %s component in %s, only %v",
+		firstErr = errors.Errorf("tier %s offers no %s component of CPU %s in %s, only %v",
 			tier, component, smallestNodeCPU, region, types)
 		return nodeSpec{}
 	}
@@ -124,7 +161,10 @@ func testClusterSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterS
 	// instance gets it by default, and asking for it explicitly is rejected with
 	// `400 don't allow specify SharingPg meta store in request` — the tiers endpoint lists
 	// what a cluster can end up with, not what a request may name.
-	var spec clusterSpec
+	var (
+		spec    clusterSpec
+		summary string
+	)
 
 	// A tier offers either separate components or a single standalone node, never both.
 	if computeTypes := sizes(cloudsdk.ComponentCompute); len(computeTypes) > 0 {
@@ -133,20 +173,27 @@ func testClusterSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterS
 		spec.Compactor = smallest(cloudsdk.ComponentCompactor)
 		spec.Frontend = smallest(cloudsdk.ComponentFrontend)
 		spec.Meta = smallest(cloudsdk.ComponentMeta)
-		t.Logf("tier %s in %s: compute=%s (%s/%s), %d sizes offered",
+		summary = fmt.Sprintf("tier %s in %s: compute=%s (%s/%s), %d sizes offered",
 			tier, region, spec.Compute.ID, spec.Compute.CPU, spec.Compute.Memory, len(computeTypes))
-	} else {
+	} else if firstErr == nil {
 		// A standalone node runs every component at once, so tiers do not offer it at 0.5 RWU.
 		standaloneTypes := sizes(cloudsdk.ComponentStandalone)
-		require.NotEmptyf(t, standaloneTypes, "tier %s offers no standalone component in %s", tier, region)
-		first := standaloneTypes[0]
-		standalone := nodeSpec{ID: first.Id, CPU: first.Cpu, Memory: first.Memory}
-		spec.Standalone = &standalone
-		t.Logf("tier %s in %s: standalone=%s (%s/%s)",
-			tier, region, standalone.ID, standalone.CPU, standalone.Memory)
+		if firstErr == nil && len(standaloneTypes) == 0 {
+			firstErr = errors.Errorf("tier %s offers neither a compute nor a standalone component in %s", tier, region)
+		}
+		if firstErr == nil {
+			first := standaloneTypes[0]
+			standalone := nodeSpec{ID: first.Id, CPU: first.Cpu, Memory: first.Memory}
+			spec.Standalone = &standalone
+			summary = fmt.Sprintf("tier %s in %s: standalone=%s (%s/%s)",
+				tier, region, standalone.ID, standalone.CPU, standalone.Memory)
+		}
 	}
 
-	return spec
+	if firstErr != nil {
+		return clusterSpec{}, "", firstErr
+	}
+	return spec, summary, nil
 }
 
 // testUpgradeVersions returns the pair of RisingWave versions the upgrade step moves between.
