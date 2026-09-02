@@ -33,6 +33,8 @@ var (
 // Assert provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ClusterResource{}
 var _ resource.ResourceWithImportState = &ClusterResource{}
+var _ resource.ResourceWithValidateConfig = &ClusterResource{}
+var _ resource.ResourceWithModifyPlan = &ClusterResource{}
 
 func NewClusterResource() resource.Resource {
 	return &ClusterResource{
@@ -132,14 +134,15 @@ var byocAttrTypes = map[string]attr.Type{
 }
 
 type ClusterModel struct {
-	ID        types.String `tfsdk:"id"`
-	EncodedID types.String `tfsdk:"encoded_id"`
-	Tier      types.String `tfsdk:"tier"`
-	Region    types.String `tfsdk:"region"`
-	Name      types.String `tfsdk:"name"`
-	Version   types.String `tfsdk:"version"`
-	BYOC      types.Object `tfsdk:"byoc"`
-	Spec      types.Object `tfsdk:"spec"`
+	ID         types.String `tfsdk:"id"`
+	EncodedID  types.String `tfsdk:"encoded_id"`
+	Tier       types.String `tfsdk:"tier"`
+	Region     types.String `tfsdk:"region"`
+	Name       types.String `tfsdk:"name"`
+	Version    types.String `tfsdk:"version"`
+	BYOC       types.Object `tfsdk:"byoc"`
+	Spec       types.Object `tfsdk:"spec"`
+	Extensions types.Object `tfsdk:"extensions"`
 }
 
 type NodeGroupModel struct {
@@ -296,8 +299,44 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Required:            true,
 				MarkdownDescription: "The resource specification of the cluster",
 			},
+			"extensions": clusterExtensionsAttribute(),
 		},
 	}
+}
+
+// ValidateConfig reports the one combination the platform cannot honour: a compactor replica
+// count written by hand while serverless compaction is enabled. The extension scales the
+// compactor to zero, and terraform requires an attribute the configuration states to keep the
+// value it states, so the two cannot both be satisfied.
+func (r *ClusterResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data ClusterModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// A standalone cluster has no compute component, and the platform refuses every extension
+	// operation on one -- including reading them back.
+	if !data.Extensions.IsNull() && !data.Extensions.IsUnknown() {
+		var spec ClusterSpecModel
+		resp.Diagnostics.Append(data.Spec.As(ctx, &spec, basetypes.ObjectAsOptions{
+			UnhandledNullAsEmpty:    true,
+			UnhandledUnknownAsEmpty: true,
+		})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if !spec.StandaloneSpec.IsNull() && !spec.StandaloneSpec.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("extensions"),
+				"Extensions are not available on a standalone cluster",
+				"The platform runs every extension on its own nodes, which a standalone cluster does not "+
+					"have. Use a tier with a separate compute component, such as Invited.",
+			)
+			return
+		}
+	}
+
 }
 
 func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -690,10 +729,72 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	}
 
+	// The extensions come after the cluster: the platform will not enable one until the cluster
+	// is running. Before any of that, the cluster goes into state exactly as it was created,
+	// with no extensions. Everything below can fail, and terraform only keeps what the provider
+	// has written: without this the cluster would be running with nothing tracking it, and the
+	// next apply would be answered with `Cluster already exists`.
+	plannedExtensions := extensionsOf(ctx, data.Extensions, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !plannedExtensions.isEmpty() {
+		created := data
+		created.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
+		resp.Diagnostics.Append(clusterToDataModel(createdCluster, byocCluster, &created)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		resp.Diagnostics.Append(r.dataHelper.Set(ctx, &resp.State, &created)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	empty := ClusterExtensionsModel{
+		ServerlessCompaction: types.ObjectNull(serverlessCompactionAttrTypes),
+		ServerlessBackfill:   types.ObjectNull(extensionNodesAttrTypes),
+		IcebergCompaction:    types.ObjectNull(icebergCompactionAttrTypes),
+	}
+	if !plannedExtensions.isEmpty() {
+		if err := applyExtensions(ctx, r.client, createdCluster.NsId, plannedExtensions, empty, &resp.Diagnostics); err != nil {
+			resp.Diagnostics.AddError("Unable to enable the cluster extensions", err.Error())
+			return
+		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		// Read the cluster again: enabling an extension changes what the platform has. The one
+		// change that is not the practitioner's to see is the compactor going to zero, which
+		// serverless compaction does and which the platform undoes when it is disabled.
+		createdCluster, err = r.client.GetClusterByNsID(ctx, createdCluster.NsId)
+		if err != nil {
+			resp.Diagnostics.AddError("Unable to read the cluster after enabling its extensions", err.Error())
+			return
+		}
+		if serverlessCompactionEnabled(ctx, data.Extensions, &resp.Diagnostics) {
+			keepDeclaredCompactor(ctx, data.Spec, createdCluster, &resp.Diagnostics)
+		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	resp.Diagnostics.Append(clusterToDataModel(createdCluster, byocCluster, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
+	if !plannedExtensions.isEmpty() {
+		extensions, extDiags := readExtensions(ctx, r.client, createdCluster.NsId)
+		resp.Diagnostics.Append(extDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.Extensions = extensions
 	}
 
 	// Write logs using the tflog package
@@ -762,8 +863,34 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		}
 	}
 
-	resp.Diagnostics.Append(clusterToDataModel(cluster, byocCluster, &data)...)
+	// What the configuration declared, before the platform's answer overwrites it.
+	declaredSpec := data.Spec
 
+	// A standalone cluster cannot have extensions, and asking about them is an error rather than
+	// an empty answer, so every plan of every standalone cluster would fail.
+	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
+	if !clusterIsStandalone(cluster) {
+		extensions, extDiags := readExtensions(ctx, r.client, nsID)
+		resp.Diagnostics.Append(extDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.Extensions = extensions
+
+		// Serverless compaction holds the cluster's compactor at zero while it runs, and the
+		// platform restores the count when it is disabled -- it keeps it in a field its own spec
+		// marks as server-set. So that zero is the extension's business, not a change to the
+		// cluster the practitioner asked for, and it is not recorded. Any other movement of the
+		// compactor is real drift and is reported as such.
+		if serverlessCompactionEnabled(ctx, extensions, &resp.Diagnostics) {
+			keepDeclaredCompactor(ctx, declaredSpec, cluster, &resp.Diagnostics)
+		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	resp.Diagnostics.Append(clusterToDataModel(cluster, byocCluster, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -923,29 +1050,86 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		tflog.Info(ctx, "cluster risingwave configuration updated")
 	}
 
+	// While serverless compaction runs, the compactor belongs to it: the platform holds it at
+	// zero and gives it back when the extension is disabled. So the difference between the
+	// declared count and the zero the platform reports is not a change to act on -- and acting
+	// on it would ask for a rescale with no components in it, which the platform rejects with
+	// `at least one resource must be provided`.
+	// Whether the compactor belongs to the extension right now is a question about the platform,
+	// not about the plan: the rescale below runs before the extensions are touched. An extension
+	// this apply is about to enable has not taken the compactor yet, and one it is about to
+	// disable still holds it.
+	compactionOn := serverlessCompactionEnabled(ctx, state.Extensions, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	componentChanged := func(prev, next *apigen_mgmtv2.ComponentResource) bool {
+		return !resourceEqual(prev, next)
+	}
+
 	// update cluster components
-	if !(resourceEqual(previous.Resources.Components.Compute, updated.Resources.Components.Compute) &&
-		resourceEqual(previous.Resources.Components.Compactor, updated.Resources.Components.Compactor) &&
-		resourceEqual(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend) &&
-		resourceEqual(previous.Resources.Components.Meta, updated.Resources.Components.Meta) &&
-		resourceEqual(previous.Resources.Components.Standalone, updated.Resources.Components.Standalone)) {
+	if componentChanged(previous.Resources.Components.Compute, updated.Resources.Components.Compute) ||
+		(!compactionOn && componentChanged(previous.Resources.Components.Compactor, updated.Resources.Components.Compactor)) ||
+		componentChanged(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend) ||
+		componentChanged(previous.Resources.Components.Meta, updated.Resources.Components.Meta) ||
+		componentChanged(previous.Resources.Components.Standalone, updated.Resources.Components.Standalone) {
 
 		tflog.Info(ctx, fmt.Sprintf("updating resources, cluster: %s", previous.TenantName))
-		updateComponentReq := func(comp *apigen_mgmtv2.ComponentResource) *apigen_mgmtv2.ComponentResourceRequest {
-			if comp == nil {
+
+		// Only the components that actually change are sent. The platform applies a component it
+		// is given and leaves out one it is not, so this is a smaller request for the same
+		// result -- and it is what keeps a cluster with serverless compaction updatable at all.
+		// That extension holds the compactor at zero replicas, which the platform rejects as a
+		// request, so a change to the compute nodes that carried the unchanged compactor along
+		// would be refused outright.
+		updateComponentReq := func(prev, next *apigen_mgmtv2.ComponentResource) *apigen_mgmtv2.ComponentResourceRequest {
+			if next == nil || resourceEqual(prev, next) {
 				return nil
 			}
 			return &apigen_mgmtv2.ComponentResourceRequest{
-				ComponentTypeId: comp.ComponentTypeId,
-				Replica:         comp.Replica,
+				ComponentTypeId: next.ComponentTypeId,
+				Replica:         next.Replica,
 			}
 		}
+
+		// Sending the declared count while the extension runs would scale the compactors up
+		// underneath it.
+		compactorReq := updateComponentReq(previous.Resources.Components.Compactor, updated.Resources.Components.Compactor)
+		if compactionOn {
+			compactorReq = nil
+		}
+
+		// The resource endpoint is authoritative over serverless compaction too: it reads the
+		// concurrency out of the request and compares it with what the extension has, and a
+		// request that does not mention the extension reads as asking for zero -- which turns it
+		// off. A rescale therefore has to restate the extension it is not changing, or changing
+		// the compute nodes would silently disable compaction.
+		// The concurrency comes from the state, never from the plan. This endpoint acts on the
+		// extension as well as the components -- a different concurrency here enables or changes
+		// it -- so restating what the extension already has keeps the rescale to the components
+		// and leaves every extension change to applyExtensions below. Sending the planned value
+		// instead enabled the extension here and then failed the explicit enable that followed
+		// with `Illegal status: Running, cannot enable extensions compaction`.
+		var extensionsReq *apigen_mgmtv2.TenantExtensionsRequest
+		if concurrency, ok := plannedCompactionConcurrency(ctx, state.Extensions, &resp.Diagnostics); ok {
+			extensionsReq = &apigen_mgmtv2.TenantExtensionsRequest{
+				ServerlessCompaction: &apigen_mgmtv2.TenantExtensionServerlessCompactionRequest{
+					MaximumCompactionConcurrency: concurrency,
+				},
+			}
+		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
 		if err := r.client.UpdateClusterResourcesByNsIDAwait(ctx, nsID, apigen_mgmtv2.PostTenantResourcesRequestBody{
-			Compute:    updateComponentReq(updated.Resources.Components.Compute),
-			Compactor:  updateComponentReq(updated.Resources.Components.Compactor),
-			Frontend:   updateComponentReq(updated.Resources.Components.Frontend),
-			Meta:       updateComponentReq(updated.Resources.Components.Meta),
-			Standalone: updateComponentReq(updated.Resources.Components.Standalone),
+			Compute:    updateComponentReq(previous.Resources.Components.Compute, updated.Resources.Components.Compute),
+			Compactor:  compactorReq,
+			Frontend:   updateComponentReq(previous.Resources.Components.Frontend, updated.Resources.Components.Frontend),
+			Meta:       updateComponentReq(previous.Resources.Components.Meta, updated.Resources.Components.Meta),
+			Standalone: updateComponentReq(previous.Resources.Components.Standalone, updated.Resources.Components.Standalone),
+			Extensions: extensionsReq,
 		}); err != nil {
 			if errors.Is(err, wait.ErrWaitTimeout) {
 				resp.Diagnostics.AddError(
@@ -985,9 +1169,51 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	// The extensions are changed after the cluster's own spec, since the platform will not touch
+	// an extension while the cluster is busy, and a rescale is exactly that.
+	plannedExtensions := extensionsOf(ctx, data.Extensions, &resp.Diagnostics)
+	currentExtensions := extensionsOf(ctx, state.Extensions, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	touchesExtensions := (!plannedExtensions.isEmpty() || !currentExtensions.isEmpty()) &&
+		!clusterIsStandalone(previous)
+	if touchesExtensions {
+		if err := applyExtensions(ctx, r.client, nsID, plannedExtensions, currentExtensions, &resp.Diagnostics); err != nil {
+			resp.Diagnostics.AddError("Unable to update the cluster extensions", err.Error())
+			return
+		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		// Read the cluster again: turning an extension on or off changes what the platform has.
+		now, err = r.client.GetClusterByNsID(ctx, nsID)
+		if err != nil {
+			resp.Diagnostics.AddError("Unable to read the cluster after updating its extensions", err.Error())
+			return
+		}
+		if serverlessCompactionEnabled(ctx, data.Extensions, &resp.Diagnostics) {
+			keepDeclaredCompactor(ctx, data.Spec, now, &resp.Diagnostics)
+		}
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	resp.Diagnostics.Append(clusterToDataModel(now, byocCluster, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
+	if touchesExtensions {
+		extensions, extDiags := readExtensions(ctx, r.client, nsID)
+		resp.Diagnostics.Append(extDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.Extensions = extensions
 	}
 
 	// Save updated data into Terraform state
