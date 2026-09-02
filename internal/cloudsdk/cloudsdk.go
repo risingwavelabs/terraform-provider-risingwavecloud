@@ -112,6 +112,47 @@ type CloudClientInterface interface {
 	// RemoveAllowedIamRoleAwait disallows an IAM role and waits for the change to be applied.
 	// it returns nil if the role is not allowed in the first place.
 	RemoveAllowedIamRoleAwait(ctx context.Context, clusterNsID uuid.UUID, roleArn string) error
+
+	/* Extensions */
+
+	// GetServerlessCompaction returns the serverless compaction extension of the cluster. It
+	// returns ErrExtensionDisabled if the extension is not enabled.
+	GetServerlessCompaction(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionCompactionResponseBody, error)
+
+	// EnableServerlessCompactionAwait enables the extension and waits for it to run.
+	EnableServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error
+
+	// UpdateServerlessCompactionAwait changes the extension and waits for it to run again.
+	UpdateServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error
+
+	// DisableServerlessCompactionAwait disables the extension and waits for it to be gone.
+	DisableServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID) error
+
+	// GetServerlessBackfill returns the serverless backfill extension of the cluster. It
+	// returns ErrExtensionDisabled if the extension is not enabled.
+	GetServerlessBackfill(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody, error)
+
+	// EnableServerlessBackfillAwait enables the extension and waits for it to run.
+	EnableServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error
+
+	// UpdateServerlessBackfillAwait changes the extension and waits for it to run again.
+	UpdateServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error
+
+	// DisableServerlessBackfillAwait disables the extension and waits for it to be gone.
+	DisableServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID) error
+
+	// GetIcebergCompaction returns the iceberg compaction extension of the cluster. It returns
+	// ErrExtensionDisabled if the extension is not enabled.
+	GetIcebergCompaction(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.IcebergCompaction, error)
+
+	// EnableIcebergCompactionAwait enables the extension and waits for it to run.
+	EnableIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error
+
+	// UpdateIcebergCompactionAwait changes the extension and waits for it to run again.
+	UpdateIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error
+
+	// DisableIcebergCompactionAwait disables the extension and waits for it to be gone.
+	DisableIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID) error
 }
 
 type CloudClient struct {
@@ -120,17 +161,21 @@ type CloudClient struct {
 	apiKeyPair string
 	regions    map[string]RegionServiceClientInterface
 
-	// rescaleLocks holds one mutex per cluster NsID (uuid.UUID -> *sync.Mutex).
-	rescaleLocks sync.Map
+	// clusterLocks holds one mutex per cluster NsID (uuid.UUID -> *sync.Mutex).
+	clusterLocks sync.Map
 }
 
-// lockClusterRescale serializes the operations that rescale a cluster. Rescaling is
-// exclusive on the platform side and every request waits for the whole cluster to become
-// healthy again, while terraform applies independent resources concurrently: without this
-// lock two resource groups of the same cluster (or a resource group and the cluster spec
-// itself) would trigger overlapping rescales. The returned function releases the lock.
-func (c *CloudClient) lockClusterRescale(nsID uuid.UUID) func() {
-	v, _ := c.rescaleLocks.LoadOrStore(nsID, &sync.Mutex{})
+// lockCluster serializes the operations that the platform will not run concurrently on one
+// cluster. Rescaling is exclusive and every request waits for the whole cluster to become
+// healthy again; enabling or changing an extension is refused outright while another workflow
+// is in flight. Terraform applies independent resources concurrently, so without this lock two
+// resource groups of the same cluster, a resource group and the cluster spec itself, or two
+// extensions would collide. The returned function releases the lock.
+//
+// It only covers a single provider process. A second terraform run or somebody working in the
+// console can still collide, which is why the waits before each request exist as well.
+func (c *CloudClient) lockCluster(nsID uuid.UUID) func() {
+	v, _ := c.clusterLocks.LoadOrStore(nsID, &sync.Mutex{})
 	mu, ok := v.(*sync.Mutex)
 	if !ok {
 		// unreachable: nothing else is ever stored in this map.
@@ -305,7 +350,7 @@ func (c *CloudClient) UpdateClusterImageByNsIDAwait(ctx context.Context, nsID uu
 }
 
 func (c *CloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostTenantResourcesRequestBody) error {
-	defer c.lockClusterRescale(nsID)()
+	defer c.lockCluster(nsID)()
 
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, nsID)
 	if err != nil {
@@ -523,7 +568,7 @@ func (c *CloudClient) GetResourceGroup(ctx context.Context, clusterNsID uuid.UUI
 }
 
 func (c *CloudClient) CreateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.CreateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
-	defer c.lockClusterRescale(clusterNsID)()
+	defer c.lockCluster(clusterNsID)()
 
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
@@ -533,7 +578,7 @@ func (c *CloudClient) CreateResourceGroupAwait(ctx context.Context, clusterNsID 
 }
 
 func (c *CloudClient) UpdateResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string, req apigen_mgmtv2.UpdateResourceGroupsRequestBody) (*apigen_mgmtv2.ResourceGroupDetails, error) {
-	defer c.lockClusterRescale(clusterNsID)()
+	defer c.lockCluster(clusterNsID)()
 
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
@@ -543,7 +588,7 @@ func (c *CloudClient) UpdateResourceGroupAwait(ctx context.Context, clusterNsID 
 }
 
 func (c *CloudClient) DeleteResourceGroupAwait(ctx context.Context, clusterNsID uuid.UUID, resourceGroup string) error {
-	defer c.lockClusterRescale(clusterNsID)()
+	defer c.lockCluster(clusterNsID)()
 
 	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
 	if err != nil {
@@ -574,4 +619,122 @@ func (c *CloudClient) RemoveAllowedIamRoleAwait(ctx context.Context, clusterNsID
 		return err
 	}
 	return rs.RemoveAllowedIamRoleAwait(ctx, info.NsId, roleArn)
+}
+
+// The extension mutations take the per-cluster lock for the same reason the resource group
+// ones do: the platform refuses a request that overlaps another workflow on the same tenant,
+// and terraform has no reason to order two extensions of one cluster.
+
+func (c *CloudClient) GetServerlessCompaction(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionCompactionResponseBody, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.GetServerlessCompaction(ctx, info.NsId)
+}
+
+func (c *CloudClient) EnableServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.EnableServerlessCompactionAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) UpdateServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.UpdateServerlessCompactionAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) DisableServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DisableServerlessCompactionAwait(ctx, info.NsId)
+}
+
+func (c *CloudClient) GetServerlessBackfill(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.GetServerlessBackfill(ctx, info.NsId)
+}
+
+func (c *CloudClient) EnableServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.EnableServerlessBackfillAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) UpdateServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.UpdateServerlessBackfillAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) DisableServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DisableServerlessBackfillAwait(ctx, info.NsId)
+}
+
+func (c *CloudClient) GetIcebergCompaction(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.IcebergCompaction, error) {
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	return rs.GetIcebergCompaction(ctx, info.NsId)
+}
+
+func (c *CloudClient) EnableIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.EnableIcebergCompactionAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) UpdateIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.UpdateIcebergCompactionAwait(ctx, info.NsId, req)
+}
+
+func (c *CloudClient) DisableIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID) error {
+	defer c.lockCluster(clusterNsID)()
+
+	info, rs, err := c.getClusterInfoAndRegionClient(ctx, clusterNsID)
+	if err != nil {
+		return err
+	}
+	return rs.DisableIcebergCompactionAwait(ctx, info.NsId)
 }
