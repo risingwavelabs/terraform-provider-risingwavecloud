@@ -126,6 +126,7 @@ Note that 1 RWU is equivalent to 1 vCPU and 4 GB of memory.
 ### Optional
 
 - `byoc` (Attributes) The BYOC (Bring Your Own Cloud) configuration of the cluster. These fields are only used in BYOC clusters. (see [below for nested schema](#nestedatt--byoc))
+- `extensions` (Attributes) The platform-managed extensions of the cluster. An extension is enabled while its block is present and disabled when it is removed. They need a cluster with a separate compute component, so none of them is available on a standalone cluster. (see [below for nested schema](#nestedatt--extensions))
 - `tier` (String) The tier of your RisingWave cluster. Supported values: `Standard`, `Invited`, `BYOC`. Defaults to `Standard` for SaaS clusters and `BYOC` when a `byoc` block is present. Cannot be changed after creation.
 - `version` (String) The RisingWave cluster version.It is used to fetch the image from the official image registry of RisingWave Labs.The newest stable version will be used if this field is not present.
 
@@ -263,3 +264,62 @@ Required:
 Read-Only:
 
 - `encoded_id` (String) The encoded ID of the BYOC cluster. This field is only used in BYOC clusters.
+
+
+<a id="nestedatt--extensions"></a>
+### Nested Schema for `extensions`
+
+Optional:
+
+- `iceberg_compaction` (Attributes) Runs compaction over the cluster's Iceberg tables on dedicated nodes. (see [below for nested schema](#nestedatt--extensions--iceberg_compaction))
+- `serverless_backfill` (Attributes) Runs the backfilling of new materialized views on dedicated nodes, so it does not compete with the cluster's streaming work. (see [below for nested schema](#nestedatt--extensions--serverless_backfill))
+- `serverless_compaction` (Attributes) Runs the cluster's compaction on platform-managed capacity rather than on its own compactor nodes. While it is enabled the platform scales `spec.compactor.default_node_group.replica` to zero and owns that value; it is restored when the extension is removed. (see [below for nested schema](#nestedatt--extensions--serverless_compaction))
+
+<a id="nestedatt--extensions--iceberg_compaction"></a>
+### Nested Schema for `extensions.iceberg_compaction`
+
+Required:
+
+- `component_type_id` (String) The component type the compaction nodes run on, for example `p-1c4g`. It must be one of the compute sizes the cluster's tier offers.
+- `replica` (Number) How many compaction nodes to run. Must be greater than 0.
+
+Optional:
+
+- `config` (String) The extension's configuration, as a **TOML** document. The platform parses it with a TOML decoder and rejects anything else, so a JSON object is not accepted here. It is stored as written, which lets terraform compare it verbatim; a heredoc keeps it readable.
+
+Read-Only:
+
+- `cpu` (String) The CPU size of a node, resolved by the platform from the component type.
+- `memory` (String) The memory size of a node, resolved by the platform from the component type.
+- `status` (String) The status the platform reports, `Running` once the extension is in service.
+
+
+<a id="nestedatt--extensions--serverless_backfill"></a>
+### Nested Schema for `extensions.serverless_backfill`
+
+Required:
+
+- `component_type_id` (String) The component type the backfill nodes run on, for example `p-1c4g`. It must be one of the compute sizes the cluster's tier offers.
+- `replica` (Number) How many backfill nodes to run. Must be greater than 0.
+
+Read-Only:
+
+- `cpu` (String) The CPU size of a node, resolved by the platform from the component type.
+- `memory` (String) The memory size of a node, resolved by the platform from the component type.
+- `status` (String) The status the platform reports, `Running` once the extension is in service.
+
+
+<a id="nestedatt--extensions--serverless_compaction"></a>
+### Nested Schema for `extensions.serverless_compaction`
+
+Required:
+
+- `maximum_compaction_concurrency` (Number) How many compaction tasks may run at once. Must be greater than 0.
+
+Optional:
+
+- `version` (String) The version of the compaction proxy. **Setting this is not recommended.** Left alone, the platform runs the newest version and keeps it that way; naming one here pins it, and a pinned version ages out with nothing to warn you. It is here for the case where support asks you to hold a particular version.
+
+Read-Only:
+
+- `status` (String) The status the platform reports, `Running` once the extension is in service.

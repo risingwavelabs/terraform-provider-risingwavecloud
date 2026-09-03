@@ -26,6 +26,79 @@ type ClusterState struct {
 
 	// IAM role ARNs allowed to assume a role into the customer's account
 	allowedIamRoles map[string]bool
+
+	// The tenant extensions. A nil pointer is an extension that was never enabled, which the
+	// platform reports as `Disabled` rather than as a missing object.
+	// compactorReplicaBeforeCompaction remembers what the compactor was before serverless
+	// compaction took it away, so disabling the extension can put it back the way the platform
+	// does.
+	compactorReplicaBeforeCompaction int
+
+	serverlessCompaction *apigen_mgmtv2.GetTenantExtensionCompactionResponseBody
+	serverlessBackfill   *apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody
+	icebergCompaction    *apigen_mgmtv2.IcebergCompaction
+}
+
+// GetServerlessCompaction returns the extension, or nil when it was never enabled.
+func (c *ClusterState) GetServerlessCompaction() *apigen_mgmtv2.GetTenantExtensionCompactionResponseBody {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.serverlessCompaction
+}
+
+// SetServerlessCompaction records the extension and moves the cluster's own compactor the way
+// the platform does: enabling scales it to zero, since that is what the extension is for, and
+// disabling restores what it was.
+func (c *ClusterState) SetServerlessCompaction(ext *apigen_mgmtv2.GetTenantExtensionCompactionResponseBody) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	enabling := ext != nil && c.serverlessCompaction == nil
+	disabling := ext == nil && c.serverlessCompaction != nil
+	c.serverlessCompaction = ext
+
+	compactor := c.tenant.Resources.Components.Compactor
+	if compactor == nil {
+		return
+	}
+	switch {
+	case enabling:
+		c.compactorReplicaBeforeCompaction = compactor.Replica
+		compactor.Replica = 0
+	case disabling:
+		compactor.Replica = c.compactorReplicaBeforeCompaction
+	}
+}
+
+// GetServerlessBackfill returns the extension, or nil when it was never enabled.
+func (c *ClusterState) GetServerlessBackfill() *apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.serverlessBackfill
+}
+
+func (c *ClusterState) SetServerlessBackfill(ext *apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.serverlessBackfill = ext
+}
+
+// GetIcebergCompaction returns the extension, or nil when it was never enabled.
+func (c *ClusterState) GetIcebergCompaction() *apigen_mgmtv2.IcebergCompaction {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.icebergCompaction
+}
+
+func (c *ClusterState) SetIcebergCompaction(ext *apigen_mgmtv2.IcebergCompaction) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.icebergCompaction = ext
 }
 
 func NewClusterState(tenant *apigen_mgmtv2.Tenant) *ClusterState {

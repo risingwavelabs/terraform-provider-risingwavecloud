@@ -168,6 +168,90 @@ func (mr *MockCloudClientInterfaceMockRecorder) DeleteResourceGroupAwait(arg0, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroupAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DeleteResourceGroupAwait), arg0, arg1, arg2)
 }
 
+// DisableIcebergCompactionAwait mocks base method.
+func (m *MockCloudClientInterface) DisableIcebergCompactionAwait(arg0 context.Context, arg1 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DisableIcebergCompactionAwait", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DisableIcebergCompactionAwait indicates an expected call of DisableIcebergCompactionAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) DisableIcebergCompactionAwait(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisableIcebergCompactionAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DisableIcebergCompactionAwait), arg0, arg1)
+}
+
+// DisableServerlessBackfillAwait mocks base method.
+func (m *MockCloudClientInterface) DisableServerlessBackfillAwait(arg0 context.Context, arg1 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DisableServerlessBackfillAwait", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DisableServerlessBackfillAwait indicates an expected call of DisableServerlessBackfillAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) DisableServerlessBackfillAwait(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisableServerlessBackfillAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DisableServerlessBackfillAwait), arg0, arg1)
+}
+
+// DisableServerlessCompactionAwait mocks base method.
+func (m *MockCloudClientInterface) DisableServerlessCompactionAwait(arg0 context.Context, arg1 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DisableServerlessCompactionAwait", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DisableServerlessCompactionAwait indicates an expected call of DisableServerlessCompactionAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) DisableServerlessCompactionAwait(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisableServerlessCompactionAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).DisableServerlessCompactionAwait), arg0, arg1)
+}
+
+// EnableIcebergCompactionAwait mocks base method.
+func (m *MockCloudClientInterface) EnableIcebergCompactionAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnableIcebergCompactionAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnableIcebergCompactionAwait indicates an expected call of EnableIcebergCompactionAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) EnableIcebergCompactionAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableIcebergCompactionAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).EnableIcebergCompactionAwait), arg0, arg1, arg2)
+}
+
+// EnableServerlessBackfillAwait mocks base method.
+func (m *MockCloudClientInterface) EnableServerlessBackfillAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.TenantExtensionServerlessBackfillRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnableServerlessBackfillAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnableServerlessBackfillAwait indicates an expected call of EnableServerlessBackfillAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) EnableServerlessBackfillAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableServerlessBackfillAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).EnableServerlessBackfillAwait), arg0, arg1, arg2)
+}
+
+// EnableServerlessCompactionAwait mocks base method.
+func (m *MockCloudClientInterface) EnableServerlessCompactionAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.TenantExtensionServerlessCompactionRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnableServerlessCompactionAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnableServerlessCompactionAwait indicates an expected call of EnableServerlessCompactionAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) EnableServerlessCompactionAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableServerlessCompactionAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).EnableServerlessCompactionAwait), arg0, arg1, arg2)
+}
+
 // GetAllowedIamRoles mocks base method.
 func (m *MockCloudClientInterface) GetAllowedIamRoles(arg0 context.Context, arg1 uuid.UUID) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -258,6 +342,21 @@ func (mr *MockCloudClientInterfaceMockRecorder) GetClusterUser(arg0, arg1, arg2 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterUser", reflect.TypeOf((*MockCloudClientInterface)(nil).GetClusterUser), arg0, arg1, arg2)
 }
 
+// GetIcebergCompaction mocks base method.
+func (m *MockCloudClientInterface) GetIcebergCompaction(arg0 context.Context, arg1 uuid.UUID) (*apigen0.IcebergCompaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIcebergCompaction", arg0, arg1)
+	ret0, _ := ret[0].(*apigen0.IcebergCompaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIcebergCompaction indicates an expected call of GetIcebergCompaction.
+func (mr *MockCloudClientInterfaceMockRecorder) GetIcebergCompaction(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIcebergCompaction", reflect.TypeOf((*MockCloudClientInterface)(nil).GetIcebergCompaction), arg0, arg1)
+}
+
 // GetPrivateLink mocks base method.
 func (m *MockCloudClientInterface) GetPrivateLink(arg0 context.Context, arg1 uuid.UUID) (*cloudsdk.PrivateLinkInfo, error) {
 	m.ctrl.T.Helper()
@@ -316,6 +415,36 @@ func (m *MockCloudClientInterface) GetResourceGroup(arg0 context.Context, arg1 u
 func (mr *MockCloudClientInterfaceMockRecorder) GetResourceGroup(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceGroup", reflect.TypeOf((*MockCloudClientInterface)(nil).GetResourceGroup), arg0, arg1, arg2)
+}
+
+// GetServerlessBackfill mocks base method.
+func (m *MockCloudClientInterface) GetServerlessBackfill(arg0 context.Context, arg1 uuid.UUID) (*apigen0.GetTenantExtensionServerlessBackfillResponseBody, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetServerlessBackfill", arg0, arg1)
+	ret0, _ := ret[0].(*apigen0.GetTenantExtensionServerlessBackfillResponseBody)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetServerlessBackfill indicates an expected call of GetServerlessBackfill.
+func (mr *MockCloudClientInterfaceMockRecorder) GetServerlessBackfill(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerlessBackfill", reflect.TypeOf((*MockCloudClientInterface)(nil).GetServerlessBackfill), arg0, arg1)
+}
+
+// GetServerlessCompaction mocks base method.
+func (m *MockCloudClientInterface) GetServerlessCompaction(arg0 context.Context, arg1 uuid.UUID) (*apigen0.GetTenantExtensionCompactionResponseBody, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetServerlessCompaction", arg0, arg1)
+	ret0, _ := ret[0].(*apigen0.GetTenantExtensionCompactionResponseBody)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetServerlessCompaction indicates an expected call of GetServerlessCompaction.
+func (mr *MockCloudClientInterfaceMockRecorder) GetServerlessCompaction(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerlessCompaction", reflect.TypeOf((*MockCloudClientInterface)(nil).GetServerlessCompaction), arg0, arg1)
 }
 
 // GetTiers mocks base method.
@@ -403,6 +532,20 @@ func (mr *MockCloudClientInterfaceMockRecorder) UpdateClusterUserPassword(arg0, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateClusterUserPassword", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateClusterUserPassword), arg0, arg1, arg2, arg3)
 }
 
+// UpdateIcebergCompactionAwait mocks base method.
+func (m *MockCloudClientInterface) UpdateIcebergCompactionAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateIcebergCompactionAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateIcebergCompactionAwait indicates an expected call of UpdateIcebergCompactionAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) UpdateIcebergCompactionAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIcebergCompactionAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateIcebergCompactionAwait), arg0, arg1, arg2)
+}
+
 // UpdateResourceGroupAwait mocks base method.
 func (m *MockCloudClientInterface) UpdateResourceGroupAwait(arg0 context.Context, arg1 uuid.UUID, arg2 string, arg3 apigen0.UpdateResourceGroupsRequestBody) (*apigen0.ResourceGroupDetails, error) {
 	m.ctrl.T.Helper()
@@ -430,4 +573,32 @@ func (m *MockCloudClientInterface) UpdateRisingWaveConfigByNsIDAwait(arg0 contex
 func (mr *MockCloudClientInterfaceMockRecorder) UpdateRisingWaveConfigByNsIDAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRisingWaveConfigByNsIDAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateRisingWaveConfigByNsIDAwait), arg0, arg1, arg2)
+}
+
+// UpdateServerlessBackfillAwait mocks base method.
+func (m *MockCloudClientInterface) UpdateServerlessBackfillAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.TenantExtensionServerlessBackfillRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateServerlessBackfillAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateServerlessBackfillAwait indicates an expected call of UpdateServerlessBackfillAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) UpdateServerlessBackfillAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateServerlessBackfillAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateServerlessBackfillAwait), arg0, arg1, arg2)
+}
+
+// UpdateServerlessCompactionAwait mocks base method.
+func (m *MockCloudClientInterface) UpdateServerlessCompactionAwait(arg0 context.Context, arg1 uuid.UUID, arg2 apigen0.TenantExtensionServerlessCompactionRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateServerlessCompactionAwait", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateServerlessCompactionAwait indicates an expected call of UpdateServerlessCompactionAwait.
+func (mr *MockCloudClientInterfaceMockRecorder) UpdateServerlessCompactionAwait(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateServerlessCompactionAwait", reflect.TypeOf((*MockCloudClientInterface)(nil).UpdateServerlessCompactionAwait), arg0, arg1, arg2)
 }

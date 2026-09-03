@@ -237,11 +237,71 @@ func (acc *FakeCloudClient) UpdateClusterResourcesByNsIDAwait(ctx context.Contex
 	if err != nil {
 		return err
 	}
-	cluster.GetTenant().Resources.Components.Compactor = componentReqToComponent(req.Compactor)
-	cluster.GetTenant().Resources.Components.Compute = componentReqToComponent(req.Compute)
-	cluster.GetTenant().Resources.Components.Frontend = componentReqToComponent(req.Frontend)
-	cluster.GetTenant().Resources.Components.Meta = componentReqToComponent(req.Meta)
-	cluster.GetTenant().Resources.Components.Standalone = componentReqToComponent(req.Standalone)
+	// The platform wants at least one component in a resource update, so a caller that filtered
+	// every component out -- because nothing but an extension changed -- is refused rather than
+	// quietly accepted.
+	if req.Compute == nil && req.Compactor == nil && req.Frontend == nil &&
+		req.Meta == nil && req.Standalone == nil {
+		return errors.New("at least one resource must be provided")
+	}
+
+	// The resource endpoint owns serverless compaction as well: it reads the concurrency out of
+	// the request, compares it with what the extension has, and a request that says nothing
+	// about the extension counts as asking for zero -- which disables it. Reproducing that is
+	// what lets a mock run catch a rescale that forgets to restate the extension.
+	requested := 0
+	if req.Extensions != nil && req.Extensions.ServerlessCompaction != nil {
+		requested = req.Extensions.ServerlessCompaction.MaximumCompactionConcurrency
+	}
+	switch current := cluster.GetServerlessCompaction(); {
+	case current == nil && requested > 0:
+		// Enabling through this endpoint is the case that hid a real defect: a rescale carrying
+		// the planned concurrency enabled the extension here, and the explicit enable that
+		// followed was refused because it was already running.
+		cluster.SetServerlessCompaction(&apigen_mgmtv2.GetTenantExtensionCompactionResponseBody{
+			MaximumCompactionConcurrency: &requested,
+			Status:                       cloudsdk.ExtensionStatusRunning,
+		})
+	case current == nil:
+		// nothing enabled, nothing asked for
+	case requested == 0:
+		cluster.SetServerlessCompaction(nil)
+	case current.MaximumCompactionConcurrency == nil || *current.MaximumCompactionConcurrency != requested:
+		updated := *current
+		updated.MaximumCompactionConcurrency = &requested
+		cluster.SetServerlessCompaction(&updated)
+	}
+
+	// The platform rejects a component with no replicas, so the fake does too: a caller that
+	// restates an unchanged compactor while serverless compaction holds it at zero would be
+	// refused there, and a mock run that accepted it would hide that.
+	for name, comp := range map[string]*apigen_mgmtv2.ComponentResourceRequest{
+		"compactor": req.Compactor, "compute": req.Compute,
+		"frontend": req.Frontend, "meta": req.Meta, "standalone": req.Standalone,
+	} {
+		if comp != nil && comp.Replica <= 0 {
+			return errors.Errorf("request %d replica(s) not valid for %s. Exceeds the maximum allowed value or <= 0",
+				comp.Replica, name)
+		}
+	}
+
+	// A component the request leaves out keeps what it had. That is what the platform does --
+	// `update_resources.go` starts from the tenant's spec and assigns only the components it was
+	// given -- and it is what lets a caller change one component without restating the others,
+	// which matters for a cluster whose compactor the serverless compaction extension holds at
+	// zero replicas: restating that would be refused.
+	components := &cluster.GetTenant().Resources.Components
+	assign := func(dst **apigen_mgmtv2.ComponentResource, req *apigen_mgmtv2.ComponentResourceRequest) {
+		if req == nil {
+			return
+		}
+		*dst = componentReqToComponent(req)
+	}
+	assign(&components.Compactor, req.Compactor)
+	assign(&components.Compute, req.Compute)
+	assign(&components.Frontend, req.Frontend)
+	assign(&components.Meta, req.Meta)
+	assign(&components.Standalone, req.Standalone)
 	r := state.GetRegionState(cluster.GetTenant().Region)
 
 	r.ReplaceCluster(nsID, cluster)
@@ -604,5 +664,200 @@ func (acc *FakeCloudClient) RemoveAllowedIamRoleAwait(ctx context.Context, clust
 		return err
 	}
 	c.RemoveAllowedIamRole(roleArn)
+	return nil
+}
+
+//
+// Tenant extensions.
+//
+// The fake applies a change immediately rather than reporting the transient statuses the
+// platform passes through, so a mock run exercises the resources rather than the waits. The
+// one behaviour it does reproduce is the important one for the resources: an extension that
+// was never enabled reads back as disabled instead of as a missing object.
+//
+
+// refuseOnStandalone mirrors the platform, which answers every extension request for a
+// standalone cluster with a 412 before it looks at anything else -- including the reads. A fake
+// that answered "disabled" instead would hide the one failure that reaches clusters nobody has
+// enabled an extension on.
+func refuseOnStandalone(cluster *ClusterState, extension string) error {
+	if cluster.GetTenant().Resources.Components.Standalone == nil {
+		return nil
+	}
+	return errors.Errorf(
+		"the platform refused the %s extension: extensions need a cluster with a separate compute component, "+
+			"which a standalone cluster does not have", extension)
+}
+
+func (acc *FakeCloudClient) GetServerlessCompaction(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionCompactionResponseBody, error) {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseOnStandalone(cluster, "serverless compaction"); err != nil {
+		return nil, err
+	}
+	ext := cluster.GetServerlessCompaction()
+	if ext == nil {
+		return nil, cloudsdk.ErrExtensionDisabled
+	}
+	return ext, nil
+}
+
+func (acc *FakeCloudClient) EnableServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	if err := refuseOnStandalone(cluster, "serverless_compaction"); err != nil {
+		return err
+	}
+	// The platform refuses to enable an extension that is already running, which is how a caller
+	// finds out it enabled it somewhere else -- through the resource endpoint, say.
+	if current := cluster.GetServerlessCompaction(); current != nil {
+		return errors.Errorf("Illegal status: %s, cannot enable extensions compaction", current.Status)
+	}
+	cluster.SetServerlessCompaction(&apigen_mgmtv2.GetTenantExtensionCompactionResponseBody{
+		MaximumCompactionConcurrency: ptr.Ptr(req.MaximumCompactionConcurrency),
+		Status:                       cloudsdk.ExtensionStatusRunning,
+		Version:                      req.Version,
+	})
+	return nil
+}
+
+// UpdateServerlessCompactionAwait changes an extension that is already running. It is not the
+// same call as enabling one -- the platform refuses each in the other's situation -- so it
+// cannot delegate to it.
+func (acc *FakeCloudClient) UpdateServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	if err := refuseOnStandalone(cluster, "serverless_compaction"); err != nil {
+		return err
+	}
+	if cluster.GetServerlessCompaction() == nil {
+		return errors.Wrapf(cloudsdk.ErrExtensionDisabled,
+			"the serverless_compaction extension of cluster %s is not enabled", clusterNsID)
+	}
+	cluster.SetServerlessCompaction(&apigen_mgmtv2.GetTenantExtensionCompactionResponseBody{
+		MaximumCompactionConcurrency: ptr.Ptr(req.MaximumCompactionConcurrency),
+		Status:                       cloudsdk.ExtensionStatusRunning,
+		Version:                      req.Version,
+	})
+	return nil
+}
+
+func (acc *FakeCloudClient) DisableServerlessCompactionAwait(ctx context.Context, clusterNsID uuid.UUID) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	cluster.SetServerlessCompaction(nil)
+	return nil
+}
+
+func (acc *FakeCloudClient) GetServerlessBackfill(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody, error) {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseOnStandalone(cluster, "serverless backfill"); err != nil {
+		return nil, err
+	}
+	ext := cluster.GetServerlessBackfill()
+	if ext == nil {
+		return nil, cloudsdk.ErrExtensionDisabled
+	}
+	return ext, nil
+}
+
+func (acc *FakeCloudClient) EnableServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	cluster.SetServerlessBackfill(&apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody{
+		Resources: componentReqToComponent(&req.Resources),
+		Status:    cloudsdk.ExtensionStatusRunning,
+	})
+	return nil
+}
+
+func (acc *FakeCloudClient) UpdateServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error {
+	debugFuncCaller()
+
+	return acc.EnableServerlessBackfillAwait(ctx, clusterNsID, req)
+}
+
+func (acc *FakeCloudClient) DisableServerlessBackfillAwait(ctx context.Context, clusterNsID uuid.UUID) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	cluster.SetServerlessBackfill(nil)
+	return nil
+}
+
+func (acc *FakeCloudClient) GetIcebergCompaction(ctx context.Context, clusterNsID uuid.UUID) (*apigen_mgmtv2.IcebergCompaction, error) {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseOnStandalone(cluster, "iceberg compaction"); err != nil {
+		return nil, err
+	}
+	ext := cluster.GetIcebergCompaction()
+	if ext == nil {
+		return nil, cloudsdk.ErrExtensionDisabled
+	}
+	return ext, nil
+}
+
+func (acc *FakeCloudClient) EnableIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	cluster.SetIcebergCompaction(&apigen_mgmtv2.IcebergCompaction{
+		Config:    req.Config,
+		Resources: componentReqToComponent(req.Resources),
+		Status:    cloudsdk.ExtensionStatusRunning,
+	})
+	return nil
+}
+
+func (acc *FakeCloudClient) UpdateIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID, req apigen_mgmtv2.PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error {
+	debugFuncCaller()
+
+	return acc.EnableIcebergCompactionAwait(ctx, clusterNsID, apigen_mgmtv2.PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody(req))
+}
+
+func (acc *FakeCloudClient) DisableIcebergCompactionAwait(ctx context.Context, clusterNsID uuid.UUID) error {
+	debugFuncCaller()
+
+	cluster, err := state.GetClusterByNsID(clusterNsID)
+	if err != nil {
+		return err
+	}
+	cluster.SetIcebergCompaction(nil)
 	return nil
 }
