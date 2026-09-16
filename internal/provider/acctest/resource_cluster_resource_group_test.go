@@ -17,6 +17,15 @@ func TestClusterResourceGroupResource(t *testing.T) {
 	cloud := initCloudSDK(t)
 	spec := testClusterSpec(t, cloud)
 
+	// A resource group is compute nodes, and a standalone cluster has no compute component for
+	// them to belong to -- the platform rejects the resource group outright. There is nothing to
+	// assert on such a tier, so the test says why it is not running rather than failing on an
+	// attribute that a standalone cluster does not have.
+	if spec.IsStandalone() {
+		t.Skipf("tier %s in %s runs a standalone cluster, which has no compute component for a "+
+			"resource group to use", testTier(), testRegion())
+	}
+
 	// A resource group runs compute nodes, so it can only use a compute size of the tier. It
 	// starts at the same 0.5 RWU the cluster's own components use.
 	firstType := spec.Compute.ID
