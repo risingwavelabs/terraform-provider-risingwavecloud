@@ -802,7 +802,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	declaredExtensions := data.Extensions
 	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
 	if !declaredExtensions.IsNull() {
-		extensions, extDiags := readExtensions(ctx, r.client, createdCluster.NsId)
+		extensions, extDiags := readExtensions(ctx, r.client, createdCluster.NsId, declaredExtensions)
 		resp.Diagnostics.Append(extDiags...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -887,7 +887,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	// an empty answer, so every plan of every standalone cluster would fail.
 	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
 	if !clusterIsStandalone(cluster) {
-		extensions, extDiags := readExtensions(ctx, r.client, nsID)
+		extensions, extDiags := readExtensions(ctx, r.client, nsID, declaredExtensions)
 		resp.Diagnostics.Append(extDiags...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -1229,7 +1229,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	plannedShape := data.Extensions
 	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
 	if touchesExtensions || !plannedShape.IsNull() {
-		extensions, extDiags := readExtensions(ctx, r.client, nsID)
+		extensions, extDiags := readExtensions(ctx, r.client, nsID, plannedShape)
 		resp.Diagnostics.Append(extDiags...)
 		if resp.Diagnostics.HasError() {
 			return

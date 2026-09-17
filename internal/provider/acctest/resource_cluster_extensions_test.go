@@ -106,6 +106,17 @@ func TestClusterExtensionsResource(t *testing.T) {
 						"extensions.serverless_backfill.replica", "2"),
 				),
 			},
+			// An explicitly empty config is a value, not an absence. The platform reports the
+			// empty string for both, so this and the step above -- which omits the config
+			// entirely -- have to end differently: `""` here, null there.
+			{
+				Config: testClusterWithExtensions(clusterName,
+					testExtensionsBlock(4, 2, withIcebergConfig("")), withComputeReplica(2)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("risingwavecloud_cluster.test",
+						"extensions.iceberg_compaction.config", ""),
+				),
+			},
 			// Clear the last extension by emptying the block rather than deleting it. Terraform
 			// tells a known object with null children apart from no object at all, and an apply
 			// has to end with the shape the plan had, so this is not the same as the step below.

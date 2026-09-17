@@ -396,7 +396,12 @@ func applyExtensions(
 
 // readExtensions reports what the platform has, which is what the state must hold. An extension
 // that is not enabled reads back as absent rather than as an error.
-func readExtensions(ctx context.Context, client cloudsdk.CloudClientInterface, nsID uuid.UUID) (types.Object, diag.Diagnostics) {
+func readExtensions(
+	ctx context.Context,
+	client cloudsdk.CloudClientInterface,
+	nsID uuid.UUID,
+	declared types.Object,
+) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	compaction := types.ObjectNull(serverlessCompactionAttrTypes)
@@ -446,7 +451,12 @@ func readExtensions(ctx context.Context, client cloudsdk.CloudClientInterface, n
 		// that omitted the field and always answers with a pointer. Recording that empty string
 		// against a configuration that said nothing would end the apply with an inconsistent
 		// result, so it reads back as absent, which is what it means.
-		if ext.Config != nil && *ext.Config != "" {
+		// The platform has no absent config: it stores the empty string for a request that
+		// omitted the field and always answers with a pointer, so an empty answer means either.
+		// Which one it is here is decided by what was asked for -- a configuration that wrote an
+		// empty string keeps it, one that wrote nothing stays absent -- because an apply has to
+		// end with the value the plan had, and both are values terraform can plan.
+		if ext.Config != nil && (*ext.Config != "" || declaredIcebergConfigIsEmptyString(ctx, declared, &diags)) {
 			value.Config = types.StringValue(*ext.Config)
 		}
 		obj, d := types.ObjectValueFrom(ctx, icebergCompactionAttrTypes, value)
@@ -691,4 +701,20 @@ func (r *ClusterResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 			current, planned,
 		),
 	)
+}
+
+// declaredIcebergConfigIsEmptyString reports whether the iceberg config that was asked for is an
+// empty string rather than absent. The platform reports the same thing for both.
+func declaredIcebergConfigIsEmptyString(ctx context.Context, declared types.Object, diags *diag.Diagnostics) bool {
+	ext := extensionsOf(ctx, declared, diags)
+	if diags.HasError() || ext.IcebergCompaction.IsNull() || ext.IcebergCompaction.IsUnknown() {
+		return false
+	}
+
+	var iceberg IcebergCompactionModel
+	diags.Append(ext.IcebergCompaction.As(ctx, &iceberg, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() || iceberg.Config.IsNull() || iceberg.Config.IsUnknown() {
+		return false
+	}
+	return iceberg.Config.ValueString() == ""
 }
