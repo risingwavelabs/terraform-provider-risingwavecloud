@@ -66,12 +66,18 @@ func TestClusterExtensionsResource(t *testing.T) {
 						"spec.compactor.default_node_group.replica", "1"),
 				),
 			},
-			// Resizing the compactor while the extension runs is refused while planning. The
-			// platform records the count to restore when the extension is enabled and will not
-			// revise it, so a new count would be kept by terraform and ignored by the platform.
+			// Changing the compactor while the extension runs is refused while planning, whether
+			// the change is the count or the size: the platform records the whole component when
+			// the extension is enabled and will not revise it, so either would be kept by
+			// terraform and ignored by the platform.
 			{
 				Config:      testClusterWithExtensions(clusterName, testExtensionsBlock(2, 1), withCompactorReplica(2)),
-				ExpectError: regexp.MustCompile("cannot be resized while serverless compaction is enabled"),
+				ExpectError: regexp.MustCompile("cannot be changed while serverless compaction is enabled"),
+				PlanOnly:    true,
+			},
+			{
+				Config:      testClusterWithExtensions(clusterName, testExtensionsBlock(2, 1), withCompactorSize("2", "8 GB")),
+				ExpectError: regexp.MustCompile("cannot be changed while serverless compaction is enabled"),
 				PlanOnly:    true,
 			},
 			// Change a different component while the extensions are on. The compactor is at zero
@@ -86,15 +92,25 @@ func TestClusterExtensionsResource(t *testing.T) {
 						"spec.compactor.default_node_group.replica", "1"),
 				),
 			},
-			// Change both extensions at once
+			// Change both extensions at once, and give iceberg a config on the way. The platform
+			// parses it as TOML and stores the string; if it rewrote it instead, the plan check
+			// after this step would catch the difference.
 			{
-				Config: testClusterWithExtensions(clusterName, testExtensionsBlock(4, 2), withComputeReplica(2)),
+				Config: testClusterWithExtensions(clusterName,
+					testExtensionsBlock(4, 2, withIcebergConfig("max_task_parallelism = 1\n")),
+					withComputeReplica(2)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test",
 						"extensions.serverless_compaction.maximum_compaction_concurrency", "4"),
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test",
 						"extensions.serverless_backfill.replica", "2"),
 				),
+			},
+			// Clear the last extension by emptying the block rather than deleting it. Terraform
+			// tells a known object with null children apart from no object at all, and an apply
+			// has to end with the shape the plan had, so this is not the same as the step below.
+			{
+				Config: testClusterWithExtensions(clusterName, "\textensions = {}\n", withComputeReplica(2)),
 			},
 			// Remove them: the cluster stays and the platform gives the compactor back
 			{
@@ -107,12 +123,21 @@ func TestClusterExtensionsResource(t *testing.T) {
 
 // testExtensionsBlock renders the `extensions` attribute.
 //
-// Iceberg compaction is enabled with a small configuration. The test has no Iceberg tables for
-// it to compact, so this only shows that the extension comes up and reports itself running --
-// which is what the provider is responsible for. It also puts `config` through a round trip: the
-// platform parses it as TOML and stores the string, and if it rewrote it instead, the plan check
-// after this step would catch the difference.
-func testExtensionsBlock(concurrency, backfillReplica int) string {
+// Iceberg compaction is enabled without a `config` unless one is asked for. The test has no
+// Iceberg tables for it to compact, so this only shows that the extension comes up and reports
+// itself running -- which is what the provider is responsible for. Leaving the config out is the
+// case worth covering by default: the platform stores an empty string for a request that omits
+// one and always answers with a pointer, so recording that against a configuration which said
+// nothing would end the apply with an inconsistent result. `withIcebergConfig` covers the other
+// half, a config that makes the round trip and is compared verbatim.
+func testExtensionsBlock(concurrency, backfillReplica int, opts ...func(*string)) string {
+	// No config by default: the platform stores an empty string for a request that omits one and
+	// always answers with a pointer, so an absent config is the case that has to read back as
+	// absent rather than as "".
+	config := ""
+	for _, o := range opts {
+		o(&config)
+	}
 	return fmt.Sprintf(`
 	extensions = {
 		serverless_compaction = {
@@ -125,10 +150,15 @@ func testExtensionsBlock(concurrency, backfillReplica int) string {
 		iceberg_compaction = {
 			component_type_id = %q
 			replica           = 1
-			config            = "max_task_parallelism = 1\n"
-		}
+%s		}
 	}
-`, concurrency, testExtensionComponentType, backfillReplica, testExtensionComponentType)
+`, concurrency, testExtensionComponentType, backfillReplica, testExtensionComponentType, config)
+}
+
+// withIcebergConfig gives the iceberg extension a configuration, which the platform parses as
+// TOML and stores verbatim.
+func withIcebergConfig(toml string) func(*string) {
+	return func(c *string) { *c = fmt.Sprintf("\t\t\tconfig = %q\n", toml) }
 }
 
 // testClusterWithExtensions is the cluster the extensions hang off. It declares one compactor,
@@ -144,14 +174,22 @@ func withCompactorReplica(n int) func(*clusterShape) {
 	return func(c *clusterShape) { c.compactor = n }
 }
 
+// withCompactorSize changes the compactor's node size, which the extension takes over just as
+// completely as it does the count.
+func withCompactorSize(cpu, memory string) func(*clusterShape) {
+	return func(c *clusterShape) { c.compactorCPU, c.compactorMemory = cpu, memory }
+}
+
 // clusterShape is what the rendered cluster asks for, beyond the extensions.
 type clusterShape struct {
-	compute   int
-	compactor int
+	compute         int
+	compactor       int
+	compactorCPU    string
+	compactorMemory string
 }
 
 func testClusterWithExtensions(name, extensions string, opts ...func(*clusterShape)) string {
-	shape := clusterShape{compute: 1, compactor: 1}
+	shape := clusterShape{compute: 1, compactor: 1, compactorCPU: "1", compactorMemory: "4 GB"}
 	for _, o := range opts {
 		o(&shape)
 	}
@@ -174,8 +212,8 @@ resource "risingwavecloud_cluster" "test" {
 		}
 		compactor = {
 			default_node_group = {
-				cpu     = "1"
-				memory  = "4 GB"
+				cpu     = %q
+				memory  = %q
 				replica = %d
 			}
 		}
@@ -195,7 +233,7 @@ resource "risingwavecloud_cluster" "test" {
 		}
 	}
 %s}
-`, testResourceGroupRegion, name, testResourceGroupVersion, shape.compute, shape.compactor, extensions)
+`, testResourceGroupRegion, name, testResourceGroupVersion, shape.compute, shape.compactorCPU, shape.compactorMemory, shape.compactor, extensions)
 }
 
 // TestClusterStandaloneIgnoresExtensions covers the clusters that have nothing to do with this

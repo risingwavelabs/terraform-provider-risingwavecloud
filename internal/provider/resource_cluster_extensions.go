@@ -442,7 +442,11 @@ func readExtensions(ctx context.Context, client cloudsdk.CloudClientInterface, n
 			Memory:          nodes.Memory,
 			Status:          nodes.Status,
 		}
-		if ext.Config != nil {
+		// The platform has no absent config, only an empty one: it stores `""` for a request
+		// that omitted the field and always answers with a pointer. Recording that empty string
+		// against a configuration that said nothing would end the apply with an inconsistent
+		// result, so it reads back as absent, which is what it means.
+		if ext.Config != nil && *ext.Config != "" {
 			value.Config = types.StringValue(*ext.Config)
 		}
 		obj, d := types.ObjectValueFrom(ctx, icebergCompactionAttrTypes, value)
@@ -452,10 +456,6 @@ func readExtensions(ctx context.Context, client cloudsdk.CloudClientInterface, n
 		diags.AddError("Unable to read the iceberg compaction extension", err.Error())
 	}
 
-	if compaction.IsNull() && backfill.IsNull() && iceberg.IsNull() {
-		return types.ObjectNull(clusterExtensionsAttrTypes), diags
-	}
-
 	obj, d := types.ObjectValue(clusterExtensionsAttrTypes, map[string]attr.Value{
 		"serverless_compaction": compaction,
 		"serverless_backfill":   backfill,
@@ -463,6 +463,23 @@ func readExtensions(ctx context.Context, client cloudsdk.CloudClientInterface, n
 	})
 	diags.Append(d...)
 	return obj, diags
+}
+
+// shapedLikeDeclared collapses an extensions object with nothing in it to null, but only when
+// the configuration wrote nothing either.
+//
+// Terraform tells `extensions = {}` apart from no `extensions` at all -- one is a known object
+// whose children are null, the other is a null object -- and an apply has to end with the shape
+// the plan had. A configuration that writes the empty object, which is also what a module
+// produces when all three of its optional children are null, therefore keeps it.
+func shapedLikeDeclared(ctx context.Context, read, declared types.Object, diags *diag.Diagnostics) types.Object {
+	if !declared.IsNull() {
+		return read
+	}
+	if ext := extensionsOf(ctx, read, diags); diags.HasError() || !ext.isEmpty() {
+		return read
+	}
+	return types.ObjectNull(clusterExtensionsAttrTypes)
 }
 
 func fillExtensionNodes(value *ExtensionNodesModel, resources *apigen_mgmtv2.ComponentResource) {
@@ -542,11 +559,24 @@ func (m extensionComputedString) PlanModifyString(ctx context.Context, req planm
 	resp.PlanValue = req.StateValue
 }
 
-// declaredCompactorReplica reads the compactor replica count out of a cluster's `spec`, which is
-// the count the practitioner asked for.
-func declaredCompactorReplica(ctx context.Context, spec types.Object, diags *diag.Diagnostics) (int, bool) {
+// compactorShape is what a cluster's `spec` asks of its compactor. It is compared as a whole,
+// because the extension takes the component over entirely: a different size is as much a change
+// the platform will not see as a different count.
+type compactorShape struct {
+	cpu     string
+	memory  string
+	replica int
+}
+
+func (c compactorShape) String() string {
+	return fmt.Sprintf("%s/%s x%d", c.cpu, c.memory, c.replica)
+}
+
+// declaredCompactor reads the compactor out of a cluster's `spec`, which is what the
+// practitioner asked for.
+func declaredCompactor(ctx context.Context, spec types.Object, diags *diag.Diagnostics) (compactorShape, bool) {
 	if spec.IsNull() || spec.IsUnknown() {
-		return 0, false
+		return compactorShape{}, false
 	}
 
 	var model ClusterSpecModel
@@ -555,7 +585,7 @@ func declaredCompactorReplica(ctx context.Context, spec types.Object, diags *dia
 		UnhandledUnknownAsEmpty: true,
 	})...)
 	if diags.HasError() || model.CompactorSpec.IsNull() || model.CompactorSpec.IsUnknown() {
-		return 0, false
+		return compactorShape{}, false
 	}
 
 	var component struct {
@@ -563,15 +593,20 @@ func declaredCompactorReplica(ctx context.Context, spec types.Object, diags *dia
 	}
 	diags.Append(model.CompactorSpec.As(ctx, &component, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() || component.DefaultNodeGroup.IsNull() || component.DefaultNodeGroup.IsUnknown() {
-		return 0, false
+		return compactorShape{}, false
 	}
 
 	var group NodeGroupModel
 	diags.Append(component.DefaultNodeGroup.As(ctx, &group, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() || group.Replica.IsNull() || group.Replica.IsUnknown() {
-		return 0, false
+	if diags.HasError() || group.Replica.IsNull() || group.Replica.IsUnknown() ||
+		group.CPU.IsUnknown() || group.Memory.IsUnknown() {
+		return compactorShape{}, false
 	}
-	return int(group.Replica.ValueInt64()), true
+	return compactorShape{
+		cpu:     group.CPU.ValueString(),
+		memory:  group.Memory.ValueString(),
+		replica: int(group.Replica.ValueInt64()),
+	}, true
 }
 
 // keepDeclaredCompactor puts the declared compactor count back on a cluster the platform has
@@ -582,11 +617,11 @@ func keepDeclaredCompactor(ctx context.Context, spec types.Object, cluster *apig
 	if cluster == nil || cluster.Resources.Components.Compactor == nil {
 		return
 	}
-	declared, ok := declaredCompactorReplica(ctx, spec, diags)
+	declared, ok := declaredCompactor(ctx, spec, diags)
 	if !ok || diags.HasError() {
 		return
 	}
-	cluster.Resources.Components.Compactor.Replica = declared
+	cluster.Resources.Components.Compactor.Replica = declared.replica
 }
 
 // plannedCompactionConcurrency reports the concurrency the plan asks serverless compaction to
@@ -639,20 +674,20 @@ func (r *ClusterResource) ModifyPlan(ctx context.Context, req resource.ModifyPla
 		return
 	}
 
-	current, hasCurrent := declaredCompactorReplica(ctx, state.Spec, &resp.Diagnostics)
-	planned, hasPlanned := declaredCompactorReplica(ctx, plan.Spec, &resp.Diagnostics)
+	current, hasCurrent := declaredCompactor(ctx, state.Spec, &resp.Diagnostics)
+	planned, hasPlanned := declaredCompactor(ctx, plan.Spec, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() || !hasCurrent || !hasPlanned || current == planned {
 		return
 	}
 
 	resp.Diagnostics.AddAttributeError(
-		path.Root("spec").AtName("compactor").AtName("default_node_group").AtName("replica"),
-		"The compactor cannot be resized while serverless compaction is enabled",
+		path.Root("spec").AtName("compactor").AtName("default_node_group"),
+		"The compactor cannot be changed while serverless compaction is enabled",
 		fmt.Sprintf(
-			"The extension holds the compactor at zero replicas and restores %d when it is disabled, "+
-				"a count the platform records at the time it is enabled and will not revise. Asking for %d "+
+			"The extension holds the compactor at zero replicas and gives back %s when it is disabled, "+
+				"which the platform records at the time it is enabled and will not revise. Asking for %s "+
 				"now would be recorded by terraform and ignored by the platform. Remove the "+
-				"`extensions.serverless_compaction` block, apply, and then resize the compactor.",
+				"`extensions.serverless_compaction` block, apply, and then change the compactor.",
 			current, planned,
 		),
 	)

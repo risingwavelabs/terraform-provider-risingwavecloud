@@ -857,7 +857,16 @@ func (acc *FakeCloudClient) EnableIcebergCompactionAwait(ctx context.Context, cl
 		return err
 	}
 	cluster.SetIcebergCompaction(&apigen_mgmtv2.IcebergCompaction{
-		Config:    req.Config,
+		// The platform has no absent config: it stores the empty string for a request that
+		// omitted one and always answers with a pointer. A fake that kept the nil hid a
+		// provider that recorded that empty string against a configuration which said nothing.
+		Config: func() *string {
+			config := ""
+			if req.Config != nil {
+				config = *req.Config
+			}
+			return &config
+		}(),
 		Resources: componentReqToComponent(req.Resources),
 		Status:    cloudsdk.ExtensionStatusRunning,
 	})

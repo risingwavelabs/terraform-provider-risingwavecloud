@@ -796,14 +796,21 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	// A configuration that wrote `extensions` at all -- even as an empty object -- is read back,
+	// so the state ends with the shape the plan had. One that wrote nothing is left null without
+	// three requests that would only confirm it.
+	declaredExtensions := data.Extensions
 	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
-	if !plannedExtensions.isEmpty() {
+	if !declaredExtensions.IsNull() {
 		extensions, extDiags := readExtensions(ctx, r.client, createdCluster.NsId)
 		resp.Diagnostics.Append(extDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		data.Extensions = extensions
+		data.Extensions = shapedLikeDeclared(ctx, extensions, declaredExtensions, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	// Write logs using the tflog package
@@ -872,8 +879,9 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		}
 	}
 
-	// What the configuration declared, before the platform's answer overwrites it.
+	// What the state holds, before the platform's answer overwrites it.
 	declaredSpec := data.Spec
+	declaredExtensions := data.Extensions
 
 	// A standalone cluster cannot have extensions, and asking about them is an error rather than
 	// an empty answer, so every plan of every standalone cluster would fail.
@@ -884,7 +892,10 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		data.Extensions = extensions
+		data.Extensions = shapedLikeDeclared(ctx, extensions, declaredExtensions, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 
 		// Serverless compaction holds the cluster's compactor at zero while it runs, and the
 		// platform restores the count when it is disabled -- it keeps it in a field its own spec
@@ -1215,14 +1226,18 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	plannedShape := data.Extensions
 	data.Extensions = types.ObjectNull(clusterExtensionsAttrTypes)
-	if touchesExtensions {
+	if touchesExtensions || !plannedShape.IsNull() {
 		extensions, extDiags := readExtensions(ctx, r.client, nsID)
 		resp.Diagnostics.Append(extDiags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		data.Extensions = extensions
+		data.Extensions = shapedLikeDeclared(ctx, extensions, plannedShape, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	// Save updated data into Terraform state
