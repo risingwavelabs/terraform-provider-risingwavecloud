@@ -17,6 +17,12 @@ const (
 // TestClusterAllowedIamRolesResource covers the list a cluster owns: setting it, growing and
 // shrinking it, importing it, and emptying it.
 func TestClusterAllowedIamRolesResource(t *testing.T) {
+	// Each test builds its own cluster, and the cluster is almost all of the runtime: about
+	// thirteen of the twenty-odd minutes a test takes go into provisioning one and tearing it
+	// down, because this tier's meta store is a dedicated RDS instance. Run them at the same
+	// time and the suite costs the slowest test rather than the sum of all of them.
+	t.Parallel()
+
 	clusterName := fmt.Sprintf("tf%siam", getTestNamespace(t))
 	spec := testClusterSpec(t, initCloudSDK(t))
 

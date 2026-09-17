@@ -149,11 +149,19 @@ func NewRegionState() *RegionState {
 	}
 }
 
+// GetClusters returns a snapshot of the region's clusters. Handing out the live map would let a
+// caller iterate it while another test adds a cluster, which the read lock taken here does
+// nothing to prevent once the map has escaped.
 func (r *RegionState) GetClusters() map[string]*ClusterState {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return r.clusters
+	clusters := make(map[string]*ClusterState, len(r.clusters))
+	for id, c := range r.clusters {
+		clusters[id] = c
+	}
+
+	return clusters
 }
 
 func (r *RegionState) GetClusterByNsID(nsID uuid.UUID) (*ClusterState, error) {
@@ -191,17 +199,39 @@ func (s *RegionState) ReplaceCluster(nsID uuid.UUID, cluster *ClusterState) {
 
 type GlobalState struct {
 	regionStates map[string]*RegionState
+	mu           sync.RWMutex
 }
 
+// GetRegionState returns a region's state, creating it the first time the region is asked for.
+// It takes the write lock unconditionally because that creation writes to the map, and the
+// acceptance tests run in parallel, so two of them can reach a region for the first time at
+// once.
 func (g *GlobalState) GetRegionState(region string) *RegionState {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if _, ok := g.regionStates[region]; !ok {
 		g.regionStates[region] = NewRegionState()
 	}
 	return g.regionStates[region]
 }
 
-func (g *GlobalState) GetClusterByNsID(nsID uuid.UUID) (*ClusterState, error) {
+// regions returns the region states as a slice, so a caller can walk them without holding the
+// lock while it calls into each one.
+func (g *GlobalState) regions() []*RegionState {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	regions := make([]*RegionState, 0, len(g.regionStates))
 	for _, r := range g.regionStates {
+		regions = append(regions, r)
+	}
+
+	return regions
+}
+
+func (g *GlobalState) GetClusterByNsID(nsID uuid.UUID) (*ClusterState, error) {
+	for _, r := range g.regions() {
 		cluster, err := r.GetClusterByNsID(nsID)
 		if err == nil {
 			return cluster, nil
