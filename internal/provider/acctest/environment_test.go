@@ -75,6 +75,10 @@ type clusterSpec struct {
 	// on such a cluster: the platform rejects them for want of a compute component.
 	Standalone   *nodeSpec
 	ComputeTypes []apigen_mgmtv1.AvailableComponentType
+
+	// Tier is the tier these sizes came from, which is not always the configured one: the tests
+	// about standalone clusters ask for a tier that has that shape.
+	Tier apigen_mgmtv1.TierId
 }
 
 // NextComputeTypeAfter returns the compute size the tier offers above the given one, which the
@@ -123,8 +127,14 @@ func testClusterSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterS
 // test, because its result is shared and the test that triggered the call is not the only one
 // that depends on it.
 func resolveClusterSpec(cloud cloudsdk.CloudClientInterface) (clusterSpec, string, error) {
+	return resolveClusterSpecOfTier(cloud, testTier())
+}
+
+// resolveClusterSpecOfTier reads the sizes of a named tier, which the tests about standalone
+// clusters need: they are about a shape the configured tier may not have.
+func resolveClusterSpecOfTier(cloud cloudsdk.CloudClientInterface, tier apigen_mgmtv1.TierId) (clusterSpec, string, error) {
 	ctx := context.Background()
-	region, tier := testRegion(), testTier()
+	region := testRegion()
 
 	var firstErr error
 	sizes := func(component string) []apigen_mgmtv1.AvailableComponentType {
@@ -162,7 +172,7 @@ func resolveClusterSpec(cloud cloudsdk.CloudClientInterface) (clusterSpec, strin
 	// `400 don't allow specify SharingPg meta store in request` — the tiers endpoint lists
 	// what a cluster can end up with, not what a request may name.
 	var (
-		spec    clusterSpec
+		spec    = clusterSpec{Tier: tier}
 		summary string
 	)
 
@@ -223,6 +233,14 @@ type clusterOptions struct {
 	ComputeReplica   int
 	CompactorReplica int
 
+	// CompactorNode overrides the compactor's size. Only the tests about serverless compaction
+	// need it: the extension takes the component over, so asking for a different size is a thing
+	// they have to be able to express.
+	CompactorNode *nodeSpec
+
+	// Extensions is rendered inside the resource, after the spec.
+	Extensions string
+
 	// RisingWaveConfig is the cluster's TOML configuration, rendered as a heredoc.
 	RisingWaveConfig string
 }
@@ -248,7 +266,7 @@ func (s clusterSpec) render(o clusterOptions) string {
 	b.WriteString("\nresource \"risingwavecloud_cluster\" \"test\" {\n")
 	fmt.Fprintf(&b, "\tregion = %q\n", testRegion())
 	fmt.Fprintf(&b, "\tname   = %q\n", o.Name)
-	fmt.Fprintf(&b, "\ttier   = %q\n", string(testTier()))
+	fmt.Fprintf(&b, "\ttier   = %q\n", string(s.Tier))
 	if o.Version != "" {
 		fmt.Fprintf(&b, "\tversion = %q\n", o.Version)
 	}
@@ -258,7 +276,11 @@ func (s clusterSpec) render(o clusterOptions) string {
 		b.WriteString(nodeGroup("standalone", *s.Standalone, 1))
 	} else {
 		b.WriteString(nodeGroup("compute", s.Compute, o.ComputeReplica))
-		b.WriteString(nodeGroup("compactor", s.Compactor, o.CompactorReplica))
+		compactor := s.Compactor
+		if o.CompactorNode != nil {
+			compactor = *o.CompactorNode
+		}
+		b.WriteString(nodeGroup("compactor", compactor, o.CompactorReplica))
 		b.WriteString(nodeGroup("frontend", s.Frontend, 1))
 		b.WriteString(nodeGroup("meta", s.Meta, 1))
 	}
@@ -272,7 +294,9 @@ func (s clusterSpec) render(o clusterOptions) string {
 		b.WriteString("\t\tEOT\n")
 	}
 
-	b.WriteString("\t}\n}\n")
+	b.WriteString("\t}\n")
+	b.WriteString(o.Extensions)
+	b.WriteString("}\n")
 	return b.String()
 }
 

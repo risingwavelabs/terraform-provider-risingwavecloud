@@ -126,6 +126,32 @@ type RegionServiceClientInterface interface {
 	AddAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error
 
 	RemoveAllowedIamRoleAwait(ctx context.Context, nsID uuid.UUID, roleArn string) error
+
+	/* Extensions */
+
+	GetServerlessCompaction(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionCompactionResponseBody, error)
+
+	EnableServerlessCompactionAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error
+
+	UpdateServerlessCompactionAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessCompactionRequest) error
+
+	DisableServerlessCompactionAwait(ctx context.Context, nsID uuid.UUID) error
+
+	GetServerlessBackfill(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.GetTenantExtensionServerlessBackfillResponseBody, error)
+
+	EnableServerlessBackfillAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error
+
+	UpdateServerlessBackfillAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.TenantExtensionServerlessBackfillRequest) error
+
+	DisableServerlessBackfillAwait(ctx context.Context, nsID uuid.UUID) error
+
+	GetIcebergCompaction(ctx context.Context, nsID uuid.UUID) (*apigen_mgmtv2.IcebergCompaction, error)
+
+	EnableIcebergCompactionAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error
+
+	UpdateIcebergCompactionAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody) error
+
+	DisableIcebergCompactionAwait(ctx context.Context, nsID uuid.UUID) error
 }
 
 type RegionServiceClient struct {
