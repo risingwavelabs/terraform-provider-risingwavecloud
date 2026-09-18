@@ -24,6 +24,16 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for AgentSkillPackageDownloadTokenType.
+const (
+	ShortLived AgentSkillPackageDownloadTokenType = "short_lived"
+)
+
+// Defines values for AgentSkillPackageSignatureAlgorithm.
+const (
+	Ed25519 AgentSkillPackageSignatureAlgorithm = "ed25519"
+)
+
 // Defines values for AlertSeverity.
 const (
 	AlertSeverityCritical AlertSeverity = "critical"
@@ -37,6 +47,12 @@ const (
 	Local        AuthType = "local"
 	Sso          AuthType = "sso"
 	Windowslive  AuthType = "windowslive"
+)
+
+// Defines values for CreateRoleBindingRequestBodyPrincipalType.
+const (
+	CreateRoleBindingRequestBodyPrincipalTypeServiceAccount CreateRoleBindingRequestBodyPrincipalType = "service_account"
+	CreateRoleBindingRequestBodyPrincipalTypeUser           CreateRoleBindingRequestBodyPrincipalType = "user"
 )
 
 // Defines values for NotificationStatus.
@@ -75,11 +91,73 @@ const (
 	RecipientTypeUser  RecipientType = "user"
 )
 
+// Defines values for RoleBindingManagedBy.
+const (
+	RoleBindingManagedBySystem RoleBindingManagedBy = "system"
+	RoleBindingManagedByUser   RoleBindingManagedBy = "user"
+)
+
+// Defines values for RoleBindingPrincipalType.
+const (
+	RoleBindingPrincipalTypeServiceAccount RoleBindingPrincipalType = "service_account"
+	RoleBindingPrincipalTypeUser           RoleBindingPrincipalType = "user"
+)
+
+// Defines values for RoleBindingRequestScopeType.
+const (
+	RoleBindingRequestScopeTypeOrganization RoleBindingRequestScopeType = "organization"
+	RoleBindingRequestScopeTypeProject      RoleBindingRequestScopeType = "project"
+)
+
+// Defines values for RoleBindingScopeEffect.
+const (
+	Self    RoleBindingScopeEffect = "self"
+	Subtree RoleBindingScopeEffect = "subtree"
+)
+
+// Defines values for RoleBindingScopeType.
+const (
+	RoleBindingScopeTypeOrganization RoleBindingScopeType = "organization"
+	RoleBindingScopeTypeProject      RoleBindingScopeType = "project"
+)
+
 // Defines values for GetNotificationsParamsOrder.
 const (
 	CreatedAtAsc  GetNotificationsParamsOrder = "createdAtAsc"
 	CreatedAtDesc GetNotificationsParamsOrder = "createdAtDesc"
 )
+
+// AgentSkillPackageDownload defines model for AgentSkillPackageDownload.
+type AgentSkillPackageDownload struct {
+	ExpiresAt time.Time                          `json:"expiresAt"`
+	TokenType AgentSkillPackageDownloadTokenType `json:"tokenType"`
+	Url       string                             `json:"url"`
+}
+
+// AgentSkillPackageDownloadTokenType defines model for AgentSkillPackageDownload.TokenType.
+type AgentSkillPackageDownloadTokenType string
+
+// AgentSkillPackageManifest defines model for AgentSkillPackageManifest.
+type AgentSkillPackageManifest struct {
+	BundleSha256 string                     `json:"bundleSha256"`
+	Channel      string                     `json:"channel"`
+	Download     AgentSkillPackageDownload  `json:"download"`
+	OrgId        openapi_types.UUID         `json:"orgId"`
+	Package      string                     `json:"package"`
+	RequiredPlan string                     `json:"requiredPlan"`
+	Signature    AgentSkillPackageSignature `json:"signature"`
+	Version      string                     `json:"version"`
+}
+
+// AgentSkillPackageSignature defines model for AgentSkillPackageSignature.
+type AgentSkillPackageSignature struct {
+	Algorithm           AgentSkillPackageSignatureAlgorithm `json:"algorithm"`
+	KeyId               string                              `json:"keyId"`
+	SignedPayloadSha256 string                              `json:"signedPayloadSha256"`
+}
+
+// AgentSkillPackageSignatureAlgorithm defines model for AgentSkillPackageSignature.Algorithm.
+type AgentSkillPackageSignatureAlgorithm string
 
 // AlertSeverity defines model for AlertSeverity.
 type AlertSeverity string
@@ -119,9 +197,22 @@ type AuthType string
 
 // CreateInvitationRequestBody defines model for CreateInvitationRequestBody.
 type CreateInvitationRequestBody struct {
-	Email  string             `json:"email"`
-	RoleId openapi_types.UUID `json:"roleId"`
+	Email string `json:"email"`
+
+	// RoleIds Roles to grant the invitee. Must contain at least one role.
+	RoleIds []openapi_types.UUID `json:"roleIds"`
 }
+
+// CreateRoleBindingRequestBody defines model for CreateRoleBindingRequestBody.
+type CreateRoleBindingRequestBody struct {
+	Principal     openapi_types.UUID                        `json:"principal"`
+	PrincipalType CreateRoleBindingRequestBodyPrincipalType `json:"principalType"`
+	RoleId        openapi_types.UUID                        `json:"roleId"`
+	Scope         RoleBindingRequestScope                   `json:"scope"`
+}
+
+// CreateRoleBindingRequestBodyPrincipalType defines model for CreateRoleBindingRequestBody.PrincipalType.
+type CreateRoleBindingRequestBodyPrincipalType string
 
 // CreatedApiKey defines model for CreatedApiKey.
 type CreatedApiKey struct {
@@ -142,14 +233,16 @@ type EmailRecipientConfig struct {
 
 // Invitation defines model for Invitation.
 type Invitation struct {
-	CreatedAt time.Time          `json:"createdAt"`
-	Email     string             `json:"email"`
-	ExpiresAt time.Time          `json:"expiresAt"`
-	Id        uint64             `json:"id"`
-	Name      string             `json:"name"`
-	OrgId     string             `json:"orgId"`
-	RoleId    openapi_types.UUID `json:"roleId"`
-	UpdatedAt time.Time          `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt"`
+	Email     string    `json:"email"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	Id        uint64    `json:"id"`
+	Name      string    `json:"name"`
+	OrgId     string    `json:"orgId"`
+
+	// RoleIds All roles granted by this invitation.
+	RoleIds   []openapi_types.UUID `json:"roleIds"`
+	UpdatedAt time.Time            `json:"updatedAt"`
 }
 
 // InvitationArray defines model for InvitationArray.
@@ -276,13 +369,6 @@ type PutRecipientSubscriptionRequestBody struct {
 	Severities []AlertSeverity `json:"severities"`
 }
 
-// PutRoleBindingRequestBody defines model for PutRoleBindingRequestBody.
-type PutRoleBindingRequestBody struct {
-	Principal     openapi_types.UUID   `json:"principal"`
-	PrincipalType string               `json:"principalType"`
-	RoleIds       []openapi_types.UUID `json:"roleIds"`
-}
-
 // PutServiceAccountRequestBody defines model for PutServiceAccountRequestBody.
 type PutServiceAccountRequestBody struct {
 	Description string `json:"description"`
@@ -330,11 +416,23 @@ type RoleArray = []Role
 
 // RoleBinding defines model for RoleBinding.
 type RoleBinding struct {
-	Principal     openapi_types.UUID `json:"principal"`
-	PrincipalType *string            `json:"principalType,omitempty"`
-	RoleId        openapi_types.UUID `json:"roleId"`
-	RoleName      string             `json:"roleName"`
+	// BindingId Stable identifier of a persisted binding. Absent for system-managed synthesized bindings.
+	BindingId *openapi_types.UUID `json:"bindingId,omitempty"`
+
+	// ManagedBy System-managed bindings are synthesized and cannot be deleted.
+	ManagedBy     RoleBindingManagedBy     `json:"managedBy"`
+	Principal     openapi_types.UUID       `json:"principal"`
+	PrincipalType RoleBindingPrincipalType `json:"principalType"`
+	RoleId        openapi_types.UUID       `json:"roleId"`
+	RoleName      string                   `json:"roleName"`
+	Scope         RoleBindingScope         `json:"scope"`
 }
+
+// RoleBindingManagedBy System-managed bindings are synthesized and cannot be deleted.
+type RoleBindingManagedBy string
+
+// RoleBindingPrincipalType defines model for RoleBinding.PrincipalType.
+type RoleBindingPrincipalType string
 
 // RoleBindingArray defines model for RoleBindingArray.
 type RoleBindingArray = []RoleBinding
@@ -344,6 +442,36 @@ type RoleBindingPagination struct {
 	Pagination   *Pagination      `json:"pagination,omitempty"`
 	RoleBindings RoleBindingArray `json:"roleBindings"`
 }
+
+// RoleBindingRequestScope defines model for RoleBindingRequestScope.
+type RoleBindingRequestScope struct {
+	// Id Organization ID (`orgId`) for organization scope, or tenant namespace ID (`nsId`) for project scope.
+	Id openapi_types.UUID `json:"id"`
+
+	// Type Scope type. Organization scope must use the authenticated organization ID; project scope uses a tenant namespace ID.
+	Type RoleBindingRequestScopeType `json:"type"`
+}
+
+// RoleBindingRequestScopeType Scope type. Organization scope must use the authenticated organization ID; project scope uses a tenant namespace ID.
+type RoleBindingRequestScopeType string
+
+// RoleBindingScope defines model for RoleBindingScope.
+type RoleBindingScope struct {
+	// Effect Server-derived scope effect for the role binding.
+	Effect RoleBindingScopeEffect `json:"effect"`
+
+	// Id Organization ID (`orgId`) for organization scope, or tenant namespace ID (`nsId`) for project scope.
+	Id openapi_types.UUID `json:"id"`
+
+	// Type Normalized scope type.
+	Type RoleBindingScopeType `json:"type"`
+}
+
+// RoleBindingScopeEffect Server-derived scope effect for the role binding.
+type RoleBindingScopeEffect string
+
+// RoleBindingScopeType Normalized scope type.
+type RoleBindingScopeType string
 
 // RolePagination defines model for RolePagination.
 type RolePagination struct {
@@ -462,9 +590,19 @@ type FailedPreconditionResponse struct {
 	Msg  string  `json:"msg"`
 }
 
+// ForbiddenResponse defines model for ForbiddenResponse.
+type ForbiddenResponse struct {
+	Msg string `json:"msg"`
+}
+
 // NotFoundResponse defines model for NotFoundResponse.
 type NotFoundResponse struct {
 	Msg string `json:"msg"`
+}
+
+// GetAgentSkillPackagesPackageNameManifestParams defines parameters for GetAgentSkillPackagesPackageNameManifest.
+type GetAgentSkillPackagesPackageNameManifestParams struct {
+	Channel *string `form:"channel,omitempty" json:"channel,omitempty"`
 }
 
 // GetApiKeysParams defines parameters for GetApiKeys.
@@ -542,8 +680,8 @@ type PostRecipientsJSONRequestBody = PostRecipientRequestBody
 // PutRecipientsRecipientIdSubscriptionsJSONRequestBody defines body for PutRecipientsRecipientIdSubscriptions for application/json ContentType.
 type PutRecipientsRecipientIdSubscriptionsJSONRequestBody = PutRecipientSubscriptionRequestBody
 
-// PutRoleBindingsJSONRequestBody defines body for PutRoleBindings for application/json ContentType.
-type PutRoleBindingsJSONRequestBody = PutRoleBindingRequestBody
+// PostRoleBindingsJSONRequestBody defines body for PostRoleBindings for application/json ContentType.
+type PostRoleBindingsJSONRequestBody = CreateRoleBindingRequestBody
 
 // PostServiceAccountsJSONRequestBody defines body for PostServiceAccounts for application/json ContentType.
 type PostServiceAccountsJSONRequestBody = PostServiceAccountRequestBody
@@ -776,6 +914,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetAgentSkillPackagesPackageNameManifest request
+	GetAgentSkillPackagesPackageNameManifest(ctx context.Context, packageName string, params *GetAgentSkillPackagesPackageNameManifestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAlertTypes request
 	GetAlertTypes(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -811,6 +952,9 @@ type ClientInterface interface {
 
 	// GetInvitationsId request
 	GetInvitationsId(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostInvitationsIdResend request
+	PostInvitationsIdResend(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNotifications request
 	GetNotifications(ctx context.Context, params *GetNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -869,10 +1013,13 @@ type ClientInterface interface {
 	// GetRoleBindings request
 	GetRoleBindings(ctx context.Context, params *GetRoleBindingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutRoleBindingsWithBody request with any body
-	PutRoleBindingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostRoleBindingsWithBody request with any body
+	PostRoleBindingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PutRoleBindings(ctx context.Context, body PutRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostRoleBindings(ctx context.Context, body PostRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRoleBindingsBindingId request
+	DeleteRoleBindingsBindingId(ctx context.Context, bindingId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRoles request
 	GetRoles(ctx context.Context, params *GetRolesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -915,6 +1062,18 @@ type ClientInterface interface {
 
 	// GetUsersId request
 	GetUsersId(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetAgentSkillPackagesPackageNameManifest(ctx context.Context, packageName string, params *GetAgentSkillPackagesPackageNameManifestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAgentSkillPackagesPackageNameManifestRequest(c.Server, packageName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetAlertTypes(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1063,6 +1222,18 @@ func (c *Client) DeleteInvitationsId(ctx context.Context, id uint64, reqEditors 
 
 func (c *Client) GetInvitationsId(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInvitationsIdRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInvitationsIdResend(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInvitationsIdResendRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1325,8 +1496,8 @@ func (c *Client) GetRoleBindings(ctx context.Context, params *GetRoleBindingsPar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutRoleBindingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutRoleBindingsRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostRoleBindingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostRoleBindingsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1337,8 +1508,20 @@ func (c *Client) PutRoleBindingsWithBody(ctx context.Context, contentType string
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutRoleBindings(ctx context.Context, body PutRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutRoleBindingsRequest(c.Server, body)
+func (c *Client) PostRoleBindings(ctx context.Context, body PostRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostRoleBindingsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteRoleBindingsBindingId(ctx context.Context, bindingId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRoleBindingsBindingIdRequest(c.Server, bindingId)
 	if err != nil {
 		return nil, err
 	}
@@ -1527,6 +1710,62 @@ func (c *Client) GetUsersId(ctx context.Context, id openapi_types.UUID, reqEdito
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetAgentSkillPackagesPackageNameManifestRequest generates requests for GetAgentSkillPackagesPackageNameManifest
+func NewGetAgentSkillPackagesPackageNameManifestRequest(server string, packageName string, params *GetAgentSkillPackagesPackageNameManifestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "packageName", runtime.ParamLocationPath, packageName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/agentSkillPackages/%s/manifest", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Channel != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "channel", runtime.ParamLocationQuery, *params.Channel); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetAlertTypesRequest generates requests for GetAlertTypes
@@ -1954,6 +2193,40 @@ func NewGetInvitationsIdRequest(server string, id uint64) (*http.Request, error)
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostInvitationsIdResendRequest generates requests for PostInvitationsIdResend
+func NewPostInvitationsIdResendRequest(server string, id uint64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/invitations/%s/resend", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2629,19 +2902,19 @@ func NewGetRoleBindingsRequest(server string, params *GetRoleBindingsParams) (*h
 	return req, nil
 }
 
-// NewPutRoleBindingsRequest calls the generic PutRoleBindings builder with application/json body
-func NewPutRoleBindingsRequest(server string, body PutRoleBindingsJSONRequestBody) (*http.Request, error) {
+// NewPostRoleBindingsRequest calls the generic PostRoleBindings builder with application/json body
+func NewPostRoleBindingsRequest(server string, body PostRoleBindingsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPutRoleBindingsRequestWithBody(server, "application/json", bodyReader)
+	return NewPostRoleBindingsRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewPutRoleBindingsRequestWithBody generates requests for PutRoleBindings with any type of body
-func NewPutRoleBindingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostRoleBindingsRequestWithBody generates requests for PostRoleBindings with any type of body
+func NewPostRoleBindingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2659,12 +2932,46 @@ func NewPutRoleBindingsRequestWithBody(server string, contentType string, body i
 		return nil, err
 	}
 
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteRoleBindingsBindingIdRequest generates requests for DeleteRoleBindingsBindingId
+func NewDeleteRoleBindingsBindingIdRequest(server string, bindingId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "bindingId", runtime.ParamLocationPath, bindingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roleBindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -3231,6 +3538,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetAgentSkillPackagesPackageNameManifestWithResponse request
+	GetAgentSkillPackagesPackageNameManifestWithResponse(ctx context.Context, packageName string, params *GetAgentSkillPackagesPackageNameManifestParams, reqEditors ...RequestEditorFn) (*GetAgentSkillPackagesPackageNameManifestResponse, error)
+
 	// GetAlertTypesWithResponse request
 	GetAlertTypesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAlertTypesResponse, error)
 
@@ -3266,6 +3576,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetInvitationsIdWithResponse request
 	GetInvitationsIdWithResponse(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*GetInvitationsIdResponse, error)
+
+	// PostInvitationsIdResendWithResponse request
+	PostInvitationsIdResendWithResponse(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*PostInvitationsIdResendResponse, error)
 
 	// GetNotificationsWithResponse request
 	GetNotificationsWithResponse(ctx context.Context, params *GetNotificationsParams, reqEditors ...RequestEditorFn) (*GetNotificationsResponse, error)
@@ -3324,10 +3637,13 @@ type ClientWithResponsesInterface interface {
 	// GetRoleBindingsWithResponse request
 	GetRoleBindingsWithResponse(ctx context.Context, params *GetRoleBindingsParams, reqEditors ...RequestEditorFn) (*GetRoleBindingsResponse, error)
 
-	// PutRoleBindingsWithBodyWithResponse request with any body
-	PutRoleBindingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRoleBindingsResponse, error)
+	// PostRoleBindingsWithBodyWithResponse request with any body
+	PostRoleBindingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRoleBindingsResponse, error)
 
-	PutRoleBindingsWithResponse(ctx context.Context, body PutRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRoleBindingsResponse, error)
+	PostRoleBindingsWithResponse(ctx context.Context, body PostRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRoleBindingsResponse, error)
+
+	// DeleteRoleBindingsBindingIdWithResponse request
+	DeleteRoleBindingsBindingIdWithResponse(ctx context.Context, bindingId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteRoleBindingsBindingIdResponse, error)
 
 	// GetRolesWithResponse request
 	GetRolesWithResponse(ctx context.Context, params *GetRolesParams, reqEditors ...RequestEditorFn) (*GetRolesResponse, error)
@@ -3370,6 +3686,31 @@ type ClientWithResponsesInterface interface {
 
 	// GetUsersIdWithResponse request
 	GetUsersIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetUsersIdResponse, error)
+}
+
+type GetAgentSkillPackagesPackageNameManifestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AgentSkillPackageManifest
+	JSON400      *FailedPreconditionResponse
+	JSON403      *ForbiddenResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAgentSkillPackagesPackageNameManifestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAgentSkillPackagesPackageNameManifestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetAlertTypesResponse struct {
@@ -3597,6 +3938,30 @@ func (r GetInvitationsIdResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetInvitationsIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostInvitationsIdResendResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInvitationsIdResendResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInvitationsIdResendResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3953,15 +4318,17 @@ func (r GetRoleBindingsResponse) StatusCode() int {
 	return 0
 }
 
-type PutRoleBindingsResponse struct {
+type PostRoleBindingsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DefaultResponse
+	JSON201      *RoleBinding
 	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+	JSON409      *AlreadyExistsResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r PutRoleBindingsResponse) Status() string {
+func (r PostRoleBindingsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -3969,7 +4336,32 @@ func (r PutRoleBindingsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutRoleBindingsResponse) StatusCode() int {
+func (r PostRoleBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteRoleBindingsBindingIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRoleBindingsBindingIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRoleBindingsBindingIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -4250,6 +4642,15 @@ func (r GetUsersIdResponse) StatusCode() int {
 	return 0
 }
 
+// GetAgentSkillPackagesPackageNameManifestWithResponse request returning *GetAgentSkillPackagesPackageNameManifestResponse
+func (c *ClientWithResponses) GetAgentSkillPackagesPackageNameManifestWithResponse(ctx context.Context, packageName string, params *GetAgentSkillPackagesPackageNameManifestParams, reqEditors ...RequestEditorFn) (*GetAgentSkillPackagesPackageNameManifestResponse, error) {
+	rsp, err := c.GetAgentSkillPackagesPackageNameManifest(ctx, packageName, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAgentSkillPackagesPackageNameManifestResponse(rsp)
+}
+
 // GetAlertTypesWithResponse request returning *GetAlertTypesResponse
 func (c *ClientWithResponses) GetAlertTypesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAlertTypesResponse, error) {
 	rsp, err := c.GetAlertTypes(ctx, reqEditors...)
@@ -4362,6 +4763,15 @@ func (c *ClientWithResponses) GetInvitationsIdWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetInvitationsIdResponse(rsp)
+}
+
+// PostInvitationsIdResendWithResponse request returning *PostInvitationsIdResendResponse
+func (c *ClientWithResponses) PostInvitationsIdResendWithResponse(ctx context.Context, id uint64, reqEditors ...RequestEditorFn) (*PostInvitationsIdResendResponse, error) {
+	rsp, err := c.PostInvitationsIdResend(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInvitationsIdResendResponse(rsp)
 }
 
 // GetNotificationsWithResponse request returning *GetNotificationsResponse
@@ -4547,21 +4957,30 @@ func (c *ClientWithResponses) GetRoleBindingsWithResponse(ctx context.Context, p
 	return ParseGetRoleBindingsResponse(rsp)
 }
 
-// PutRoleBindingsWithBodyWithResponse request with arbitrary body returning *PutRoleBindingsResponse
-func (c *ClientWithResponses) PutRoleBindingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRoleBindingsResponse, error) {
-	rsp, err := c.PutRoleBindingsWithBody(ctx, contentType, body, reqEditors...)
+// PostRoleBindingsWithBodyWithResponse request with arbitrary body returning *PostRoleBindingsResponse
+func (c *ClientWithResponses) PostRoleBindingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRoleBindingsResponse, error) {
+	rsp, err := c.PostRoleBindingsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutRoleBindingsResponse(rsp)
+	return ParsePostRoleBindingsResponse(rsp)
 }
 
-func (c *ClientWithResponses) PutRoleBindingsWithResponse(ctx context.Context, body PutRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRoleBindingsResponse, error) {
-	rsp, err := c.PutRoleBindings(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostRoleBindingsWithResponse(ctx context.Context, body PostRoleBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRoleBindingsResponse, error) {
+	rsp, err := c.PostRoleBindings(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutRoleBindingsResponse(rsp)
+	return ParsePostRoleBindingsResponse(rsp)
+}
+
+// DeleteRoleBindingsBindingIdWithResponse request returning *DeleteRoleBindingsBindingIdResponse
+func (c *ClientWithResponses) DeleteRoleBindingsBindingIdWithResponse(ctx context.Context, bindingId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteRoleBindingsBindingIdResponse, error) {
+	rsp, err := c.DeleteRoleBindingsBindingId(ctx, bindingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRoleBindingsBindingIdResponse(rsp)
 }
 
 // GetRolesWithResponse request returning *GetRolesResponse
@@ -4694,6 +5113,53 @@ func (c *ClientWithResponses) GetUsersIdWithResponse(ctx context.Context, id ope
 		return nil, err
 	}
 	return ParseGetUsersIdResponse(rsp)
+}
+
+// ParseGetAgentSkillPackagesPackageNameManifestResponse parses an HTTP response from a GetAgentSkillPackagesPackageNameManifestWithResponse call
+func ParseGetAgentSkillPackagesPackageNameManifestResponse(rsp *http.Response) (*GetAgentSkillPackagesPackageNameManifestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAgentSkillPackagesPackageNameManifestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AgentSkillPackageManifest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetAlertTypesResponse parses an HTTP response from a GetAlertTypesWithResponse call
@@ -5009,6 +5475,46 @@ func ParseGetInvitationsIdResponse(rsp *http.Response) (*GetInvitationsIdRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest Invitation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInvitationsIdResendResponse parses an HTTP response from a PostInvitationsIdResendWithResponse call
+func ParsePostInvitationsIdResendResponse(rsp *http.Response) (*PostInvitationsIdResendResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInvitationsIdResendResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -5563,15 +6069,62 @@ func ParseGetRoleBindingsResponse(rsp *http.Response) (*GetRoleBindingsResponse,
 	return response, nil
 }
 
-// ParsePutRoleBindingsResponse parses an HTTP response from a PutRoleBindingsWithResponse call
-func ParsePutRoleBindingsResponse(rsp *http.Response) (*PutRoleBindingsResponse, error) {
+// ParsePostRoleBindingsResponse parses an HTTP response from a PostRoleBindingsWithResponse call
+func ParsePostRoleBindingsResponse(rsp *http.Response) (*PostRoleBindingsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutRoleBindingsResponse{
+	response := &PostRoleBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest RoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRoleBindingsBindingIdResponse parses an HTTP response from a DeleteRoleBindingsBindingIdWithResponse call
+func ParseDeleteRoleBindingsBindingIdResponse(rsp *http.Response) (*DeleteRoleBindingsBindingIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRoleBindingsBindingIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -5585,11 +6138,25 @@ func ParsePutRoleBindingsResponse(rsp *http.Response) (*PutRoleBindingsResponse,
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestResponse
+		var dest FailedPreconditionResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

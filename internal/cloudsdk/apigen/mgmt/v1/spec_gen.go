@@ -28,8 +28,10 @@ const (
 	ClusterStatusDeleted                 ClusterStatus = "Deleted"
 	ClusterStatusFailed                  ClusterStatus = "Failed"
 	ClusterStatusPendingResourceDeletion ClusterStatus = "PendingResourceDeletion"
+	ClusterStatusPostUpdate              ClusterStatus = "PostUpdate"
 	ClusterStatusProvisioned             ClusterStatus = "Provisioned"
 	ClusterStatusReady                   ClusterStatus = "Ready"
+	ClusterStatusReadyForApply           ClusterStatus = "ReadyForApply"
 	ClusterStatusTerminating             ClusterStatus = "Terminating"
 	ClusterStatusUninitialized           ClusterStatus = "Uninitialized"
 	ClusterStatusUpdating                ClusterStatus = "Updating"
@@ -111,18 +113,28 @@ const (
 
 // Defines values for QueryErrLogParamsTarget.
 const (
-	Message QueryErrLogParamsTarget = "message"
-	Name    QueryErrLogParamsTarget = "name"
-	Sink    QueryErrLogParamsTarget = "sink"
-	Source  QueryErrLogParamsTarget = "source"
-	Table   QueryErrLogParamsTarget = "table"
-	Target  QueryErrLogParamsTarget = "target"
+	QueryErrLogParamsTargetMessage QueryErrLogParamsTarget = "message"
+	QueryErrLogParamsTargetName    QueryErrLogParamsTarget = "name"
+	QueryErrLogParamsTargetSink    QueryErrLogParamsTarget = "sink"
+	QueryErrLogParamsTargetSource  QueryErrLogParamsTarget = "source"
+	QueryErrLogParamsTargetTable   QueryErrLogParamsTarget = "table"
+	QueryErrLogParamsTargetTarget  QueryErrLogParamsTarget = "target"
 )
 
 // Defines values for QueryErrLogParamsDirection.
 const (
 	Backward QueryErrLogParamsDirection = "backward"
 	Forward  QueryErrLogParamsDirection = "forward"
+)
+
+// Defines values for CountErrLogParamsTarget.
+const (
+	CountErrLogParamsTargetMessage CountErrLogParamsTarget = "message"
+	CountErrLogParamsTargetName    CountErrLogParamsTarget = "name"
+	CountErrLogParamsTargetSink    CountErrLogParamsTarget = "sink"
+	CountErrLogParamsTargetSource  CountErrLogParamsTarget = "source"
+	CountErrLogParamsTargetTable   CountErrLogParamsTarget = "table"
+	CountErrLogParamsTargetTarget  CountErrLogParamsTarget = "target"
 )
 
 // AvailableComponentType defines model for AvailableComponentType.
@@ -197,6 +209,14 @@ type Endpoint struct {
 	Options                     string `json:"options"`
 	Port                        int    `json:"port"`
 	TenantId                    int64  `json:"tenantId"`
+}
+
+// ErrLogCountResult defines model for ErrLogCountResult.
+type ErrLogCountResult struct {
+	Status string `json:"status"`
+
+	// Total Total number of matching error logs.
+	Total uint64 `json:"total"`
 }
 
 // ErrLogQueryResult defines model for ErrLogQueryResult.
@@ -292,6 +312,8 @@ type PrivateLinkStatus string
 
 // Tenant defines model for Tenant.
 type Tenant struct {
+	// Alias User-defined display name for the tenant. Mutable, optional, not unique. Empty string when unset.
+	Alias                *string            `json:"alias,omitempty"`
 	ClusterId            uint64             `json:"clusterId"`
 	ClusterName          string             `json:"clusterName"`
 	CreatedAt            time.Time          `json:"createdAt"`
@@ -431,6 +453,18 @@ type QueryErrLogParamsTarget string
 // QueryErrLogParamsDirection defines parameters for QueryErrLog.
 type QueryErrLogParamsDirection string
 
+// CountErrLogParams defines parameters for CountErrLog.
+type CountErrLogParams struct {
+	TenantId uint64                  `form:"tenantId" json:"tenantId"`
+	Target   CountErrLogParamsTarget `form:"target" json:"target"`
+	TargetId string                  `form:"targetId" json:"targetId"`
+	Start    *time.Time              `form:"start,omitempty" json:"start,omitempty"`
+	End      *time.Time              `form:"end,omitempty" json:"end,omitempty"`
+}
+
+// CountErrLogParamsTarget defines parameters for CountErrLog.
+type CountErrLogParamsTarget string
+
 // GetTenantParams defines parameters for GetTenant.
 type GetTenantParams struct {
 	TenantId   *uint64 `form:"tenantId,omitempty" json:"tenantId,omitempty"`
@@ -534,6 +568,9 @@ type ClientInterface interface {
 	// QueryErrLog request
 	QueryErrLog(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CountErrLog request
+	CountErrLog(ctx context.Context, params *CountErrLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRootca request
 	GetRootca(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -592,6 +629,18 @@ func (c *Client) GetEndpoints(ctx context.Context, params *GetEndpointsParams, r
 
 func (c *Client) QueryErrLog(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewQueryErrLogRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CountErrLog(ctx context.Context, params *CountErrLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCountErrLogRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -942,6 +991,107 @@ func NewQueryErrLogRequest(server string, params *QueryErrLogParams) (*http.Requ
 		if params.Limit != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCountErrLogRequest generates requests for CountErrLog
+func NewCountErrLogRequest(server string, params *CountErrLogParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/log/queryError/count")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tenantId", runtime.ParamLocationQuery, params.TenantId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "target", runtime.ParamLocationQuery, params.Target); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "targetId", runtime.ParamLocationQuery, params.TargetId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -1408,6 +1558,9 @@ type ClientWithResponsesInterface interface {
 	// QueryErrLogWithResponse request
 	QueryErrLogWithResponse(ctx context.Context, params *QueryErrLogParams, reqEditors ...RequestEditorFn) (*QueryErrLogResponse, error)
 
+	// CountErrLogWithResponse request
+	CountErrLogWithResponse(ctx context.Context, params *CountErrLogParams, reqEditors ...RequestEditorFn) (*CountErrLogResponse, error)
+
 	// GetRootcaWithResponse request
 	GetRootcaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRootcaResponse, error)
 
@@ -1503,6 +1656,29 @@ func (r QueryErrLogResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r QueryErrLogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CountErrLogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrLogCountResult
+	JSON400      *BadRequestResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r CountErrLogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CountErrLogResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1738,6 +1914,15 @@ func (c *ClientWithResponses) QueryErrLogWithResponse(ctx context.Context, param
 	return ParseQueryErrLogResponse(rsp)
 }
 
+// CountErrLogWithResponse request returning *CountErrLogResponse
+func (c *ClientWithResponses) CountErrLogWithResponse(ctx context.Context, params *CountErrLogParams, reqEditors ...RequestEditorFn) (*CountErrLogResponse, error) {
+	rsp, err := c.CountErrLog(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCountErrLogResponse(rsp)
+}
+
 // GetRootcaWithResponse request returning *GetRootcaResponse
 func (c *ClientWithResponses) GetRootcaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRootcaResponse, error) {
 	rsp, err := c.GetRootca(ctx, reqEditors...)
@@ -1917,6 +2102,39 @@ func ParseQueryErrLogResponse(rsp *http.Response) (*QueryErrLogResponse, error) 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ErrLogQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCountErrLogResponse parses an HTTP response from a CountErrLogWithResponse call
+func ParseCountErrLogResponse(rsp *http.Response) (*CountErrLogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CountErrLogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrLogCountResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
