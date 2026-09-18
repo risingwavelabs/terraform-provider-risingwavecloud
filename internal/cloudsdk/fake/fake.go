@@ -92,10 +92,11 @@ func (acc *FakeCloudClient) CreateClusterAwait(ctx context.Context, region strin
 
 	r := state.GetRegionState(region)
 	t := &apigen_mgmtv2.Tenant{
-		Id:          uint64(len(r.GetClusters()) + 1),
-		TenantName:  req.TenantName,
-		ImageTag:    *req.ImageTag,
-		Region:      region,
+		Id:         uint64(len(r.GetClusters()) + 1),
+		TenantName: req.TenantName,
+		ImageTag:   *req.ImageTag,
+		Region:     region,
+		//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 		RwConfig:    *req.RwConfig,
 		Resources:   reqResouceToClusterResource(req.Resources),
 		NsId:        uuid.New(),
@@ -273,6 +274,7 @@ func (acc *FakeCloudClient) UpdateRisingWaveConfigByNsIDAwait(ctx context.Contex
 	if err != nil {
 		return err
 	}
+	//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 	cluster.GetTenant().RwConfig = rwConfig
 	r := state.GetRegionState(cluster.GetTenant().Region)
 	r.ReplaceCluster(nsID, cluster)

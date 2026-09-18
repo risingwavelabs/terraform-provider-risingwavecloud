@@ -23,13 +23,38 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for AlertIncidentStatus.
+const (
+	Firing   AlertIncidentStatus = "firing"
+	Resolved AlertIncidentStatus = "resolved"
+)
+
+// Defines values for AlertRuleParameterType.
+const (
+	Number AlertRuleParameterType = "number"
+)
+
+// Defines values for AlertRuleParameterUnit.
+const (
+	Ratio   AlertRuleParameterUnit = "ratio"
+	Seconds AlertRuleParameterUnit = "seconds"
+)
+
+// Defines values for AlertSeverity.
+const (
+	Critical AlertSeverity = "critical"
+	Warning  AlertSeverity = "warning"
+)
+
 // Defines values for ClusterStatus.
 const (
 	ClusterStatusDeleted                 ClusterStatus = "Deleted"
 	ClusterStatusFailed                  ClusterStatus = "Failed"
 	ClusterStatusPendingResourceDeletion ClusterStatus = "PendingResourceDeletion"
+	ClusterStatusPostUpdate              ClusterStatus = "PostUpdate"
 	ClusterStatusProvisioned             ClusterStatus = "Provisioned"
 	ClusterStatusReady                   ClusterStatus = "Ready"
+	ClusterStatusReadyForApply           ClusterStatus = "ReadyForApply"
 	ClusterStatusTerminating             ClusterStatus = "Terminating"
 	ClusterStatusUninitialized           ClusterStatus = "Uninitialized"
 	ClusterStatusUpdating                ClusterStatus = "Updating"
@@ -194,6 +219,7 @@ const (
 	ResourceGroupsUpdating TenantStatus = "ResourceGroupsUpdating"
 	Restoring              TenantStatus = "Restoring"
 	Running                TenantStatus = "Running"
+	SchedulingUpdating     TenantStatus = "SchedulingUpdating"
 	Snapshotting           TenantStatus = "Snapshotting"
 	Starting               TenantStatus = "Starting"
 	Stopped                TenantStatus = "Stopped"
@@ -248,6 +274,32 @@ const (
 	GetTenantsNsIdDatabasesDatabaseNameTablesTableNameMetricsParamsMetricsThroughput  GetTenantsNsIdDatabasesDatabaseNameTablesTableNameMetricsParamsMetrics = "throughput"
 )
 
+// Defines values for GetTenantsNsIdErrorLogsParamsTarget.
+const (
+	GetTenantsNsIdErrorLogsParamsTargetMessage GetTenantsNsIdErrorLogsParamsTarget = "message"
+	GetTenantsNsIdErrorLogsParamsTargetName    GetTenantsNsIdErrorLogsParamsTarget = "name"
+	GetTenantsNsIdErrorLogsParamsTargetSink    GetTenantsNsIdErrorLogsParamsTarget = "sink"
+	GetTenantsNsIdErrorLogsParamsTargetSource  GetTenantsNsIdErrorLogsParamsTarget = "source"
+	GetTenantsNsIdErrorLogsParamsTargetTable   GetTenantsNsIdErrorLogsParamsTarget = "table"
+	GetTenantsNsIdErrorLogsParamsTargetTarget  GetTenantsNsIdErrorLogsParamsTarget = "target"
+)
+
+// Defines values for GetTenantsNsIdErrorLogsParamsDirection.
+const (
+	Backward GetTenantsNsIdErrorLogsParamsDirection = "backward"
+	Forward  GetTenantsNsIdErrorLogsParamsDirection = "forward"
+)
+
+// Defines values for GetTenantsNsIdErrorLogsCountParamsTarget.
+const (
+	GetTenantsNsIdErrorLogsCountParamsTargetMessage GetTenantsNsIdErrorLogsCountParamsTarget = "message"
+	GetTenantsNsIdErrorLogsCountParamsTargetName    GetTenantsNsIdErrorLogsCountParamsTarget = "name"
+	GetTenantsNsIdErrorLogsCountParamsTargetSink    GetTenantsNsIdErrorLogsCountParamsTarget = "sink"
+	GetTenantsNsIdErrorLogsCountParamsTargetSource  GetTenantsNsIdErrorLogsCountParamsTarget = "source"
+	GetTenantsNsIdErrorLogsCountParamsTargetTable   GetTenantsNsIdErrorLogsCountParamsTarget = "table"
+	GetTenantsNsIdErrorLogsCountParamsTargetTarget  GetTenantsNsIdErrorLogsCountParamsTarget = "target"
+)
+
 // AWSServingPrivateLinkInfo defines model for AWSServingPrivateLinkInfo.
 type AWSServingPrivateLinkInfo struct {
 	Azs         []string `json:"azs"`
@@ -255,6 +307,126 @@ type AWSServingPrivateLinkInfo struct {
 	Port        int      `json:"port"`
 	ServiceName string   `json:"serviceName"`
 }
+
+// AlertIncident defines model for AlertIncident.
+type AlertIncident struct {
+	// AlertRuleKey Immutable alert rule identifier associated with this incident.
+	AlertRuleKey string    `json:"alertRuleKey"`
+	CreatedAt    time.Time `json:"createdAt"`
+
+	// Fingerprint Stable incident fingerprint generated from lowercased alertname, namespace, cluster, severity, and rule_id.
+	Fingerprint string             `json:"fingerprint"`
+	FiringCount int32              `json:"firingCount"`
+	FirstSeenAt time.Time          `json:"firstSeenAt"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// Labels Alert labels persisted for the incident detail view.
+	Labels     map[string]string `json:"labels"`
+	LastSeenAt time.Time         `json:"lastSeenAt"`
+
+	// Properties Alert annotations persisted for the incident detail view.
+	Properties map[string]interface{} `json:"properties"`
+	ResolvedAt *time.Time             `json:"resolvedAt"`
+	Severity   string                 `json:"severity"`
+	Status     AlertIncidentStatus    `json:"status"`
+	Summary    string                 `json:"summary"`
+	UpdatedAt  time.Time              `json:"updatedAt"`
+}
+
+// AlertIncidentArray defines model for AlertIncidentArray.
+type AlertIncidentArray = []AlertIncident
+
+// AlertIncidentPagination defines model for AlertIncidentPagination.
+type AlertIncidentPagination struct {
+	AlertIncidents AlertIncidentArray `json:"alertIncidents"`
+	Pagination     *Pagination        `json:"pagination,omitempty"`
+}
+
+// AlertIncidentStatus defines model for AlertIncidentStatus.
+type AlertIncidentStatus string
+
+// AlertRule defines model for AlertRule.
+type AlertRule struct {
+	Category    string `json:"category"`
+	Description string `json:"description"`
+
+	// Enabled Effective tenant enablement after applying tenant overrides.
+	Enabled bool `json:"enabled"`
+
+	// Key Immutable system identifier for the alert rule (stable across display-name changes).
+	Key  string `json:"key"`
+	Name string `json:"name"`
+
+	// Parameters Present only when a rule exposes tunable parameters; contains catalog-backed parameter metadata and tenant-effective values.
+	Parameters *[]AlertRuleParameter `json:"parameters,omitempty"`
+
+	// SchemaRevision Catalog revision used to validate parameter overrides for a tunable rule.
+	SchemaRevision *int64        `json:"schemaRevision,omitempty"`
+	Severity       AlertSeverity `json:"severity"`
+
+	// Tunable Whether this rule is eligible for parameter tuning in the current API version.
+	Tunable bool `json:"tunable"`
+}
+
+// AlertRuleArray defines model for AlertRuleArray.
+type AlertRuleArray = []AlertRule
+
+// AlertRulePagination defines model for AlertRulePagination.
+type AlertRulePagination struct {
+	AlertRules AlertRuleArray `json:"alertRules"`
+	Pagination *Pagination    `json:"pagination,omitempty"`
+}
+
+// AlertRuleParameter defines model for AlertRuleParameter.
+type AlertRuleParameter struct {
+	Default     float64 `json:"default"`
+	Description string  `json:"description"`
+	DisplayName string  `json:"displayName"`
+
+	// EffectiveValue Value rendered after applying the catalog default and tenant override.
+	EffectiveValue float64 `json:"effectiveValue"`
+	Key            string  `json:"key"`
+	Max            float64 `json:"max"`
+	Min            float64 `json:"min"`
+
+	// OverrideValue Current tenant override, or null when the catalog default applies.
+	OverrideValue *float64 `json:"overrideValue"`
+	Step          float64  `json:"step"`
+
+	// Type Only numeric parameter values are supported.
+	Type AlertRuleParameterType `json:"type"`
+	Unit AlertRuleParameterUnit `json:"unit"`
+}
+
+// AlertRuleParameterType Only numeric parameter values are supported.
+type AlertRuleParameterType string
+
+// AlertRuleParameterUnit defines model for AlertRuleParameterUnit.
+type AlertRuleParameterUnit string
+
+// AlertRuleRecipientBinding defines model for AlertRuleRecipientBinding.
+type AlertRuleRecipientBinding struct {
+	// AlertRuleKey Immutable system identifier of the alert rule this binding targets.
+	AlertRuleKey string             `json:"alertRuleKey"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Id           openapi_types.UUID `json:"id"`
+
+	// RecipientId Identifier of the recipient (owned by the account service) bound to the alert rule.
+	RecipientId openapi_types.UUID `json:"recipientId"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+}
+
+// AlertRuleRecipientBindingArray defines model for AlertRuleRecipientBindingArray.
+type AlertRuleRecipientBindingArray = []AlertRuleRecipientBinding
+
+// AlertRuleRecipientBindingPagination defines model for AlertRuleRecipientBindingPagination.
+type AlertRuleRecipientBindingPagination struct {
+	AlertRuleRecipientBindings AlertRuleRecipientBindingArray `json:"alertRuleRecipientBindings"`
+	Pagination                 *Pagination                    `json:"pagination,omitempty"`
+}
+
+// AlertSeverity defines model for AlertSeverity.
+type AlertSeverity string
 
 // AutoUpgradeDetails defines model for AutoUpgradeDetails.
 type AutoUpgradeDetails struct {
@@ -266,6 +438,18 @@ type AutoUpgradeDetails struct {
 
 // AutoUpgradeDetailsArray defines model for AutoUpgradeDetailsArray.
 type AutoUpgradeDetailsArray = []AutoUpgradeDetails
+
+// AutoscalingConfig defines model for AutoscalingConfig.
+type AutoscalingConfig struct {
+	// Enabled Whether RisingWave Cloud may adjust compute capacity within the configured range.
+	Enabled bool `json:"enabled"`
+
+	// MaxComputeRwu Maximum compute capacity in RWUs for the default resource group.
+	MaxComputeRwu float64 `json:"maxComputeRwu"`
+
+	// MinComputeRwu Minimum compute capacity in RWUs for the default resource group.
+	MinComputeRwu float64 `json:"minComputeRwu"`
+}
 
 // BYOKTenantAWSConfig defines model for BYOKTenantAWSConfig.
 type BYOKTenantAWSConfig struct {
@@ -379,6 +563,25 @@ type ComponentResourceRequest struct {
 // ComputeCachePerformanceTier defines model for ComputeCachePerformanceTier.
 type ComputeCachePerformanceTier string
 
+// ConfigPreviewMessage defines model for ConfigPreviewMessage.
+type ConfigPreviewMessage struct {
+	Level   string `json:"level"`
+	Message string `json:"message"`
+}
+
+// ConfigSet defines model for ConfigSet.
+type ConfigSet struct {
+	DefaultConfig string          `json:"defaultConfig"`
+	Items         []ConfigSetItem `json:"items"`
+}
+
+// ConfigSetItem defines model for ConfigSetItem.
+type ConfigSetItem struct {
+	Component string `json:"component"`
+	Config    string `json:"config"`
+	NodeGroup string `json:"nodeGroup"`
+}
+
 // Connector defines model for Connector.
 type Connector struct {
 	ConnectorType    *string            `json:"connectorType,omitempty"`
@@ -469,6 +672,20 @@ type Endpoint struct {
 	Port                        int                        `json:"port"`
 }
 
+// ErrLogCountResult defines model for ErrLogCountResult.
+type ErrLogCountResult struct {
+	Status string `json:"status"`
+
+	// Total Total number of matching error logs.
+	Total uint64 `json:"total"`
+}
+
+// ErrLogQueryResult defines model for ErrLogQueryResult.
+type ErrLogQueryResult struct {
+	Status string     `json:"status"`
+	Values [][]string `json:"values"`
+}
+
 // GetResourceGroupsResponseBody defines model for GetResourceGroupsResponseBody.
 type GetResourceGroupsResponseBody struct {
 	ResourceGroups []ResourceGroupDetails `json:"resourceGroups"`
@@ -527,6 +744,34 @@ type IcebergCompaction struct {
 	Config    *string            `json:"config,omitempty"`
 	Resources *ComponentResource `json:"resources,omitempty"`
 	Status    string             `json:"status"`
+}
+
+// Index defines model for Index.
+type Index struct {
+	BackgroundDdl       *bool      `json:"backgroundDdl,omitempty"`
+	CreatedAt           *time.Time `json:"createdAt,omitempty"`
+	DatabaseName        string     `json:"databaseName"`
+	Definition          string     `json:"definition"`
+	Id                  int64      `json:"id"`
+	IncludeColumns      *[]string  `json:"includeColumns,omitempty"`
+	KeyColumns          *[]string  `json:"keyColumns,omitempty"`
+	Name                string     `json:"name"`
+	Owner               string     `json:"owner"`
+	PrimaryRelationId   *int64     `json:"primaryRelationId,omitempty"`
+	PrimaryRelationName string     `json:"primaryRelationName"`
+
+	// PrimaryRelationType Type of the indexed relation (e.g. table, materialized view).
+	PrimaryRelationType string `json:"primaryRelationType"`
+	Schema              string `json:"schema"`
+}
+
+// IndexArray defines model for IndexArray.
+type IndexArray = []Index
+
+// IndexesPagination defines model for IndexesPagination.
+type IndexesPagination struct {
+	Indexes    IndexArray  `json:"indexes"`
+	Pagination *Pagination `json:"pagination,omitempty"`
 }
 
 // KafkaConfig defines model for KafkaConfig.
@@ -711,10 +956,32 @@ type Pagination struct {
 	Size   uint64 `json:"size"`
 }
 
+// PatchAlertRuleParameterOverridesRequestBody defines model for PatchAlertRuleParameterOverridesRequestBody.
+type PatchAlertRuleParameterOverridesRequestBody struct {
+	// ParameterOverrides Per-parameter tenant values for a catalog-tunable rule. Omitted keys are unchanged. Values must not be null or equal their current catalog defaults; both are rejected and reset must use DELETE.
+	ParameterOverrides map[string]float64 `json:"parameterOverrides"`
+
+	// SchemaRevision Required when parameterOverrides is present; rejected when it does not match the tunable rule's catalog revision.
+	SchemaRevision int64 `json:"schemaRevision"`
+}
+
+// PatchAlertRuleRequestBody defines model for PatchAlertRuleRequestBody.
+type PatchAlertRuleRequestBody struct {
+	// Enabled Whether this alert rule is enabled for the tenant.
+	Enabled bool `json:"enabled"`
+}
+
 // PostBYOKTenantConfigRequestBody defines model for PostBYOKTenantConfigRequestBody.
 type PostBYOKTenantConfigRequestBody struct {
 	Aws       *BYOKTenantAWSConfig      `json:"aws,omitempty"`
 	Metastore BYOKTenantMetastoreConfig `json:"metastore"`
+}
+
+// PostByocClusterRequestBody defines model for PostByocClusterRequestBody.
+type PostByocClusterRequestBody struct {
+	Name     string            `json:"name"`
+	Settings map[string]string `json:"settings"`
+	Version  *string           `json:"version,omitempty"`
 }
 
 // PostByocClusterUpdateRequestBody defines model for PostByocClusterUpdateRequestBody.
@@ -724,11 +991,12 @@ type PostByocClusterUpdateRequestBody struct {
 	Version        *string `json:"version,omitempty"`
 }
 
-// PostByocClustersRequestBody defines model for PostByocClustersRequestBody.
-type PostByocClustersRequestBody struct {
-	Name     string            `json:"name"`
-	Settings map[string]string `json:"settings"`
-	Version  *string           `json:"version,omitempty"`
+// PostByokClusterRequestBody defines model for PostByokClusterRequestBody.
+type PostByokClusterRequestBody struct {
+	// Config Base64-encoded BYOK config YAML
+	Config  *string `json:"config,omitempty"`
+	Name    string  `json:"name"`
+	Version *string `json:"version,omitempty"`
 }
 
 // PostByokClusterUpdateRequestBody defines model for PostByokClusterUpdateRequestBody.
@@ -736,14 +1004,6 @@ type PostByokClusterUpdateRequestBody struct {
 	// CustomSettings base64 encoded custom settings
 	CustomSettings *string `json:"customSettings,omitempty"`
 	Version        *string `json:"version,omitempty"`
-}
-
-// PostByokClustersRequestBody defines model for PostByokClustersRequestBody.
-type PostByokClustersRequestBody struct {
-	// Config Base64-encoded BYOK config YAML
-	Config  *string `json:"config,omitempty"`
-	Name    string  `json:"name"`
-	Version *string `json:"version,omitempty"`
 }
 
 // PostPrivateLinkRequestBody defines model for PostPrivateLinkRequestBody.
@@ -756,6 +1016,12 @@ type PostPrivateLinkRequestBody struct {
 type PostPrivateLinkResponseBody struct {
 	ConnectionName string             `json:"connectionName"`
 	Id             openapi_types.UUID `json:"id"`
+}
+
+// PostRecipientBindingRequestBody defines model for PostRecipientBindingRequestBody.
+type PostRecipientBindingRequestBody struct {
+	// RecipientId Identifier of an existing account recipient owned by the tenant's org, as returned by the tenant-scoped recipient list.
+	RecipientId openapi_types.UUID `json:"recipientId"`
 }
 
 // PostSnapshotResponseBody defines model for PostSnapshotResponseBody.
@@ -876,6 +1142,31 @@ type PostSourcesPingRequestBodyType string
 type PostTenantComputeCacheRequestBody struct {
 	PerformanceTier *ComputeCachePerformanceTier `json:"performanceTier,omitempty"`
 	SizeGb          int                          `json:"sizeGb"`
+}
+
+// PostTenantConfigPreviewRequestBody defines model for PostTenantConfigPreviewRequestBody.
+type PostTenantConfigPreviewRequestBody struct {
+	Component *string `json:"component,omitempty"`
+	Config    string  `json:"config"`
+	NodeGroup *string `json:"nodeGroup,omitempty"`
+}
+
+// PostTenantConfigPreviewResponseBody defines model for PostTenantConfigPreviewResponseBody.
+type PostTenantConfigPreviewResponseBody struct {
+	Messages       *[]ConfigPreviewMessage `json:"messages,omitempty"`
+	RenderedConfig string                  `json:"renderedConfig"`
+}
+
+// PostTenantConfigRequestBody defines model for PostTenantConfigRequestBody.
+type PostTenantConfigRequestBody struct {
+	Component *string `json:"component,omitempty"`
+
+	// Config toml risingwave config
+	Config string `json:"config"`
+
+	// NoRestart When true, apply the config without triggering a rolling restart. Intended for changes that can be picked up via live reload.
+	NoRestart *bool   `json:"noRestart,omitempty"`
+	NodeGroup *string `json:"nodeGroup,omitempty"`
 }
 
 // PostTenantOAuthTokenResponseBody defines model for PostTenantOAuthTokenResponseBody.
@@ -1211,6 +1502,8 @@ type TablesPagination struct {
 
 // Tenant defines model for Tenant.
 type Tenant struct {
+	// Alias User-defined display name for the tenant. Mutable, optional, not unique. Empty string when unset.
+	Alias             *string            `json:"alias,omitempty"`
 	ClusterName       string             `json:"clusterName"`
 	CreatedAt         time.Time          `json:"createdAt"`
 	EtcdConfig        string             `json:"etcd_config"`
@@ -1224,7 +1517,8 @@ type Tenant struct {
 	Region            string             `json:"region"`
 	ResourceNamespace string             `json:"resourceNamespace"`
 	Resources         TenantResource     `json:"resources"`
-	RwConfig          string             `json:"rw_config"`
+	// Deprecated: Only reflects the legacy cluster-wide risingwave config. Once any per-(component, node-group) override is applied, this field goes stale. Use `GET /tenants/{nsId}/config` instead.
+	RwConfig string `json:"rw_config"`
 
 	// ServiceAccountName K8s service account name for the tenant. Used by BYOK tenants to set up IRSA trust policy.
 	ServiceAccountName   *string         `json:"serviceAccountName,omitempty"`
@@ -1272,6 +1566,19 @@ type TenantCloudMetadataAWSServingPrivateLinkInfo struct {
 	ServiceName string `json:"serviceName"`
 }
 
+// TenantCloudMetadataGCPServingPSCInfo defines model for TenantCloudMetadataGCPServingPSCInfo.
+type TenantCloudMetadataGCPServingPSCInfo struct {
+	// DnsSuffix Create a private wildcard DNS zone (*.<dnsSuffix>) pointing at the PSC endpoint IP.
+	DnsSuffix string `json:"dnsSuffix"`
+
+	// Host Hostname to connect to over PSC; resolve it to the PSC endpoint IP via a customer-managed private DNS zone for dnsSuffix.
+	Host string `json:"host"`
+	Port int    `json:"port"`
+
+	// ServiceAttachmentUri Service Attachment URI to target when creating a PSC endpoint (the region is embedded in this URI).
+	ServiceAttachmentUri string `json:"serviceAttachmentUri"`
+}
+
 // TenantCloudMetadataIAM defines model for TenantCloudMetadataIAM.
 type TenantCloudMetadataIAM struct {
 	union json.RawMessage
@@ -1299,10 +1606,6 @@ type TenantCloudMetadataNetworkAWS struct {
 	// NatGatewayIps Egress public IPs.
 	NatGatewayIps []string `json:"natGatewayIps"`
 
-	// PrivateLinkPrincipal Legacy single IAM principal ARN. Use privateLinkPrincipals for the complete list.
-	// Deprecated:
-	PrivateLinkPrincipal *string `json:"privateLinkPrincipal,omitempty"`
-
 	// PrivateLinkPrincipals IAM principal ARNs that customers must add to their VPC Endpoint Service allowed principals list for PrivateLink.
 	PrivateLinkPrincipals *[]string                                     `json:"privateLinkPrincipals,omitempty"`
 	ServingPrivateLink    *TenantCloudMetadataAWSServingPrivateLinkInfo `json:"servingPrivateLink,omitempty"`
@@ -1314,7 +1617,8 @@ type TenantCloudMetadataNetworkGCP struct {
 	NatGatewayIps *[]string `json:"natGatewayIps,omitempty"`
 
 	// PscProject GCP project allowed to consume PSC service attachment.
-	PscProject *string `json:"pscProject,omitempty"`
+	PscProject *string                               `json:"pscProject,omitempty"`
+	ServingPSC *TenantCloudMetadataGCPServingPSCInfo `json:"servingPSC,omitempty"`
 }
 
 // TenantComputeCacheConfig defines model for TenantComputeCacheConfig.
@@ -1533,6 +1837,39 @@ type UpdateResourceGroupsRequestBody struct {
 	Resource ComponentResourceRequest `json:"resource"`
 }
 
+// UpdateTenantAliasRequestBody defines model for UpdateTenantAliasRequestBody.
+type UpdateTenantAliasRequestBody struct {
+	// Alias User-defined display name for the tenant. Leading/trailing whitespace is trimmed. An empty string clears the alias.
+	Alias string `json:"alias"`
+}
+
+// View defines model for View.
+type View struct {
+	Acl          *[]string        `json:"acl,omitempty"`
+	Columns      *ColumnDescArray `json:"columns,omitempty"`
+	CreatedAt    *time.Time       `json:"createdAt,omitempty"`
+	DatabaseName string           `json:"databaseName"`
+	Definition   string           `json:"definition"`
+	Id           int64            `json:"id"`
+	Name         string           `json:"name"`
+	Owner        string           `json:"owner"`
+	Schema       string           `json:"schema"`
+}
+
+// ViewArray defines model for ViewArray.
+type ViewArray = []View
+
+// ViewsPagination defines model for ViewsPagination.
+type ViewsPagination struct {
+	Pagination *Pagination `json:"pagination,omitempty"`
+	Views      ViewArray   `json:"views"`
+}
+
+// WorkflowIdResponseBody defines model for WorkflowIdResponseBody.
+type WorkflowIdResponseBody struct {
+	WorkflowId openapi_types.UUID `json:"workflowId"`
+}
+
 // AlreadyExistsResponse defines model for AlreadyExistsResponse.
 type AlreadyExistsResponse struct {
 	Msg string `json:"msg"`
@@ -1565,6 +1902,12 @@ type ForbiddenResponse struct {
 	Msg string `json:"msg"`
 }
 
+// LokiAPIResponse defines model for LokiAPIResponse.
+type LokiAPIResponse struct {
+	Data   *interface{} `json:"data,omitempty"`
+	Status string       `json:"status"`
+}
+
 // NotFoundResponse defines model for NotFoundResponse.
 type NotFoundResponse struct {
 	Msg string `json:"msg"`
@@ -1576,8 +1919,20 @@ type PrometheusAPIResponse struct {
 	Status string                 `json:"status"`
 }
 
+// GetByocClustersDeprecatedParams defines parameters for GetByocClustersDeprecated.
+type GetByocClustersDeprecatedParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // GetByocClustersParams defines parameters for GetByocClusters.
 type GetByocClustersParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetByokClustersDeprecatedParams defines parameters for GetByokClustersDeprecated.
+type GetByokClustersDeprecatedParams struct {
 	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 }
@@ -1594,6 +1949,32 @@ type GetTenantsParams struct {
 	Limit          *uint64    `form:"limit,omitempty" json:"limit,omitempty"`
 	IncludeDeleted *bool      `form:"includeDeleted,omitempty" json:"includeDeleted,omitempty"`
 	CreatedAfter   *time.Time `form:"createdAfter,omitempty" json:"createdAfter,omitempty"`
+}
+
+// GetTenantsNsIdAlertIncidentsParams defines parameters for GetTenantsNsIdAlertIncidents.
+type GetTenantsNsIdAlertIncidentsParams struct {
+	Offset       *uint64              `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit        *uint64              `form:"limit,omitempty" json:"limit,omitempty"`
+	Status       *AlertIncidentStatus `form:"status,omitempty" json:"status,omitempty"`
+	AlertRuleKey *string              `form:"alertRuleKey,omitempty" json:"alertRuleKey,omitempty"`
+	Severity     *string              `form:"severity,omitempty" json:"severity,omitempty"`
+}
+
+// GetTenantsNsIdAlertRulesParams defines parameters for GetTenantsNsIdAlertRules.
+type GetTenantsNsIdAlertRulesParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams defines parameters for DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides.
+type DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams struct {
+	SchemaRevision int64 `form:"schemaRevision" json:"schemaRevision"`
+}
+
+// GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams defines parameters for GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings.
+type GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // GetTenantsNsIdBackupsParams defines parameters for GetTenantsNsIdBackups.
@@ -1618,6 +1999,13 @@ type GetTenantsNsIdDatabaseUsersParams struct {
 type GetTenantsNsIdDatabasesParams struct {
 	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetTenantsNsIdDatabasesDatabaseNameIndexesParams defines parameters for GetTenantsNsIdDatabasesDatabaseNameIndexes.
+type GetTenantsNsIdDatabasesDatabaseNameIndexesParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	Schema *string `form:"schema,omitempty" json:"schema,omitempty"`
 }
 
 // GetTenantsNsIdDatabasesDatabaseNameMatviewsParams defines parameters for GetTenantsNsIdDatabasesDatabaseNameMatviews.
@@ -1727,6 +2115,52 @@ type GetTenantsNsIdDatabasesDatabaseNameTablesTableNameMetricsParams struct {
 // GetTenantsNsIdDatabasesDatabaseNameTablesTableNameMetricsParamsMetrics defines parameters for GetTenantsNsIdDatabasesDatabaseNameTablesTableNameMetrics.
 type GetTenantsNsIdDatabasesDatabaseNameTablesTableNameMetricsParamsMetrics string
 
+// GetTenantsNsIdDatabasesDatabaseNameViewsParams defines parameters for GetTenantsNsIdDatabasesDatabaseNameViews.
+type GetTenantsNsIdDatabasesDatabaseNameViewsParams struct {
+	Offset *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
+	Schema *string `form:"schema,omitempty" json:"schema,omitempty"`
+}
+
+// GetTenantsNsIdErrorLogsParams defines parameters for GetTenantsNsIdErrorLogs.
+type GetTenantsNsIdErrorLogsParams struct {
+	Target    GetTenantsNsIdErrorLogsParamsTarget     `form:"target" json:"target"`
+	TargetId  string                                  `form:"targetId" json:"targetId"`
+	Start     *time.Time                              `form:"start,omitempty" json:"start,omitempty"`
+	End       *time.Time                              `form:"end,omitempty" json:"end,omitempty"`
+	Direction *GetTenantsNsIdErrorLogsParamsDirection `form:"direction,omitempty" json:"direction,omitempty"`
+	Limit     *uint64                                 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetTenantsNsIdErrorLogsParamsTarget defines parameters for GetTenantsNsIdErrorLogs.
+type GetTenantsNsIdErrorLogsParamsTarget string
+
+// GetTenantsNsIdErrorLogsParamsDirection defines parameters for GetTenantsNsIdErrorLogs.
+type GetTenantsNsIdErrorLogsParamsDirection string
+
+// GetTenantsNsIdErrorLogsCountParams defines parameters for GetTenantsNsIdErrorLogsCount.
+type GetTenantsNsIdErrorLogsCountParams struct {
+	Target   GetTenantsNsIdErrorLogsCountParamsTarget `form:"target" json:"target"`
+	TargetId string                                   `form:"targetId" json:"targetId"`
+	Start    *time.Time                               `form:"start,omitempty" json:"start,omitempty"`
+	End      *time.Time                               `form:"end,omitempty" json:"end,omitempty"`
+}
+
+// GetTenantsNsIdErrorLogsCountParamsTarget defines parameters for GetTenantsNsIdErrorLogsCount.
+type GetTenantsNsIdErrorLogsCountParamsTarget string
+
+// PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONBody defines parameters for PostTenantsNsIdExtensionsIcebergCompactionDeprecated.
+type PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONBody struct {
+	Config    *string                   `json:"config,omitempty"`
+	Resources *ComponentResourceRequest `json:"resources,omitempty"`
+}
+
+// PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONBody defines parameters for PutTenantsNsIdExtensionsIcebergCompactionDeprecated.
+type PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONBody struct {
+	Config    *string                   `json:"config,omitempty"`
+	Resources *ComponentResourceRequest `json:"resources,omitempty"`
+}
+
 // PostTenantsNsIdExtensionsIcebergCompactionJSONBody defines parameters for PostTenantsNsIdExtensionsIcebergCompaction.
 type PostTenantsNsIdExtensionsIcebergCompactionJSONBody struct {
 	Config    *string                   `json:"config,omitempty"`
@@ -1737,6 +2171,94 @@ type PostTenantsNsIdExtensionsIcebergCompactionJSONBody struct {
 type PutTenantsNsIdExtensionsIcebergCompactionJSONBody struct {
 	Config    *string                   `json:"config,omitempty"`
 	Resources *ComponentResourceRequest `json:"resources,omitempty"`
+}
+
+// GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams defines parameters for GetTenantsNsIdLokiApiV1LabelLabelNameValues.
+type GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams struct {
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
+	Start *string `form:"start,omitempty" json:"start,omitempty"`
+	End   *string `form:"end,omitempty" json:"end,omitempty"`
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
+}
+
+// PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataBody defines parameters for PostTenantsNsIdLokiApiV1LabelLabelNameValues.
+type PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataBody struct {
+	End   *string `form:"end,omitempty" json:"end,omitempty"`
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
+	Start *string `form:"start,omitempty" json:"start,omitempty"`
+}
+
+// GetTenantsNsIdLokiApiV1LabelsParams defines parameters for GetTenantsNsIdLokiApiV1Labels.
+type GetTenantsNsIdLokiApiV1LabelsParams struct {
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
+	Start *string `form:"start,omitempty" json:"start,omitempty"`
+	End   *string `form:"end,omitempty" json:"end,omitempty"`
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
+}
+
+// PostTenantsNsIdLokiApiV1LabelsFormdataBody defines parameters for PostTenantsNsIdLokiApiV1Labels.
+type PostTenantsNsIdLokiApiV1LabelsFormdataBody struct {
+	End   *string `form:"end,omitempty" json:"end,omitempty"`
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
+	Start *string `form:"start,omitempty" json:"start,omitempty"`
+}
+
+// GetTenantsNsIdLokiApiV1QueryParams defines parameters for GetTenantsNsIdLokiApiV1Query.
+type GetTenantsNsIdLokiApiV1QueryParams struct {
+	Query     string  `form:"query" json:"query"`
+	Time      *string `form:"time,omitempty" json:"time,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+	Limit     *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PostTenantsNsIdLokiApiV1QueryFormdataBody defines parameters for PostTenantsNsIdLokiApiV1Query.
+type PostTenantsNsIdLokiApiV1QueryFormdataBody struct {
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+	Limit     *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Query     string  `form:"query" json:"query"`
+	Time      *string `form:"time,omitempty" json:"time,omitempty"`
+}
+
+// GetTenantsNsIdLokiApiV1QueryRangeParams defines parameters for GetTenantsNsIdLokiApiV1QueryRange.
+type GetTenantsNsIdLokiApiV1QueryRangeParams struct {
+	Query     string  `form:"query" json:"query"`
+	Start     *string `form:"start,omitempty" json:"start,omitempty"`
+	End       *string `form:"end,omitempty" json:"end,omitempty"`
+	Since     *string `form:"since,omitempty" json:"since,omitempty"`
+	Step      *string `form:"step,omitempty" json:"step,omitempty"`
+	Interval  *string `form:"interval,omitempty" json:"interval,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+	Limit     *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PostTenantsNsIdLokiApiV1QueryRangeFormdataBody defines parameters for PostTenantsNsIdLokiApiV1QueryRange.
+type PostTenantsNsIdLokiApiV1QueryRangeFormdataBody struct {
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+	End       *string `form:"end,omitempty" json:"end,omitempty"`
+	Interval  *string `form:"interval,omitempty" json:"interval,omitempty"`
+	Limit     *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Query     string  `form:"query" json:"query"`
+	Since     *string `form:"since,omitempty" json:"since,omitempty"`
+	Start     *string `form:"start,omitempty" json:"start,omitempty"`
+	Step      *string `form:"step,omitempty" json:"step,omitempty"`
+}
+
+// GetTenantsNsIdLokiApiV1SeriesParams defines parameters for GetTenantsNsIdLokiApiV1Series.
+type GetTenantsNsIdLokiApiV1SeriesParams struct {
+	Match []string `form:"match[]" json:"match[]"`
+	Start *string  `form:"start,omitempty" json:"start,omitempty"`
+	End   *string  `form:"end,omitempty" json:"end,omitempty"`
+	Since *string  `form:"since,omitempty" json:"since,omitempty"`
+}
+
+// PostTenantsNsIdLokiApiV1SeriesFormdataBody defines parameters for PostTenantsNsIdLokiApiV1Series.
+type PostTenantsNsIdLokiApiV1SeriesFormdataBody struct {
+	End   *string  `form:"end" json:"end"`
+	Match []string `form:"match[]" json:"match[]"`
+	Since *string  `form:"since" json:"since"`
+	Start *string  `form:"start" json:"start"`
 }
 
 // GetTenantsNsIdMatviewsParams defines parameters for GetTenantsNsIdMatviews.
@@ -1821,32 +2343,80 @@ type PostTenantsNsIdPrometheusApiV1SeriesFormdataBody struct {
 	Start *string  `form:"start" json:"start"`
 }
 
+// PostByocClustersDeprecatedJSONRequestBody defines body for PostByocClustersDeprecated for application/json ContentType.
+type PostByocClustersDeprecatedJSONRequestBody = PostByocClusterRequestBody
+
+// PutByocClustersNameDeprecatedJSONRequestBody defines body for PutByocClustersNameDeprecated for application/json ContentType.
+type PutByocClustersNameDeprecatedJSONRequestBody = PutByocClusterRequestBody
+
+// PostByocClustersNameManualUpdateDeprecatedJSONRequestBody defines body for PostByocClustersNameManualUpdateDeprecated for application/json ContentType.
+type PostByocClustersNameManualUpdateDeprecatedJSONRequestBody = PostByocClusterUpdateRequestBody
+
+// PostByocClustersNameUpdateDeprecatedJSONRequestBody defines body for PostByocClustersNameUpdateDeprecated for application/json ContentType.
+type PostByocClustersNameUpdateDeprecatedJSONRequestBody = PostByocClusterUpdateRequestBody
+
 // PostByocClustersJSONRequestBody defines body for PostByocClusters for application/json ContentType.
-type PostByocClustersJSONRequestBody = PostByocClustersRequestBody
+type PostByocClustersJSONRequestBody = PostByocClusterRequestBody
 
-// PutByocClustersNameJSONRequestBody defines body for PutByocClustersName for application/json ContentType.
-type PutByocClustersNameJSONRequestBody = PutByocClusterRequestBody
+// PutByocClustersClusterNameJSONRequestBody defines body for PutByocClustersClusterName for application/json ContentType.
+type PutByocClustersClusterNameJSONRequestBody = PutByocClusterRequestBody
 
-// PostByocClustersNameManualUpdateJSONRequestBody defines body for PostByocClustersNameManualUpdate for application/json ContentType.
-type PostByocClustersNameManualUpdateJSONRequestBody = PostByocClusterUpdateRequestBody
+// PostByocClustersClusterNameApplyUpgradeJSONRequestBody defines body for PostByocClustersClusterNameApplyUpgrade for application/json ContentType.
+type PostByocClustersClusterNameApplyUpgradeJSONRequestBody = PostByocClusterUpdateRequestBody
 
-// PostByocClustersNameUpdateJSONRequestBody defines body for PostByocClustersNameUpdate for application/json ContentType.
-type PostByocClustersNameUpdateJSONRequestBody = PostByocClusterUpdateRequestBody
+// PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody defines body for PostByocClustersClusterNameManualUpdateDeprecatedV2 for application/json ContentType.
+type PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody = PostByocClusterUpdateRequestBody
+
+// PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody defines body for PostByocClustersClusterNameUpdateDeprecatedV2 for application/json ContentType.
+type PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody = PostByocClusterUpdateRequestBody
+
+// PostByocClustersClusterNameUpgradeJSONRequestBody defines body for PostByocClustersClusterNameUpgrade for application/json ContentType.
+type PostByocClustersClusterNameUpgradeJSONRequestBody = PostByocClusterUpdateRequestBody
+
+// PostByokClustersDeprecatedJSONRequestBody defines body for PostByokClustersDeprecated for application/json ContentType.
+type PostByokClustersDeprecatedJSONRequestBody = PostByokClusterRequestBody
+
+// PutByokClustersNameDeprecatedJSONRequestBody defines body for PutByokClustersNameDeprecated for application/json ContentType.
+type PutByokClustersNameDeprecatedJSONRequestBody = PutByokClusterRequestBody
+
+// PostByokClustersNameManualUpdateDeprecatedJSONRequestBody defines body for PostByokClustersNameManualUpdateDeprecated for application/json ContentType.
+type PostByokClustersNameManualUpdateDeprecatedJSONRequestBody = PostByokClusterUpdateRequestBody
+
+// PostByokClustersNameUpdateDeprecatedJSONRequestBody defines body for PostByokClustersNameUpdateDeprecated for application/json ContentType.
+type PostByokClustersNameUpdateDeprecatedJSONRequestBody = PostByokClusterUpdateRequestBody
 
 // PostByokClustersJSONRequestBody defines body for PostByokClusters for application/json ContentType.
-type PostByokClustersJSONRequestBody = PostByokClustersRequestBody
+type PostByokClustersJSONRequestBody = PostByokClusterRequestBody
 
-// PutByokClustersNameJSONRequestBody defines body for PutByokClustersName for application/json ContentType.
-type PutByokClustersNameJSONRequestBody = PutByokClusterRequestBody
+// PutByokClustersClusterNameJSONRequestBody defines body for PutByokClustersClusterName for application/json ContentType.
+type PutByokClustersClusterNameJSONRequestBody = PutByokClusterRequestBody
 
-// PostByokClustersNameManualUpdateJSONRequestBody defines body for PostByokClustersNameManualUpdate for application/json ContentType.
-type PostByokClustersNameManualUpdateJSONRequestBody = PostByokClusterUpdateRequestBody
+// PostByokClustersClusterNameApplyUpgradeJSONRequestBody defines body for PostByokClustersClusterNameApplyUpgrade for application/json ContentType.
+type PostByokClustersClusterNameApplyUpgradeJSONRequestBody = PostByokClusterUpdateRequestBody
 
-// PostByokClustersNameUpdateJSONRequestBody defines body for PostByokClustersNameUpdate for application/json ContentType.
-type PostByokClustersNameUpdateJSONRequestBody = PostByokClusterUpdateRequestBody
+// PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody defines body for PostByokClustersClusterNameManualUpdateDeprecatedV2 for application/json ContentType.
+type PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody = PostByokClusterUpdateRequestBody
+
+// PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody defines body for PostByokClustersClusterNameUpdateDeprecatedV2 for application/json ContentType.
+type PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody = PostByokClusterUpdateRequestBody
+
+// PostByokClustersClusterNameUpgradeJSONRequestBody defines body for PostByokClustersClusterNameUpgrade for application/json ContentType.
+type PostByokClustersClusterNameUpgradeJSONRequestBody = PostByokClusterUpdateRequestBody
 
 // PostTenantsJSONRequestBody defines body for PostTenants for application/json ContentType.
 type PostTenantsJSONRequestBody = TenantRequestRequestBody
+
+// PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody defines body for PatchTenantsNsIdAlertRulesAlertRuleKey for application/json ContentType.
+type PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody = PatchAlertRuleRequestBody
+
+// PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody defines body for PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides for application/json ContentType.
+type PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody = PatchAlertRuleParameterOverridesRequestBody
+
+// PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody defines body for PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings for application/json ContentType.
+type PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody = PostRecipientBindingRequestBody
+
+// PostTenantsNsIdAliasJSONRequestBody defines body for PostTenantsNsIdAlias for application/json ContentType.
+type PostTenantsNsIdAliasJSONRequestBody = UpdateTenantAliasRequestBody
 
 // DeleteTenantsNsIdAllowedIamRolesJSONRequestBody defines body for DeleteTenantsNsIdAllowedIamRoles for application/json ContentType.
 type DeleteTenantsNsIdAllowedIamRolesJSONRequestBody = TenantAllowedIamRoleRequestBody
@@ -1860,8 +2430,14 @@ type PostTenantsNsIdBackupsSnapshotIdRestoreJSONRequestBody = PostTenantRestoreR
 // PostTenantsNsIdByokConfigJSONRequestBody defines body for PostTenantsNsIdByokConfig for application/json ContentType.
 type PostTenantsNsIdByokConfigJSONRequestBody = PostBYOKTenantConfigRequestBody
 
+// PostTenantsNsIdComputeAutoscalingJSONRequestBody defines body for PostTenantsNsIdComputeAutoscaling for application/json ContentType.
+type PostTenantsNsIdComputeAutoscalingJSONRequestBody = AutoscalingConfig
+
 // PostTenantsNsIdComputeCacheJSONRequestBody defines body for PostTenantsNsIdComputeCache for application/json ContentType.
 type PostTenantsNsIdComputeCacheJSONRequestBody = PostTenantComputeCacheRequestBody
+
+// PostTenantsNsIdConfigJSONRequestBody defines body for PostTenantsNsIdConfig for application/json ContentType.
+type PostTenantsNsIdConfigJSONRequestBody = PostTenantConfigRequestBody
 
 // PostTenantsNsIdDatabaseUsersJSONRequestBody defines body for PostTenantsNsIdDatabaseUsers for application/json ContentType.
 type PostTenantsNsIdDatabaseUsersJSONRequestBody = CreateDBUserRequestBody
@@ -1890,11 +2466,23 @@ type PostTenantsNsIdExtensionsCompactionJSONRequestBody = TenantExtensionServerl
 // PutTenantsNsIdExtensionsCompactionJSONRequestBody defines body for PutTenantsNsIdExtensionsCompaction for application/json ContentType.
 type PutTenantsNsIdExtensionsCompactionJSONRequestBody = TenantExtensionServerlessCompactionRequest
 
+// PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody defines body for PostTenantsNsIdExtensionsIcebergCompactionDeprecated for application/json ContentType.
+type PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONBody
+
+// PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody defines body for PutTenantsNsIdExtensionsIcebergCompactionDeprecated for application/json ContentType.
+type PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONBody
+
 // PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody defines body for PostTenantsNsIdExtensionsIcebergCompaction for application/json ContentType.
 type PostTenantsNsIdExtensionsIcebergCompactionJSONRequestBody PostTenantsNsIdExtensionsIcebergCompactionJSONBody
 
 // PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody defines body for PutTenantsNsIdExtensionsIcebergCompaction for application/json ContentType.
 type PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody PutTenantsNsIdExtensionsIcebergCompactionJSONBody
+
+// PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody defines body for PostTenantsNsIdExtensionsServerlessBackfillingDeprecated for application/json ContentType.
+type PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody = TenantExtensionServerlessBackfillRequest
+
+// PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody defines body for PutTenantsNsIdExtensionsServerlessBackfillingDeprecated for application/json ContentType.
+type PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody = TenantExtensionServerlessBackfillRequest
 
 // PostTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody defines body for PostTenantsNsIdExtensionsServerlessBackfilling for application/json ContentType.
 type PostTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody = TenantExtensionServerlessBackfillRequest
@@ -1902,11 +2490,32 @@ type PostTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody = TenantExten
 // PutTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody defines body for PutTenantsNsIdExtensionsServerlessBackfilling for application/json ContentType.
 type PutTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody = TenantExtensionServerlessBackfillRequest
 
+// PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody defines body for PostTenantsNsIdLokiApiV1LabelLabelNameValues for application/x-www-form-urlencoded ContentType.
+type PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataBody
+
+// PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody defines body for PostTenantsNsIdLokiApiV1Labels for application/x-www-form-urlencoded ContentType.
+type PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody PostTenantsNsIdLokiApiV1LabelsFormdataBody
+
+// PostTenantsNsIdLokiApiV1QueryFormdataRequestBody defines body for PostTenantsNsIdLokiApiV1Query for application/x-www-form-urlencoded ContentType.
+type PostTenantsNsIdLokiApiV1QueryFormdataRequestBody PostTenantsNsIdLokiApiV1QueryFormdataBody
+
+// PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody defines body for PostTenantsNsIdLokiApiV1QueryRange for application/x-www-form-urlencoded ContentType.
+type PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody PostTenantsNsIdLokiApiV1QueryRangeFormdataBody
+
+// PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody defines body for PostTenantsNsIdLokiApiV1Series for application/x-www-form-urlencoded ContentType.
+type PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody PostTenantsNsIdLokiApiV1SeriesFormdataBody
+
 // PostTenantsNsIdMaintenanceWindowJSONRequestBody defines body for PostTenantsNsIdMaintenanceWindow for application/json ContentType.
 type PostTenantsNsIdMaintenanceWindowJSONRequestBody = MaintenanceWindow
 
-// PostTenantsNsIdPrivatelinksJSONRequestBody defines body for PostTenantsNsIdPrivatelinks for application/json ContentType.
-type PostTenantsNsIdPrivatelinksJSONRequestBody = PostPrivateLinkRequestBody
+// PostTenantsNsIdPreviewConfigJSONRequestBody defines body for PostTenantsNsIdPreviewConfig for application/json ContentType.
+type PostTenantsNsIdPreviewConfigJSONRequestBody = PostTenantConfigPreviewRequestBody
+
+// PostTenantsNsIdPrivateLinksJSONRequestBody defines body for PostTenantsNsIdPrivateLinks for application/json ContentType.
+type PostTenantsNsIdPrivateLinksJSONRequestBody = PostPrivateLinkRequestBody
+
+// PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody defines body for PostTenantsNsIdPrivatelinksDeprecated for application/json ContentType.
+type PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody = PostPrivateLinkRequestBody
 
 // PostTenantsNsIdPrometheusApiV1LabelsFormdataRequestBody defines body for PostTenantsNsIdPrometheusApiV1Labels for application/x-www-form-urlencoded ContentType.
 type PostTenantsNsIdPrometheusApiV1LabelsFormdataRequestBody PostTenantsNsIdPrometheusApiV1LabelsFormdataBody
@@ -1925,6 +2534,9 @@ type PostTenantsNsIdResourceGroupsJSONRequestBody = CreateResourceGroupsRequestB
 
 // PostTenantsNsIdResourceGroupsResourceGroupJSONRequestBody defines body for PostTenantsNsIdResourceGroupsResourceGroup for application/json ContentType.
 type PostTenantsNsIdResourceGroupsResourceGroupJSONRequestBody = UpdateResourceGroupsRequestBody
+
+// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody defines body for PostTenantsNsIdResourceGroupsResourceGroupAutoscaling for application/json ContentType.
+type PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody = AutoscalingConfig
 
 // PostTenantsNsIdSourcesFetchKafkaSchemaJSONRequestBody defines body for PostTenantsNsIdSourcesFetchKafkaSchema for application/json ContentType.
 type PostTenantsNsIdSourcesFetchKafkaSchemaJSONRequestBody = PostSourcesFetchKafkaSchemaRequestBody
@@ -2299,6 +2911,38 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetByocClustersDeprecated request
+	GetByocClustersDeprecated(ctx context.Context, params *GetByocClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByocClustersDeprecatedWithBody request with any body
+	PostByocClustersDeprecatedWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByocClustersDeprecated(ctx context.Context, body PostByocClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteByocClustersNameDeprecated request
+	DeleteByocClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetByocClustersNameDeprecated request
+	GetByocClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutByocClustersNameDeprecatedWithBody request with any body
+	PutByocClustersNameDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutByocClustersNameDeprecated(ctx context.Context, name string, body PutByocClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByocClustersNameManualUpdateDeprecatedWithBody request with any body
+	PostByocClustersNameManualUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByocClustersNameManualUpdateDeprecated(ctx context.Context, name string, body PostByocClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByocClustersNameTerminateDeprecated request
+	PostByocClustersNameTerminateDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByocClustersNameUpdateDeprecatedWithBody request with any body
+	PostByocClustersNameUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByocClustersNameUpdateDeprecated(ctx context.Context, name string, body PostByocClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetByocClusters request
 	GetByocClusters(ctx context.Context, params *GetByocClustersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2307,29 +2951,71 @@ type ClientInterface interface {
 
 	PostByocClusters(ctx context.Context, body PostByocClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteByocClustersName request
-	DeleteByocClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// DeleteByocClustersClusterName request
+	DeleteByocClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetByocClustersName request
-	GetByocClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetByocClustersClusterName request
+	GetByocClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutByocClustersNameWithBody request with any body
-	PutByocClustersNameWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PutByocClustersClusterNameWithBody request with any body
+	PutByocClustersClusterNameWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PutByocClustersName(ctx context.Context, name string, body PutByocClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutByocClustersClusterName(ctx context.Context, clusterName string, body PutByocClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostByocClustersNameManualUpdateWithBody request with any body
-	PostByocClustersNameManualUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostByocClustersClusterNameApplyUpgradeWithBody request with any body
+	PostByocClustersClusterNameApplyUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostByocClustersNameManualUpdate(ctx context.Context, name string, body PostByocClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostByocClustersClusterNameApplyUpgrade(ctx context.Context, clusterName string, body PostByocClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostByocClustersNameTerminate request
-	PostByocClustersNameTerminate(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostByocClustersClusterNameManualUpdateDeprecatedV2WithBody request with any body
+	PostByocClustersClusterNameManualUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostByocClustersNameUpdateWithBody request with any body
-	PostByocClustersNameUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostByocClustersClusterNameManualUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostByocClustersNameUpdate(ctx context.Context, name string, body PostByocClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostByocClustersClusterNameTerminate request
+	PostByocClustersClusterNameTerminate(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByocClustersClusterNameUpdateDeprecatedV2WithBody request with any body
+	PostByocClustersClusterNameUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByocClustersClusterNameUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByocClustersClusterNameUpgradeWithBody request with any body
+	PostByocClustersClusterNameUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByocClustersClusterNameUpgrade(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetByokClustersDeprecated request
+	GetByokClustersDeprecated(ctx context.Context, params *GetByokClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersDeprecatedWithBody request with any body
+	PostByokClustersDeprecatedWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersDeprecated(ctx context.Context, body PostByokClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteByokClustersNameDeprecated request
+	DeleteByokClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetByokClustersNameDeprecated request
+	GetByokClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutByokClustersNameDeprecatedWithBody request with any body
+	PutByokClustersNameDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutByokClustersNameDeprecated(ctx context.Context, name string, body PutByokClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersNameManualUpdateDeprecatedWithBody request with any body
+	PostByokClustersNameManualUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersNameManualUpdateDeprecated(ctx context.Context, name string, body PostByokClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersNameTerminateDeprecated request
+	PostByokClustersNameTerminateDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersNameUpdateDeprecatedWithBody request with any body
+	PostByokClustersNameUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersNameUpdateDeprecated(ctx context.Context, name string, body PostByokClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetByokClusters request
 	GetByokClusters(ctx context.Context, params *GetByokClustersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2339,29 +3025,39 @@ type ClientInterface interface {
 
 	PostByokClusters(ctx context.Context, body PostByokClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteByokClustersName request
-	DeleteByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// DeleteByokClustersClusterName request
+	DeleteByokClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetByokClustersName request
-	GetByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetByokClustersClusterName request
+	GetByokClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutByokClustersNameWithBody request with any body
-	PutByokClustersNameWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PutByokClustersClusterNameWithBody request with any body
+	PutByokClustersClusterNameWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PutByokClustersName(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutByokClustersClusterName(ctx context.Context, clusterName string, body PutByokClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostByokClustersNameManualUpdateWithBody request with any body
-	PostByokClustersNameManualUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostByokClustersClusterNameApplyUpgradeWithBody request with any body
+	PostByokClustersClusterNameApplyUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostByokClustersNameManualUpdate(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostByokClustersClusterNameApplyUpgrade(ctx context.Context, clusterName string, body PostByokClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostByokClustersNameTerminate request
-	PostByokClustersNameTerminate(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostByokClustersClusterNameManualUpdateDeprecatedV2WithBody request with any body
+	PostByokClustersClusterNameManualUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostByokClustersNameUpdateWithBody request with any body
-	PostByokClustersNameUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostByokClustersClusterNameManualUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostByokClustersNameUpdate(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostByokClustersClusterNameTerminate request
+	PostByokClustersClusterNameTerminate(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersClusterNameUpdateDeprecatedV2WithBody request with any body
+	PostByokClustersClusterNameUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersClusterNameUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostByokClustersClusterNameUpgradeWithBody request with any body
+	PostByokClustersClusterNameUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostByokClustersClusterNameUpgrade(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenants request
 	GetTenants(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2376,6 +3072,44 @@ type ClientInterface interface {
 
 	// GetTenantsNsId request
 	GetTenantsNsId(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdAlertIncidents request
+	GetTenantsNsIdAlertIncidents(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertIncidentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdAlertIncidentsIncidentId request
+	GetTenantsNsIdAlertIncidentsIncidentId(ctx context.Context, nsId openapi_types.UUID, incidentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdAlertRules request
+	GetTenantsNsIdAlertRules(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertRulesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchTenantsNsIdAlertRulesAlertRuleKeyWithBody request with any body
+	PatchTenantsNsIdAlertRulesAlertRuleKeyWithBody(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PatchTenantsNsIdAlertRulesAlertRuleKey(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides request
+	DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBody request with any body
+	PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBody(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings request
+	GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBody request with any body
+	PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBody(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientId request
+	DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientId(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, recipientId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdAliasWithBody request with any body
+	PostTenantsNsIdAliasWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdAlias(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAliasJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTenantsNsIdAllowedIamRolesWithBody request with any body
 	DeleteTenantsNsIdAllowedIamRolesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2402,6 +3136,9 @@ type ClientInterface interface {
 	// DeleteTenantsNsIdBackupsSnapshotId request
 	DeleteTenantsNsIdBackupsSnapshotId(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecated request
+	PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecated(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostTenantsNsIdBackupsSnapshotIdInPlaceRestore request
 	PostTenantsNsIdBackupsSnapshotIdInPlaceRestore(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2421,6 +3158,23 @@ type ClientInterface interface {
 	// GetTenantsNsIdCloudMeta request
 	GetTenantsNsIdCloudMeta(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteTenantsNsIdComputeAutoscaling request
+	DeleteTenantsNsIdComputeAutoscaling(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdComputeAutoscaling request
+	GetTenantsNsIdComputeAutoscaling(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdComputeAutoscalingWithBody request with any body
+	PostTenantsNsIdComputeAutoscalingWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdComputeAutoscaling(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdComputeAutoscalingDisable request
+	PostTenantsNsIdComputeAutoscalingDisable(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdComputeAutoscalingEnable request
+	PostTenantsNsIdComputeAutoscalingEnable(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTenantsNsIdComputeCache request
 	GetTenantsNsIdComputeCache(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2434,6 +3188,14 @@ type ClientInterface interface {
 
 	// GetTenantsNsIdComputeCacheRecommendation request
 	GetTenantsNsIdComputeCacheRecommendation(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdConfig request
+	GetTenantsNsIdConfig(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdConfigWithBody request with any body
+	PostTenantsNsIdConfigWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdConfig(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantsNsIdDatabaseUsers request
 	GetTenantsNsIdDatabaseUsers(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdDatabaseUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2471,6 +3233,15 @@ type ClientInterface interface {
 	PostTenantsNsIdDatabasesDatabaseNameExecuteSQLWithBody(ctx context.Context, nsId openapi_types.UUID, databaseName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostTenantsNsIdDatabasesDatabaseNameExecuteSQL(ctx context.Context, nsId openapi_types.UUID, databaseName string, body PostTenantsNsIdDatabasesDatabaseNameExecuteSQLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdDatabasesDatabaseNameIndexes request
+	GetTenantsNsIdDatabasesDatabaseNameIndexes(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameIndexesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexName request
+	DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexName(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdDatabasesDatabaseNameIndexesIndexName request
+	GetTenantsNsIdDatabasesDatabaseNameIndexesIndexName(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantsNsIdDatabasesDatabaseNameMatviews request
 	GetTenantsNsIdDatabasesDatabaseNameMatviews(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameMatviewsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2596,8 +3367,23 @@ type ClientInterface interface {
 	// GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughput request
 	GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughput(ctx context.Context, nsId openapi_types.UUID, databaseName string, tableName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetTenantsNsIdDatabasesDatabaseNameViews request
+	GetTenantsNsIdDatabasesDatabaseNameViews(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameViewsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdDatabasesDatabaseNameViewsViewName request
+	DeleteTenantsNsIdDatabasesDatabaseNameViewsViewName(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdDatabasesDatabaseNameViewsViewName request
+	GetTenantsNsIdDatabasesDatabaseNameViewsViewName(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTenantsNsIdEndpoint request
 	GetTenantsNsIdEndpoint(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdErrorLogs request
+	GetTenantsNsIdErrorLogs(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdErrorLogsCount request
+	GetTenantsNsIdErrorLogsCount(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsCountParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTenantsNsIdExtensionsCompaction request
 	DeleteTenantsNsIdExtensionsCompaction(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2615,6 +3401,22 @@ type ClientInterface interface {
 
 	PutTenantsNsIdExtensionsCompaction(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsCompactionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteTenantsNsIdExtensionsIcebergCompactionDeprecated request
+	DeleteTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdExtensionsIcebergCompactionDeprecated request
+	GetTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody request with any body
+	PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody request with any body
+	PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteTenantsNsIdExtensionsIcebergCompaction request
 	DeleteTenantsNsIdExtensionsIcebergCompaction(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2631,6 +3433,22 @@ type ClientInterface interface {
 
 	PutTenantsNsIdExtensionsIcebergCompaction(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecated request
+	DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdExtensionsServerlessBackfillingDeprecated request
+	GetTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody request with any body
+	PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody request with any body
+	PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteTenantsNsIdExtensionsServerlessBackfilling request
 	DeleteTenantsNsIdExtensionsServerlessBackfilling(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2646,6 +3464,46 @@ type ClientInterface interface {
 	PutTenantsNsIdExtensionsServerlessBackfillingWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PutTenantsNsIdExtensionsServerlessBackfilling(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdLokiApiV1LabelLabelNameValues request
+	GetTenantsNsIdLokiApiV1LabelLabelNameValues(ctx context.Context, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBody request with any body
+	PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBody(ctx context.Context, nsId openapi_types.UUID, labelName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, labelName string, body PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdLokiApiV1Labels request
+	GetTenantsNsIdLokiApiV1Labels(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1LabelsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdLokiApiV1LabelsWithBody request with any body
+	PostTenantsNsIdLokiApiV1LabelsWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdLokiApiV1LabelsWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdLokiApiV1Query request
+	GetTenantsNsIdLokiApiV1Query(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdLokiApiV1QueryWithBody request with any body
+	PostTenantsNsIdLokiApiV1QueryWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdLokiApiV1QueryWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdLokiApiV1QueryRange request
+	GetTenantsNsIdLokiApiV1QueryRange(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryRangeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdLokiApiV1QueryRangeWithBody request with any body
+	PostTenantsNsIdLokiApiV1QueryRangeWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdLokiApiV1QueryRangeWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdLokiApiV1Series request
+	GetTenantsNsIdLokiApiV1Series(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1SeriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdLokiApiV1SeriesWithBody request with any body
+	PostTenantsNsIdLokiApiV1SeriesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdLokiApiV1SeriesWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantsNsIdMaintenanceDetails request
 	GetTenantsNsIdMaintenanceDetails(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2667,16 +3525,32 @@ type ClientInterface interface {
 	// PostTenantsNsIdOauthToken request
 	PostTenantsNsIdOauthToken(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostTenantsNsIdPrivatelinksWithBody request with any body
-	PostTenantsNsIdPrivatelinksWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostTenantsNsIdPreviewConfigWithBody request with any body
+	PostTenantsNsIdPreviewConfigWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostTenantsNsIdPrivatelinks(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostTenantsNsIdPreviewConfig(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPreviewConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteTenantsNsIdPrivatelinksPrivateLinkId request
-	DeleteTenantsNsIdPrivatelinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostTenantsNsIdPrivateLinksWithBody request with any body
+	PostTenantsNsIdPrivateLinksWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetTenantsNsIdPrivatelinksPrivateLinkId request
-	GetTenantsNsIdPrivatelinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostTenantsNsIdPrivateLinks(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivateLinksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdPrivateLinksPrivateLinkId request
+	DeleteTenantsNsIdPrivateLinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdPrivateLinksPrivateLinkId request
+	GetTenantsNsIdPrivateLinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdPrivatelinksDeprecatedWithBody request with any body
+	PostTenantsNsIdPrivatelinksDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdPrivatelinksDeprecated(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecated request
+	DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecated(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecated request
+	GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecated(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTenantsNsIdPrometheusApiV1LabelLabelNameValues request
 	GetTenantsNsIdPrometheusApiV1LabelLabelNameValues(ctx context.Context, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2731,6 +3605,23 @@ type ClientInterface interface {
 	PostTenantsNsIdResourceGroupsResourceGroupWithBody(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostTenantsNsIdResourceGroupsResourceGroup(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantsNsIdResourceGroupsResourceGroupAutoscaling request
+	DeleteTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantsNsIdResourceGroupsResourceGroupAutoscaling request
+	GetTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBody request with any body
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBody(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisable request
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisable(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnable request
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnable(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostTenantsNsIdRestart request
 	PostTenantsNsIdRestart(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2805,6 +3696,150 @@ type ClientInterface interface {
 	PostTenantsNsIdUpdateVersion(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdUpdateVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
+func (c *Client) GetByocClustersDeprecated(ctx context.Context, params *GetByocClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByocClustersDeprecatedRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersDeprecatedWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersDeprecatedRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersDeprecated(ctx context.Context, body PostByocClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersDeprecatedRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteByocClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteByocClustersNameDeprecatedRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetByocClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByocClustersNameDeprecatedRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutByocClustersNameDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByocClustersNameDeprecatedRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutByocClustersNameDeprecated(ctx context.Context, name string, body PutByocClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByocClustersNameDeprecatedRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersNameManualUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersNameManualUpdateDeprecatedRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersNameManualUpdateDeprecated(ctx context.Context, name string, body PostByocClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersNameManualUpdateDeprecatedRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersNameTerminateDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersNameTerminateDeprecatedRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersNameUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersNameUpdateDeprecatedRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersNameUpdateDeprecated(ctx context.Context, name string, body PostByocClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersNameUpdateDeprecatedRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetByocClusters(ctx context.Context, params *GetByocClustersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetByocClustersRequest(c.Server, params)
 	if err != nil {
@@ -2841,8 +3876,8 @@ func (c *Client) PostByocClusters(ctx context.Context, body PostByocClustersJSON
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteByocClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteByocClustersNameRequest(c.Server, name)
+func (c *Client) DeleteByocClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteByocClustersClusterNameRequest(c.Server, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -2853,8 +3888,8 @@ func (c *Client) DeleteByocClustersName(ctx context.Context, name string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetByocClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetByocClustersNameRequest(c.Server, name)
+func (c *Client) GetByocClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByocClustersClusterNameRequest(c.Server, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -2865,8 +3900,8 @@ func (c *Client) GetByocClustersName(ctx context.Context, name string, reqEditor
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutByocClustersNameWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutByocClustersNameRequestWithBody(c.Server, name, contentType, body)
+func (c *Client) PutByocClustersClusterNameWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByocClustersClusterNameRequestWithBody(c.Server, clusterName, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2877,8 +3912,8 @@ func (c *Client) PutByocClustersNameWithBody(ctx context.Context, name string, c
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutByocClustersName(ctx context.Context, name string, body PutByocClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutByocClustersNameRequest(c.Server, name, body)
+func (c *Client) PutByocClustersClusterName(ctx context.Context, clusterName string, body PutByocClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByocClustersClusterNameRequest(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2889,8 +3924,8 @@ func (c *Client) PutByocClustersName(ctx context.Context, name string, body PutB
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByocClustersNameManualUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByocClustersNameManualUpdateRequestWithBody(c.Server, name, contentType, body)
+func (c *Client) PostByocClustersClusterNameApplyUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameApplyUpgradeRequestWithBody(c.Server, clusterName, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2901,8 +3936,8 @@ func (c *Client) PostByocClustersNameManualUpdateWithBody(ctx context.Context, n
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByocClustersNameManualUpdate(ctx context.Context, name string, body PostByocClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByocClustersNameManualUpdateRequest(c.Server, name, body)
+func (c *Client) PostByocClustersClusterNameApplyUpgrade(ctx context.Context, clusterName string, body PostByocClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameApplyUpgradeRequest(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2913,8 +3948,8 @@ func (c *Client) PostByocClustersNameManualUpdate(ctx context.Context, name stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByocClustersNameTerminate(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByocClustersNameTerminateRequest(c.Server, name)
+func (c *Client) PostByocClustersClusterNameManualUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameManualUpdateDeprecatedV2RequestWithBody(c.Server, clusterName, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2925,8 +3960,8 @@ func (c *Client) PostByocClustersNameTerminate(ctx context.Context, name string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByocClustersNameUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByocClustersNameUpdateRequestWithBody(c.Server, name, contentType, body)
+func (c *Client) PostByocClustersClusterNameManualUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameManualUpdateDeprecatedV2Request(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2937,8 +3972,200 @@ func (c *Client) PostByocClustersNameUpdateWithBody(ctx context.Context, name st
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByocClustersNameUpdate(ctx context.Context, name string, body PostByocClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByocClustersNameUpdateRequest(c.Server, name, body)
+func (c *Client) PostByocClustersClusterNameTerminate(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameTerminateRequest(c.Server, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersClusterNameUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameUpdateDeprecatedV2RequestWithBody(c.Server, clusterName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersClusterNameUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameUpdateDeprecatedV2Request(c.Server, clusterName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersClusterNameUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameUpgradeRequestWithBody(c.Server, clusterName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByocClustersClusterNameUpgrade(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByocClustersClusterNameUpgradeRequest(c.Server, clusterName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetByokClustersDeprecated(ctx context.Context, params *GetByokClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByokClustersDeprecatedRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersDeprecatedWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersDeprecatedRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersDeprecated(ctx context.Context, body PostByokClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersDeprecatedRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteByokClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteByokClustersNameDeprecatedRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetByokClustersNameDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByokClustersNameDeprecatedRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutByokClustersNameDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByokClustersNameDeprecatedRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutByokClustersNameDeprecated(ctx context.Context, name string, body PutByokClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByokClustersNameDeprecatedRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameManualUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameManualUpdateDeprecatedRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameManualUpdateDeprecated(ctx context.Context, name string, body PostByokClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameManualUpdateDeprecatedRequest(c.Server, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameTerminateDeprecated(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameTerminateDeprecatedRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameUpdateDeprecatedWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameUpdateDeprecatedRequestWithBody(c.Server, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersNameUpdateDeprecated(ctx context.Context, name string, body PostByokClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersNameUpdateDeprecatedRequest(c.Server, name, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2985,8 +4212,8 @@ func (c *Client) PostByokClusters(ctx context.Context, body PostByokClustersJSON
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteByokClustersNameRequest(c.Server, name)
+func (c *Client) DeleteByokClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteByokClustersClusterNameRequest(c.Server, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -2997,8 +4224,8 @@ func (c *Client) DeleteByokClustersName(ctx context.Context, name string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetByokClustersName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetByokClustersNameRequest(c.Server, name)
+func (c *Client) GetByokClustersClusterName(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetByokClustersClusterNameRequest(c.Server, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -3009,8 +4236,8 @@ func (c *Client) GetByokClustersName(ctx context.Context, name string, reqEditor
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutByokClustersNameWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutByokClustersNameRequestWithBody(c.Server, name, contentType, body)
+func (c *Client) PutByokClustersClusterNameWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByokClustersClusterNameRequestWithBody(c.Server, clusterName, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3021,8 +4248,8 @@ func (c *Client) PutByokClustersNameWithBody(ctx context.Context, name string, c
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutByokClustersName(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutByokClustersNameRequest(c.Server, name, body)
+func (c *Client) PutByokClustersClusterName(ctx context.Context, clusterName string, body PutByokClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutByokClustersClusterNameRequest(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3033,8 +4260,8 @@ func (c *Client) PutByokClustersName(ctx context.Context, name string, body PutB
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByokClustersNameManualUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByokClustersNameManualUpdateRequestWithBody(c.Server, name, contentType, body)
+func (c *Client) PostByokClustersClusterNameApplyUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameApplyUpgradeRequestWithBody(c.Server, clusterName, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3045,8 +4272,8 @@ func (c *Client) PostByokClustersNameManualUpdateWithBody(ctx context.Context, n
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByokClustersNameManualUpdate(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByokClustersNameManualUpdateRequest(c.Server, name, body)
+func (c *Client) PostByokClustersClusterNameApplyUpgrade(ctx context.Context, clusterName string, body PostByokClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameApplyUpgradeRequest(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3057,8 +4284,8 @@ func (c *Client) PostByokClustersNameManualUpdate(ctx context.Context, name stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByokClustersNameTerminate(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByokClustersNameTerminateRequest(c.Server, name)
+func (c *Client) PostByokClustersClusterNameManualUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameManualUpdateDeprecatedV2RequestWithBody(c.Server, clusterName, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3069,8 +4296,8 @@ func (c *Client) PostByokClustersNameTerminate(ctx context.Context, name string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByokClustersNameUpdateWithBody(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByokClustersNameUpdateRequestWithBody(c.Server, name, contentType, body)
+func (c *Client) PostByokClustersClusterNameManualUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameManualUpdateDeprecatedV2Request(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3081,8 +4308,56 @@ func (c *Client) PostByokClustersNameUpdateWithBody(ctx context.Context, name st
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostByokClustersNameUpdate(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostByokClustersNameUpdateRequest(c.Server, name, body)
+func (c *Client) PostByokClustersClusterNameTerminate(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameTerminateRequest(c.Server, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersClusterNameUpdateDeprecatedV2WithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameUpdateDeprecatedV2RequestWithBody(c.Server, clusterName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersClusterNameUpdateDeprecatedV2(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameUpdateDeprecatedV2Request(c.Server, clusterName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersClusterNameUpgradeWithBody(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameUpgradeRequestWithBody(c.Server, clusterName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostByokClustersClusterNameUpgrade(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostByokClustersClusterNameUpgradeRequest(c.Server, clusterName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3143,6 +4418,174 @@ func (c *Client) DeleteTenantsNsId(ctx context.Context, nsId openapi_types.UUID,
 
 func (c *Client) GetTenantsNsId(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsNsIdRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdAlertIncidents(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertIncidentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdAlertIncidentsRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdAlertIncidentsIncidentId(ctx context.Context, nsId openapi_types.UUID, incidentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdAlertIncidentsIncidentIdRequest(c.Server, nsId, incidentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdAlertRules(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertRulesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdAlertRulesRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchTenantsNsIdAlertRulesAlertRuleKeyWithBody(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequestWithBody(c.Server, nsId, alertRuleKey, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchTenantsNsIdAlertRulesAlertRuleKey(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequest(c.Server, nsId, alertRuleKey, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequest(c.Server, nsId, alertRuleKey, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBody(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequestWithBody(c.Server, nsId, alertRuleKey, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequest(c.Server, nsId, alertRuleKey, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequest(c.Server, nsId, alertRuleKey, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBody(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequestWithBody(c.Server, nsId, alertRuleKey, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequest(c.Server, nsId, alertRuleKey, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientId(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, recipientId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdRequest(c.Server, nsId, alertRuleKey, recipientId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdAliasWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdAliasRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdAlias(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAliasJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdAliasRequest(c.Server, nsId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3261,6 +4704,18 @@ func (c *Client) DeleteTenantsNsIdBackupsSnapshotId(ctx context.Context, nsId op
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecated(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedRequest(c.Server, nsId, snapshotId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostTenantsNsIdBackupsSnapshotIdInPlaceRestore(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreRequest(c.Server, nsId, snapshotId)
 	if err != nil {
@@ -3345,6 +4800,78 @@ func (c *Client) GetTenantsNsIdCloudMeta(ctx context.Context, nsId openapi_types
 	return c.Client.Do(req)
 }
 
+func (c *Client) DeleteTenantsNsIdComputeAutoscaling(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdComputeAutoscalingRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdComputeAutoscaling(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdComputeAutoscalingRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdComputeAutoscalingWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdComputeAutoscalingRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdComputeAutoscaling(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdComputeAutoscalingRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdComputeAutoscalingDisable(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdComputeAutoscalingDisableRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdComputeAutoscalingEnable(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdComputeAutoscalingEnableRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetTenantsNsIdComputeCache(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsNsIdComputeCacheRequest(c.Server, nsId)
 	if err != nil {
@@ -3395,6 +4922,42 @@ func (c *Client) GetTenantsNsIdComputeCacheCapabilities(ctx context.Context, nsI
 
 func (c *Client) GetTenantsNsIdComputeCacheRecommendation(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsNsIdComputeCacheRecommendationRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdConfig(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdConfigRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdConfigWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdConfigRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdConfig(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdConfigRequest(c.Server, nsId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3563,6 +5126,42 @@ func (c *Client) PostTenantsNsIdDatabasesDatabaseNameExecuteSQLWithBody(ctx cont
 
 func (c *Client) PostTenantsNsIdDatabasesDatabaseNameExecuteSQL(ctx context.Context, nsId openapi_types.UUID, databaseName string, body PostTenantsNsIdDatabasesDatabaseNameExecuteSQLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostTenantsNsIdDatabasesDatabaseNameExecuteSQLRequest(c.Server, nsId, databaseName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdDatabasesDatabaseNameIndexes(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameIndexesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdDatabasesDatabaseNameIndexesRequest(c.Server, nsId, databaseName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexName(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameRequest(c.Server, nsId, databaseName, indexName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdDatabasesDatabaseNameIndexesIndexName(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameRequest(c.Server, nsId, databaseName, indexName)
 	if err != nil {
 		return nil, err
 	}
@@ -4077,8 +5676,68 @@ func (c *Client) GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughput(ct
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetTenantsNsIdDatabasesDatabaseNameViews(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameViewsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdDatabasesDatabaseNameViewsRequest(c.Server, nsId, databaseName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdDatabasesDatabaseNameViewsViewName(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameRequest(c.Server, nsId, databaseName, viewName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdDatabasesDatabaseNameViewsViewName(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdDatabasesDatabaseNameViewsViewNameRequest(c.Server, nsId, databaseName, viewName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetTenantsNsIdEndpoint(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTenantsNsIdEndpointRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdErrorLogs(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdErrorLogsRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdErrorLogsCount(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsCountParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdErrorLogsCountRequest(c.Server, nsId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4161,6 +5820,78 @@ func (c *Client) PutTenantsNsIdExtensionsCompaction(ctx context.Context, nsId op
 	return c.Client.Do(req)
 }
 
+func (c *Client) DeleteTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) DeleteTenantsNsIdExtensionsIcebergCompaction(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteTenantsNsIdExtensionsIcebergCompactionRequest(c.Server, nsId)
 	if err != nil {
@@ -4233,6 +5964,78 @@ func (c *Client) PutTenantsNsIdExtensionsIcebergCompaction(ctx context.Context, 
 	return c.Client.Do(req)
 }
 
+func (c *Client) DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(c.Server, nsId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) DeleteTenantsNsIdExtensionsServerlessBackfilling(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteTenantsNsIdExtensionsServerlessBackfillingRequest(c.Server, nsId)
 	if err != nil {
@@ -4295,6 +6098,186 @@ func (c *Client) PutTenantsNsIdExtensionsServerlessBackfillingWithBody(ctx conte
 
 func (c *Client) PutTenantsNsIdExtensionsServerlessBackfilling(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutTenantsNsIdExtensionsServerlessBackfillingRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdLokiApiV1LabelLabelNameValues(ctx context.Context, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdLokiApiV1LabelLabelNameValuesRequest(c.Server, nsId, labelName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBody(ctx context.Context, nsId openapi_types.UUID, labelName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithBody(c.Server, nsId, labelName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, labelName string, body PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithFormdataBody(c.Server, nsId, labelName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdLokiApiV1Labels(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1LabelsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdLokiApiV1LabelsRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1LabelsWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1LabelsRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1LabelsWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1LabelsRequestWithFormdataBody(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdLokiApiV1Query(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdLokiApiV1QueryRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1QueryWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1QueryRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1QueryWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1QueryRequestWithFormdataBody(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdLokiApiV1QueryRange(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryRangeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdLokiApiV1QueryRangeRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1QueryRangeWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1QueryRangeWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithFormdataBody(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdLokiApiV1Series(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1SeriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdLokiApiV1SeriesRequest(c.Server, nsId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1SeriesWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1SeriesRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdLokiApiV1SeriesWithFormdataBody(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdLokiApiV1SeriesRequestWithFormdataBody(c.Server, nsId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4389,8 +6372,8 @@ func (c *Client) PostTenantsNsIdOauthToken(ctx context.Context, nsId openapi_typ
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostTenantsNsIdPrivatelinksWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantsNsIdPrivatelinksRequestWithBody(c.Server, nsId, contentType, body)
+func (c *Client) PostTenantsNsIdPreviewConfigWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdPreviewConfigRequestWithBody(c.Server, nsId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4401,8 +6384,8 @@ func (c *Client) PostTenantsNsIdPrivatelinksWithBody(ctx context.Context, nsId o
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostTenantsNsIdPrivatelinks(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTenantsNsIdPrivatelinksRequest(c.Server, nsId, body)
+func (c *Client) PostTenantsNsIdPreviewConfig(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPreviewConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdPreviewConfigRequest(c.Server, nsId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4413,8 +6396,8 @@ func (c *Client) PostTenantsNsIdPrivatelinks(ctx context.Context, nsId openapi_t
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteTenantsNsIdPrivatelinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdRequest(c.Server, nsId, privateLinkId)
+func (c *Client) PostTenantsNsIdPrivateLinksWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdPrivateLinksRequestWithBody(c.Server, nsId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4425,8 +6408,80 @@ func (c *Client) DeleteTenantsNsIdPrivatelinksPrivateLinkId(ctx context.Context,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTenantsNsIdPrivatelinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTenantsNsIdPrivatelinksPrivateLinkIdRequest(c.Server, nsId, privateLinkId)
+func (c *Client) PostTenantsNsIdPrivateLinks(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivateLinksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdPrivateLinksRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdPrivateLinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdPrivateLinksPrivateLinkIdRequest(c.Server, nsId, privateLinkId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdPrivateLinksPrivateLinkId(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdPrivateLinksPrivateLinkIdRequest(c.Server, nsId, privateLinkId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdPrivatelinksDeprecatedWithBody(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdPrivatelinksDeprecatedRequestWithBody(c.Server, nsId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdPrivatelinksDeprecated(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdPrivatelinksDeprecatedRequest(c.Server, nsId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecated(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedRequest(c.Server, nsId, privateLinkId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecated(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedRequest(c.Server, nsId, privateLinkId)
 	if err != nil {
 		return nil, err
 	}
@@ -4667,6 +6722,78 @@ func (c *Client) PostTenantsNsIdResourceGroupsResourceGroupWithBody(ctx context.
 
 func (c *Client) PostTenantsNsIdResourceGroupsResourceGroup(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostTenantsNsIdResourceGroupsResourceGroupRequest(c.Server, nsId, resourceGroup, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest(c.Server, nsId, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest(c.Server, nsId, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBody(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequestWithBody(c.Server, nsId, resourceGroup, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest(c.Server, nsId, resourceGroup, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisable(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableRequest(c.Server, nsId, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnable(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableRequest(c.Server, nsId, resourceGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -5013,6 +7140,354 @@ func (c *Client) PostTenantsNsIdUpdateVersion(ctx context.Context, nsId openapi_
 	return c.Client.Do(req)
 }
 
+// NewGetByocClustersDeprecatedRequest generates requests for GetByocClustersDeprecated
+func NewGetByocClustersDeprecatedRequest(server string, params *GetByocClustersDeprecatedParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostByocClustersDeprecatedRequest calls the generic PostByocClustersDeprecated builder with application/json body
+func NewPostByocClustersDeprecatedRequest(server string, body PostByocClustersDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByocClustersDeprecatedRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostByocClustersDeprecatedRequestWithBody generates requests for PostByocClustersDeprecated with any type of body
+func NewPostByocClustersDeprecatedRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteByocClustersNameDeprecatedRequest generates requests for DeleteByocClustersNameDeprecated
+func NewDeleteByocClustersNameDeprecatedRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetByocClustersNameDeprecatedRequest generates requests for GetByocClustersNameDeprecated
+func NewGetByocClustersNameDeprecatedRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutByocClustersNameDeprecatedRequest calls the generic PutByocClustersNameDeprecated builder with application/json body
+func NewPutByocClustersNameDeprecatedRequest(server string, name string, body PutByocClustersNameDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutByocClustersNameDeprecatedRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPutByocClustersNameDeprecatedRequestWithBody generates requests for PutByocClustersNameDeprecated with any type of body
+func NewPutByocClustersNameDeprecatedRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByocClustersNameManualUpdateDeprecatedRequest calls the generic PostByocClustersNameManualUpdateDeprecated builder with application/json body
+func NewPostByocClustersNameManualUpdateDeprecatedRequest(server string, name string, body PostByocClustersNameManualUpdateDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByocClustersNameManualUpdateDeprecatedRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPostByocClustersNameManualUpdateDeprecatedRequestWithBody generates requests for PostByocClustersNameManualUpdateDeprecated with any type of body
+func NewPostByocClustersNameManualUpdateDeprecatedRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters/%s/manualUpdate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByocClustersNameTerminateDeprecatedRequest generates requests for PostByocClustersNameTerminateDeprecated
+func NewPostByocClustersNameTerminateDeprecatedRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters/%s/terminate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostByocClustersNameUpdateDeprecatedRequest calls the generic PostByocClustersNameUpdateDeprecated builder with application/json body
+func NewPostByocClustersNameUpdateDeprecatedRequest(server string, name string, body PostByocClustersNameUpdateDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByocClustersNameUpdateDeprecatedRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPostByocClustersNameUpdateDeprecatedRequestWithBody generates requests for PostByocClustersNameUpdateDeprecated with any type of body
+func NewPostByocClustersNameUpdateDeprecatedRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byoc-clusters/%s/update", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetByocClustersRequest generates requests for GetByocClusters
 func NewGetByocClustersRequest(server string, params *GetByocClustersParams) (*http.Request, error) {
 	var err error
@@ -5022,7 +7497,7 @@ func NewGetByocClustersRequest(server string, params *GetByocClustersParams) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters")
+	operationPath := fmt.Sprintf("/byocClusters")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5098,7 +7573,7 @@ func NewPostByocClustersRequestWithBody(server string, contentType string, body 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters")
+	operationPath := fmt.Sprintf("/byocClusters")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5118,13 +7593,13 @@ func NewPostByocClustersRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
-// NewDeleteByocClustersNameRequest generates requests for DeleteByocClustersName
-func NewDeleteByocClustersNameRequest(server string, name string) (*http.Request, error) {
+// NewDeleteByocClustersClusterNameRequest generates requests for DeleteByocClustersClusterName
+func NewDeleteByocClustersClusterNameRequest(server string, clusterName string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5134,7 +7609,7 @@ func NewDeleteByocClustersNameRequest(server string, name string) (*http.Request
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters/%s", pathParam0)
+	operationPath := fmt.Sprintf("/byocClusters/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5152,13 +7627,13 @@ func NewDeleteByocClustersNameRequest(server string, name string) (*http.Request
 	return req, nil
 }
 
-// NewGetByocClustersNameRequest generates requests for GetByocClustersName
-func NewGetByocClustersNameRequest(server string, name string) (*http.Request, error) {
+// NewGetByocClustersClusterNameRequest generates requests for GetByocClustersClusterName
+func NewGetByocClustersClusterNameRequest(server string, clusterName string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5168,7 +7643,7 @@ func NewGetByocClustersNameRequest(server string, name string) (*http.Request, e
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters/%s", pathParam0)
+	operationPath := fmt.Sprintf("/byocClusters/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5186,24 +7661,24 @@ func NewGetByocClustersNameRequest(server string, name string) (*http.Request, e
 	return req, nil
 }
 
-// NewPutByocClustersNameRequest calls the generic PutByocClustersName builder with application/json body
-func NewPutByocClustersNameRequest(server string, name string, body PutByocClustersNameJSONRequestBody) (*http.Request, error) {
+// NewPutByocClustersClusterNameRequest calls the generic PutByocClustersClusterName builder with application/json body
+func NewPutByocClustersClusterNameRequest(server string, clusterName string, body PutByocClustersClusterNameJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPutByocClustersNameRequestWithBody(server, name, "application/json", bodyReader)
+	return NewPutByocClustersClusterNameRequestWithBody(server, clusterName, "application/json", bodyReader)
 }
 
-// NewPutByocClustersNameRequestWithBody generates requests for PutByocClustersName with any type of body
-func NewPutByocClustersNameRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPutByocClustersClusterNameRequestWithBody generates requests for PutByocClustersClusterName with any type of body
+func NewPutByocClustersClusterNameRequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5213,7 +7688,7 @@ func NewPutByocClustersNameRequestWithBody(server string, name string, contentTy
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters/%s", pathParam0)
+	operationPath := fmt.Sprintf("/byocClusters/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5233,24 +7708,24 @@ func NewPutByocClustersNameRequestWithBody(server string, name string, contentTy
 	return req, nil
 }
 
-// NewPostByocClustersNameManualUpdateRequest calls the generic PostByocClustersNameManualUpdate builder with application/json body
-func NewPostByocClustersNameManualUpdateRequest(server string, name string, body PostByocClustersNameManualUpdateJSONRequestBody) (*http.Request, error) {
+// NewPostByocClustersClusterNameApplyUpgradeRequest calls the generic PostByocClustersClusterNameApplyUpgrade builder with application/json body
+func NewPostByocClustersClusterNameApplyUpgradeRequest(server string, clusterName string, body PostByocClustersClusterNameApplyUpgradeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostByocClustersNameManualUpdateRequestWithBody(server, name, "application/json", bodyReader)
+	return NewPostByocClustersClusterNameApplyUpgradeRequestWithBody(server, clusterName, "application/json", bodyReader)
 }
 
-// NewPostByocClustersNameManualUpdateRequestWithBody generates requests for PostByocClustersNameManualUpdate with any type of body
-func NewPostByocClustersNameManualUpdateRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostByocClustersClusterNameApplyUpgradeRequestWithBody generates requests for PostByocClustersClusterNameApplyUpgrade with any type of body
+func NewPostByocClustersClusterNameApplyUpgradeRequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5260,7 +7735,7 @@ func NewPostByocClustersNameManualUpdateRequestWithBody(server string, name stri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters/%s/manualUpdate", pathParam0)
+	operationPath := fmt.Sprintf("/byocClusters/%s/applyUpgrade", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5280,13 +7755,24 @@ func NewPostByocClustersNameManualUpdateRequestWithBody(server string, name stri
 	return req, nil
 }
 
-// NewPostByocClustersNameTerminateRequest generates requests for PostByocClustersNameTerminate
-func NewPostByocClustersNameTerminateRequest(server string, name string) (*http.Request, error) {
+// NewPostByocClustersClusterNameManualUpdateDeprecatedV2Request calls the generic PostByocClustersClusterNameManualUpdateDeprecatedV2 builder with application/json body
+func NewPostByocClustersClusterNameManualUpdateDeprecatedV2Request(server string, clusterName string, body PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByocClustersClusterNameManualUpdateDeprecatedV2RequestWithBody(server, clusterName, "application/json", bodyReader)
+}
+
+// NewPostByocClustersClusterNameManualUpdateDeprecatedV2RequestWithBody generates requests for PostByocClustersClusterNameManualUpdateDeprecatedV2 with any type of body
+func NewPostByocClustersClusterNameManualUpdateDeprecatedV2RequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5296,7 +7782,43 @@ func NewPostByocClustersNameTerminateRequest(server string, name string) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters/%s/terminate", pathParam0)
+	operationPath := fmt.Sprintf("/byocClusters/%s/manualUpdate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByocClustersClusterNameTerminateRequest generates requests for PostByocClustersClusterNameTerminate
+func NewPostByocClustersClusterNameTerminateRequest(server string, clusterName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byocClusters/%s/terminate", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5314,19 +7836,207 @@ func NewPostByocClustersNameTerminateRequest(server string, name string) (*http.
 	return req, nil
 }
 
-// NewPostByocClustersNameUpdateRequest calls the generic PostByocClustersNameUpdate builder with application/json body
-func NewPostByocClustersNameUpdateRequest(server string, name string, body PostByocClustersNameUpdateJSONRequestBody) (*http.Request, error) {
+// NewPostByocClustersClusterNameUpdateDeprecatedV2Request calls the generic PostByocClustersClusterNameUpdateDeprecatedV2 builder with application/json body
+func NewPostByocClustersClusterNameUpdateDeprecatedV2Request(server string, clusterName string, body PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostByocClustersNameUpdateRequestWithBody(server, name, "application/json", bodyReader)
+	return NewPostByocClustersClusterNameUpdateDeprecatedV2RequestWithBody(server, clusterName, "application/json", bodyReader)
 }
 
-// NewPostByocClustersNameUpdateRequestWithBody generates requests for PostByocClustersNameUpdate with any type of body
-func NewPostByocClustersNameUpdateRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostByocClustersClusterNameUpdateDeprecatedV2RequestWithBody generates requests for PostByocClustersClusterNameUpdateDeprecatedV2 with any type of body
+func NewPostByocClustersClusterNameUpdateDeprecatedV2RequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byocClusters/%s/update", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByocClustersClusterNameUpgradeRequest calls the generic PostByocClustersClusterNameUpgrade builder with application/json body
+func NewPostByocClustersClusterNameUpgradeRequest(server string, clusterName string, body PostByocClustersClusterNameUpgradeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByocClustersClusterNameUpgradeRequestWithBody(server, clusterName, "application/json", bodyReader)
+}
+
+// NewPostByocClustersClusterNameUpgradeRequestWithBody generates requests for PostByocClustersClusterNameUpgrade with any type of body
+func NewPostByocClustersClusterNameUpgradeRequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byocClusters/%s/upgrade", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetByokClustersDeprecatedRequest generates requests for GetByokClustersDeprecated
+func NewGetByokClustersDeprecatedRequest(server string, params *GetByokClustersDeprecatedParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostByokClustersDeprecatedRequest calls the generic PostByokClustersDeprecated builder with application/json body
+func NewPostByokClustersDeprecatedRequest(server string, body PostByokClustersDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersDeprecatedRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostByokClustersDeprecatedRequestWithBody generates requests for PostByokClustersDeprecated with any type of body
+func NewPostByokClustersDeprecatedRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteByokClustersNameDeprecatedRequest generates requests for DeleteByokClustersNameDeprecated
+func NewDeleteByokClustersNameDeprecatedRequest(server string, name string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5341,7 +8051,214 @@ func NewPostByocClustersNameUpdateRequestWithBody(server string, name string, co
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byoc-clusters/%s/update", pathParam0)
+	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetByokClustersNameDeprecatedRequest generates requests for GetByokClustersNameDeprecated
+func NewGetByokClustersNameDeprecatedRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutByokClustersNameDeprecatedRequest calls the generic PutByokClustersNameDeprecated builder with application/json body
+func NewPutByokClustersNameDeprecatedRequest(server string, name string, body PutByokClustersNameDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutByokClustersNameDeprecatedRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPutByokClustersNameDeprecatedRequestWithBody generates requests for PutByokClustersNameDeprecated with any type of body
+func NewPutByokClustersNameDeprecatedRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByokClustersNameManualUpdateDeprecatedRequest calls the generic PostByokClustersNameManualUpdateDeprecated builder with application/json body
+func NewPostByokClustersNameManualUpdateDeprecatedRequest(server string, name string, body PostByokClustersNameManualUpdateDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersNameManualUpdateDeprecatedRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPostByokClustersNameManualUpdateDeprecatedRequestWithBody generates requests for PostByokClustersNameManualUpdateDeprecated with any type of body
+func NewPostByokClustersNameManualUpdateDeprecatedRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s/manualUpdate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByokClustersNameTerminateDeprecatedRequest generates requests for PostByokClustersNameTerminateDeprecated
+func NewPostByokClustersNameTerminateDeprecatedRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s/terminate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostByokClustersNameUpdateDeprecatedRequest calls the generic PostByokClustersNameUpdateDeprecated builder with application/json body
+func NewPostByokClustersNameUpdateDeprecatedRequest(server string, name string, body PostByokClustersNameUpdateDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersNameUpdateDeprecatedRequestWithBody(server, name, "application/json", bodyReader)
+}
+
+// NewPostByokClustersNameUpdateDeprecatedRequestWithBody generates requests for PostByokClustersNameUpdateDeprecated with any type of body
+func NewPostByokClustersNameUpdateDeprecatedRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byok-clusters/%s/update", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5370,7 +8287,7 @@ func NewGetByokClustersRequest(server string, params *GetByokClustersParams) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters")
+	operationPath := fmt.Sprintf("/byokClusters")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5446,7 +8363,7 @@ func NewPostByokClustersRequestWithBody(server string, contentType string, body 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters")
+	operationPath := fmt.Sprintf("/byokClusters")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5466,13 +8383,13 @@ func NewPostByokClustersRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
-// NewDeleteByokClustersNameRequest generates requests for DeleteByokClustersName
-func NewDeleteByokClustersNameRequest(server string, name string) (*http.Request, error) {
+// NewDeleteByokClustersClusterNameRequest generates requests for DeleteByokClustersClusterName
+func NewDeleteByokClustersClusterNameRequest(server string, clusterName string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5482,7 +8399,7 @@ func NewDeleteByokClustersNameRequest(server string, name string) (*http.Request
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	operationPath := fmt.Sprintf("/byokClusters/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5500,13 +8417,13 @@ func NewDeleteByokClustersNameRequest(server string, name string) (*http.Request
 	return req, nil
 }
 
-// NewGetByokClustersNameRequest generates requests for GetByokClustersName
-func NewGetByokClustersNameRequest(server string, name string) (*http.Request, error) {
+// NewGetByokClustersClusterNameRequest generates requests for GetByokClustersClusterName
+func NewGetByokClustersClusterNameRequest(server string, clusterName string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5516,7 +8433,7 @@ func NewGetByokClustersNameRequest(server string, name string) (*http.Request, e
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	operationPath := fmt.Sprintf("/byokClusters/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5534,24 +8451,24 @@ func NewGetByokClustersNameRequest(server string, name string) (*http.Request, e
 	return req, nil
 }
 
-// NewPutByokClustersNameRequest calls the generic PutByokClustersName builder with application/json body
-func NewPutByokClustersNameRequest(server string, name string, body PutByokClustersNameJSONRequestBody) (*http.Request, error) {
+// NewPutByokClustersClusterNameRequest calls the generic PutByokClustersClusterName builder with application/json body
+func NewPutByokClustersClusterNameRequest(server string, clusterName string, body PutByokClustersClusterNameJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPutByokClustersNameRequestWithBody(server, name, "application/json", bodyReader)
+	return NewPutByokClustersClusterNameRequestWithBody(server, clusterName, "application/json", bodyReader)
 }
 
-// NewPutByokClustersNameRequestWithBody generates requests for PutByokClustersName with any type of body
-func NewPutByokClustersNameRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPutByokClustersClusterNameRequestWithBody generates requests for PutByokClustersClusterName with any type of body
+func NewPutByokClustersClusterNameRequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5561,7 +8478,7 @@ func NewPutByokClustersNameRequestWithBody(server string, name string, contentTy
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters/%s", pathParam0)
+	operationPath := fmt.Sprintf("/byokClusters/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5581,24 +8498,24 @@ func NewPutByokClustersNameRequestWithBody(server string, name string, contentTy
 	return req, nil
 }
 
-// NewPostByokClustersNameManualUpdateRequest calls the generic PostByokClustersNameManualUpdate builder with application/json body
-func NewPostByokClustersNameManualUpdateRequest(server string, name string, body PostByokClustersNameManualUpdateJSONRequestBody) (*http.Request, error) {
+// NewPostByokClustersClusterNameApplyUpgradeRequest calls the generic PostByokClustersClusterNameApplyUpgrade builder with application/json body
+func NewPostByokClustersClusterNameApplyUpgradeRequest(server string, clusterName string, body PostByokClustersClusterNameApplyUpgradeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostByokClustersNameManualUpdateRequestWithBody(server, name, "application/json", bodyReader)
+	return NewPostByokClustersClusterNameApplyUpgradeRequestWithBody(server, clusterName, "application/json", bodyReader)
 }
 
-// NewPostByokClustersNameManualUpdateRequestWithBody generates requests for PostByokClustersNameManualUpdate with any type of body
-func NewPostByokClustersNameManualUpdateRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostByokClustersClusterNameApplyUpgradeRequestWithBody generates requests for PostByokClustersClusterNameApplyUpgrade with any type of body
+func NewPostByokClustersClusterNameApplyUpgradeRequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5608,7 +8525,7 @@ func NewPostByokClustersNameManualUpdateRequestWithBody(server string, name stri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters/%s/manualUpdate", pathParam0)
+	operationPath := fmt.Sprintf("/byokClusters/%s/applyUpgrade", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5628,13 +8545,24 @@ func NewPostByokClustersNameManualUpdateRequestWithBody(server string, name stri
 	return req, nil
 }
 
-// NewPostByokClustersNameTerminateRequest generates requests for PostByokClustersNameTerminate
-func NewPostByokClustersNameTerminateRequest(server string, name string) (*http.Request, error) {
+// NewPostByokClustersClusterNameManualUpdateDeprecatedV2Request calls the generic PostByokClustersClusterNameManualUpdateDeprecatedV2 builder with application/json body
+func NewPostByokClustersClusterNameManualUpdateDeprecatedV2Request(server string, clusterName string, body PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersClusterNameManualUpdateDeprecatedV2RequestWithBody(server, clusterName, "application/json", bodyReader)
+}
+
+// NewPostByokClustersClusterNameManualUpdateDeprecatedV2RequestWithBody generates requests for PostByokClustersClusterNameManualUpdateDeprecatedV2 with any type of body
+func NewPostByokClustersClusterNameManualUpdateDeprecatedV2RequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5644,7 +8572,43 @@ func NewPostByokClustersNameTerminateRequest(server string, name string) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters/%s/terminate", pathParam0)
+	operationPath := fmt.Sprintf("/byokClusters/%s/manualUpdate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByokClustersClusterNameTerminateRequest generates requests for PostByokClustersClusterNameTerminate
+func NewPostByokClustersClusterNameTerminateRequest(server string, clusterName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byokClusters/%s/terminate", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5662,24 +8626,24 @@ func NewPostByokClustersNameTerminateRequest(server string, name string) (*http.
 	return req, nil
 }
 
-// NewPostByokClustersNameUpdateRequest calls the generic PostByokClustersNameUpdate builder with application/json body
-func NewPostByokClustersNameUpdateRequest(server string, name string, body PostByokClustersNameUpdateJSONRequestBody) (*http.Request, error) {
+// NewPostByokClustersClusterNameUpdateDeprecatedV2Request calls the generic PostByokClustersClusterNameUpdateDeprecatedV2 builder with application/json body
+func NewPostByokClustersClusterNameUpdateDeprecatedV2Request(server string, clusterName string, body PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostByokClustersNameUpdateRequestWithBody(server, name, "application/json", bodyReader)
+	return NewPostByokClustersClusterNameUpdateDeprecatedV2RequestWithBody(server, clusterName, "application/json", bodyReader)
 }
 
-// NewPostByokClustersNameUpdateRequestWithBody generates requests for PostByokClustersNameUpdate with any type of body
-func NewPostByokClustersNameUpdateRequestWithBody(server string, name string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostByokClustersClusterNameUpdateDeprecatedV2RequestWithBody generates requests for PostByokClustersClusterNameUpdateDeprecatedV2 with any type of body
+func NewPostByokClustersClusterNameUpdateDeprecatedV2RequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -5689,7 +8653,54 @@ func NewPostByokClustersNameUpdateRequestWithBody(server string, name string, co
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/byok-clusters/%s/update", pathParam0)
+	operationPath := fmt.Sprintf("/byokClusters/%s/update", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostByokClustersClusterNameUpgradeRequest calls the generic PostByokClustersClusterNameUpgrade builder with application/json body
+func NewPostByokClustersClusterNameUpgradeRequest(server string, clusterName string, body PostByokClustersClusterNameUpgradeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostByokClustersClusterNameUpgradeRequestWithBody(server, clusterName, "application/json", bodyReader)
+}
+
+// NewPostByokClustersClusterNameUpgradeRequestWithBody generates requests for PostByokClustersClusterNameUpgrade with any type of body
+func NewPostByokClustersClusterNameUpgradeRequestWithBody(server string, clusterName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clusterName", runtime.ParamLocationPath, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/byokClusters/%s/upgrade", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5910,6 +8921,634 @@ func NewGetTenantsNsIdRequest(server string, nsId openapi_types.UUID) (*http.Req
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdAlertIncidentsRequest generates requests for GetTenantsNsIdAlertIncidents
+func NewGetTenantsNsIdAlertIncidentsRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdAlertIncidentsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertIncidents", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.AlertRuleKey != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "alertRuleKey", runtime.ParamLocationQuery, *params.AlertRuleKey); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Severity != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "severity", runtime.ParamLocationQuery, *params.Severity); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdAlertIncidentsIncidentIdRequest generates requests for GetTenantsNsIdAlertIncidentsIncidentId
+func NewGetTenantsNsIdAlertIncidentsIncidentIdRequest(server string, nsId openapi_types.UUID, incidentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "incidentId", runtime.ParamLocationPath, incidentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertIncidents/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdAlertRulesRequest generates requests for GetTenantsNsIdAlertRules
+func NewGetTenantsNsIdAlertRulesRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdAlertRulesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequest calls the generic PatchTenantsNsIdAlertRulesAlertRuleKey builder with application/json body
+func NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequest(server string, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequestWithBody(server, nsId, alertRuleKey, "application/json", bodyReader)
+}
+
+// NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequestWithBody generates requests for PatchTenantsNsIdAlertRulesAlertRuleKey with any type of body
+func NewPatchTenantsNsIdAlertRulesAlertRuleKeyRequestWithBody(server string, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "alertRuleKey", runtime.ParamLocationPath, alertRuleKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequest generates requests for DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides
+func NewDeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequest(server string, nsId openapi_types.UUID, alertRuleKey string, params *DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "alertRuleKey", runtime.ParamLocationPath, alertRuleKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules/%s/parameterOverrides", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "schemaRevision", runtime.ParamLocationQuery, params.SchemaRevision); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequest calls the generic PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides builder with application/json body
+func NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequest(server string, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequestWithBody(server, nsId, alertRuleKey, "application/json", bodyReader)
+}
+
+// NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequestWithBody generates requests for PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides with any type of body
+func NewPatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesRequestWithBody(server string, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "alertRuleKey", runtime.ParamLocationPath, alertRuleKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules/%s/parameterOverrides", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequest generates requests for GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings
+func NewGetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequest(server string, nsId openapi_types.UUID, alertRuleKey string, params *GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "alertRuleKey", runtime.ParamLocationPath, alertRuleKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules/%s/recipientBindings", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequest calls the generic PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings builder with application/json body
+func NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequest(server string, nsId openapi_types.UUID, alertRuleKey string, body PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequestWithBody(server, nsId, alertRuleKey, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequestWithBody generates requests for PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings with any type of body
+func NewPostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRequestWithBody(server string, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "alertRuleKey", runtime.ParamLocationPath, alertRuleKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules/%s/recipientBindings", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdRequest generates requests for DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientId
+func NewDeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdRequest(server string, nsId openapi_types.UUID, alertRuleKey string, recipientId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "alertRuleKey", runtime.ParamLocationPath, alertRuleKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recipientId", runtime.ParamLocationPath, recipientId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alertRules/%s/recipientBindings/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdAliasRequest calls the generic PostTenantsNsIdAlias builder with application/json body
+func NewPostTenantsNsIdAliasRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdAliasJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdAliasRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdAliasRequestWithBody generates requests for PostTenantsNsIdAlias with any type of body
+func NewPostTenantsNsIdAliasRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/alias", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6223,6 +9862,47 @@ func NewDeleteTenantsNsIdBackupsSnapshotIdRequest(server string, nsId openapi_ty
 	return req, nil
 }
 
+// NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedRequest generates requests for PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecated
+func NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedRequest(server string, nsId openapi_types.UUID, snapshotId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "snapshotId", runtime.ParamLocationPath, snapshotId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/backups/%s/in-place-restore", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreRequest generates requests for PostTenantsNsIdBackupsSnapshotIdInPlaceRestore
 func NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreRequest(server string, nsId openapi_types.UUID, snapshotId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -6246,7 +9926,7 @@ func NewPostTenantsNsIdBackupsSnapshotIdInPlaceRestoreRequest(server string, nsI
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/backups/%s/in-place-restore", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/tenants/%s/backups/%s/inPlaceRestore", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6433,6 +10113,189 @@ func NewGetTenantsNsIdCloudMetaRequest(server string, nsId openapi_types.UUID) (
 	return req, nil
 }
 
+// NewDeleteTenantsNsIdComputeAutoscalingRequest generates requests for DeleteTenantsNsIdComputeAutoscaling
+func NewDeleteTenantsNsIdComputeAutoscalingRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/compute/autoscaling", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdComputeAutoscalingRequest generates requests for GetTenantsNsIdComputeAutoscaling
+func NewGetTenantsNsIdComputeAutoscalingRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/compute/autoscaling", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdComputeAutoscalingRequest calls the generic PostTenantsNsIdComputeAutoscaling builder with application/json body
+func NewPostTenantsNsIdComputeAutoscalingRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdComputeAutoscalingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdComputeAutoscalingRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdComputeAutoscalingRequestWithBody generates requests for PostTenantsNsIdComputeAutoscaling with any type of body
+func NewPostTenantsNsIdComputeAutoscalingRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/compute/autoscaling", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdComputeAutoscalingDisableRequest generates requests for PostTenantsNsIdComputeAutoscalingDisable
+func NewPostTenantsNsIdComputeAutoscalingDisableRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/compute/autoscaling/disable", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdComputeAutoscalingEnableRequest generates requests for PostTenantsNsIdComputeAutoscalingEnable
+func NewPostTenantsNsIdComputeAutoscalingEnableRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/compute/autoscaling/enable", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetTenantsNsIdComputeCacheRequest generates requests for GetTenantsNsIdComputeCache
 func NewGetTenantsNsIdComputeCacheRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -6596,6 +10459,87 @@ func NewGetTenantsNsIdComputeCacheRecommendationRequest(server string, nsId open
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdConfigRequest generates requests for GetTenantsNsIdConfig
+func NewGetTenantsNsIdConfigRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdConfigRequest calls the generic PostTenantsNsIdConfig builder with application/json body
+func NewPostTenantsNsIdConfigRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdConfigRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdConfigRequestWithBody generates requests for PostTenantsNsIdConfig with any type of body
+func NewPostTenantsNsIdConfigRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -7078,6 +11022,197 @@ func NewPostTenantsNsIdDatabasesDatabaseNameExecuteSQLRequestWithBody(server str
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdDatabasesDatabaseNameIndexesRequest generates requests for GetTenantsNsIdDatabasesDatabaseNameIndexes
+func NewGetTenantsNsIdDatabasesDatabaseNameIndexesRequest(server string, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameIndexesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "databaseName", runtime.ParamLocationPath, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/databases/%s/indexes", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Schema != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "schema", runtime.ParamLocationQuery, *params.Schema); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameRequest generates requests for DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexName
+func NewDeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameRequest(server string, nsId openapi_types.UUID, databaseName string, indexName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "databaseName", runtime.ParamLocationPath, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "indexName", runtime.ParamLocationPath, indexName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/databases/%s/indexes/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameRequest generates requests for GetTenantsNsIdDatabasesDatabaseNameIndexesIndexName
+func NewGetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameRequest(server string, nsId openapi_types.UUID, databaseName string, indexName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "databaseName", runtime.ParamLocationPath, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "indexName", runtime.ParamLocationPath, indexName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/databases/%s/indexes/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9650,6 +13785,197 @@ func NewGetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputRequest(serv
 	return req, nil
 }
 
+// NewGetTenantsNsIdDatabasesDatabaseNameViewsRequest generates requests for GetTenantsNsIdDatabasesDatabaseNameViews
+func NewGetTenantsNsIdDatabasesDatabaseNameViewsRequest(server string, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameViewsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "databaseName", runtime.ParamLocationPath, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/databases/%s/views", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Schema != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "schema", runtime.ParamLocationQuery, *params.Schema); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameRequest generates requests for DeleteTenantsNsIdDatabasesDatabaseNameViewsViewName
+func NewDeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameRequest(server string, nsId openapi_types.UUID, databaseName string, viewName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "databaseName", runtime.ParamLocationPath, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "viewName", runtime.ParamLocationPath, viewName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/databases/%s/views/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdDatabasesDatabaseNameViewsViewNameRequest generates requests for GetTenantsNsIdDatabasesDatabaseNameViewsViewName
+func NewGetTenantsNsIdDatabasesDatabaseNameViewsViewNameRequest(server string, nsId openapi_types.UUID, databaseName string, viewName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "databaseName", runtime.ParamLocationPath, databaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "viewName", runtime.ParamLocationPath, viewName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/databases/%s/views/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetTenantsNsIdEndpointRequest generates requests for GetTenantsNsIdEndpoint
 func NewGetTenantsNsIdEndpointRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -9674,6 +14000,230 @@ func NewGetTenantsNsIdEndpointRequest(server string, nsId openapi_types.UUID) (*
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdErrorLogsRequest generates requests for GetTenantsNsIdErrorLogs
+func NewGetTenantsNsIdErrorLogsRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/errorLogs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "target", runtime.ParamLocationQuery, params.Target); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "targetId", runtime.ParamLocationQuery, params.TargetId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdErrorLogsCountRequest generates requests for GetTenantsNsIdErrorLogsCount
+func NewGetTenantsNsIdErrorLogsCountRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsCountParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/errorLogs/count", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "target", runtime.ParamLocationQuery, params.Target); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "targetId", runtime.ParamLocationQuery, params.TargetId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -9846,6 +14396,168 @@ func NewPutTenantsNsIdExtensionsCompactionRequestWithBody(server string, nsId op
 	return req, nil
 }
 
+// NewDeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest generates requests for DeleteTenantsNsIdExtensionsIcebergCompactionDeprecated
+func NewDeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest generates requests for GetTenantsNsIdExtensionsIcebergCompactionDeprecated
+func NewGetTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest calls the generic PostTenantsNsIdExtensionsIcebergCompactionDeprecated builder with application/json body
+func NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody generates requests for PostTenantsNsIdExtensionsIcebergCompactionDeprecated with any type of body
+func NewPostTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest calls the generic PutTenantsNsIdExtensionsIcebergCompactionDeprecated builder with application/json body
+func NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequest(server string, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody generates requests for PutTenantsNsIdExtensionsIcebergCompactionDeprecated with any type of body
+func NewPutTenantsNsIdExtensionsIcebergCompactionDeprecatedRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewDeleteTenantsNsIdExtensionsIcebergCompactionRequest generates requests for DeleteTenantsNsIdExtensionsIcebergCompaction
 func NewDeleteTenantsNsIdExtensionsIcebergCompactionRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -9862,7 +14574,7 @@ func NewDeleteTenantsNsIdExtensionsIcebergCompactionRequest(server string, nsId 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/icebergCompaction", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9896,7 +14608,7 @@ func NewGetTenantsNsIdExtensionsIcebergCompactionRequest(server string, nsId ope
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/icebergCompaction", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9941,7 +14653,7 @@ func NewPostTenantsNsIdExtensionsIcebergCompactionRequestWithBody(server string,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/icebergCompaction", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9988,7 +14700,169 @@ func NewPutTenantsNsIdExtensionsIcebergCompactionRequestWithBody(server string, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/iceberg-compaction", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/icebergCompaction", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest generates requests for DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecated
+func NewDeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest generates requests for GetTenantsNsIdExtensionsServerlessBackfillingDeprecated
+func NewGetTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest calls the generic PostTenantsNsIdExtensionsServerlessBackfillingDeprecated builder with application/json body
+func NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody generates requests for PostTenantsNsIdExtensionsServerlessBackfillingDeprecated with any type of body
+func NewPostTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest calls the generic PutTenantsNsIdExtensionsServerlessBackfillingDeprecated builder with application/json body
+func NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequest(server string, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody generates requests for PutTenantsNsIdExtensionsServerlessBackfillingDeprecated with any type of body
+func NewPutTenantsNsIdExtensionsServerlessBackfillingDeprecatedRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10024,7 +14898,7 @@ func NewDeleteTenantsNsIdExtensionsServerlessBackfillingRequest(server string, n
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverlessBackfilling", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10058,7 +14932,7 @@ func NewGetTenantsNsIdExtensionsServerlessBackfillingRequest(server string, nsId
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverlessBackfilling", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10103,7 +14977,7 @@ func NewPostTenantsNsIdExtensionsServerlessBackfillingRequestWithBody(server str
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverlessBackfilling", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10150,7 +15024,7 @@ func NewPutTenantsNsIdExtensionsServerlessBackfillingRequestWithBody(server stri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverless-backfilling", pathParam0)
+	operationPath := fmt.Sprintf("/tenants/%s/extensions/serverlessBackfilling", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10161,6 +15035,827 @@ func NewPutTenantsNsIdExtensionsServerlessBackfillingRequestWithBody(server stri
 	}
 
 	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdLokiApiV1LabelLabelNameValuesRequest generates requests for GetTenantsNsIdLokiApiV1LabelLabelNameValues
+func NewGetTenantsNsIdLokiApiV1LabelLabelNameValuesRequest(server string, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "labelName", runtime.ParamLocationPath, labelName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/label/%s/values", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Query != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "query", runtime.ParamLocationQuery, *params.Query); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithFormdataBody calls the generic PostTenantsNsIdLokiApiV1LabelLabelNameValues builder with application/x-www-form-urlencoded body
+func NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithFormdataBody(server string, nsId openapi_types.UUID, labelName string, body PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithBody(server, nsId, labelName, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithBody generates requests for PostTenantsNsIdLokiApiV1LabelLabelNameValues with any type of body
+func NewPostTenantsNsIdLokiApiV1LabelLabelNameValuesRequestWithBody(server string, nsId openapi_types.UUID, labelName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "labelName", runtime.ParamLocationPath, labelName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/label/%s/values", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdLokiApiV1LabelsRequest generates requests for GetTenantsNsIdLokiApiV1Labels
+func NewGetTenantsNsIdLokiApiV1LabelsRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1LabelsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/labels", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Query != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "query", runtime.ParamLocationQuery, *params.Query); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdLokiApiV1LabelsRequestWithFormdataBody calls the generic PostTenantsNsIdLokiApiV1Labels builder with application/x-www-form-urlencoded body
+func NewPostTenantsNsIdLokiApiV1LabelsRequestWithFormdataBody(server string, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewPostTenantsNsIdLokiApiV1LabelsRequestWithBody(server, nsId, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewPostTenantsNsIdLokiApiV1LabelsRequestWithBody generates requests for PostTenantsNsIdLokiApiV1Labels with any type of body
+func NewPostTenantsNsIdLokiApiV1LabelsRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/labels", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdLokiApiV1QueryRequest generates requests for GetTenantsNsIdLokiApiV1Query
+func NewGetTenantsNsIdLokiApiV1QueryRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/query", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "query", runtime.ParamLocationQuery, params.Query); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Time != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "time", runtime.ParamLocationQuery, *params.Time); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdLokiApiV1QueryRequestWithFormdataBody calls the generic PostTenantsNsIdLokiApiV1Query builder with application/x-www-form-urlencoded body
+func NewPostTenantsNsIdLokiApiV1QueryRequestWithFormdataBody(server string, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewPostTenantsNsIdLokiApiV1QueryRequestWithBody(server, nsId, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewPostTenantsNsIdLokiApiV1QueryRequestWithBody generates requests for PostTenantsNsIdLokiApiV1Query with any type of body
+func NewPostTenantsNsIdLokiApiV1QueryRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/query", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdLokiApiV1QueryRangeRequest generates requests for GetTenantsNsIdLokiApiV1QueryRange
+func NewGetTenantsNsIdLokiApiV1QueryRangeRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryRangeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/query_range", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "query", runtime.ParamLocationQuery, params.Query); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Step != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "step", runtime.ParamLocationQuery, *params.Step); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Interval != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "interval", runtime.ParamLocationQuery, *params.Interval); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithFormdataBody calls the generic PostTenantsNsIdLokiApiV1QueryRange builder with application/x-www-form-urlencoded body
+func NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithFormdataBody(server string, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithBody(server, nsId, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithBody generates requests for PostTenantsNsIdLokiApiV1QueryRange with any type of body
+func NewPostTenantsNsIdLokiApiV1QueryRangeRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/query_range", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdLokiApiV1SeriesRequest generates requests for GetTenantsNsIdLokiApiV1Series
+func NewGetTenantsNsIdLokiApiV1SeriesRequest(server string, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1SeriesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/series", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "match[]", runtime.ParamLocationQuery, params.Match); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "start", runtime.ParamLocationQuery, *params.Start); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.End != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "end", runtime.ParamLocationQuery, *params.End); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdLokiApiV1SeriesRequestWithFormdataBody calls the generic PostTenantsNsIdLokiApiV1Series builder with application/x-www-form-urlencoded body
+func NewPostTenantsNsIdLokiApiV1SeriesRequestWithFormdataBody(server string, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewPostTenantsNsIdLokiApiV1SeriesRequestWithBody(server, nsId, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewPostTenantsNsIdLokiApiV1SeriesRequestWithBody generates requests for PostTenantsNsIdLokiApiV1Series with any type of body
+func NewPostTenantsNsIdLokiApiV1SeriesRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/loki/api/v1/series", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -10425,19 +16120,195 @@ func NewPostTenantsNsIdOauthTokenRequest(server string, nsId openapi_types.UUID)
 	return req, nil
 }
 
-// NewPostTenantsNsIdPrivatelinksRequest calls the generic PostTenantsNsIdPrivatelinks builder with application/json body
-func NewPostTenantsNsIdPrivatelinksRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksJSONRequestBody) (*http.Request, error) {
+// NewPostTenantsNsIdPreviewConfigRequest calls the generic PostTenantsNsIdPreviewConfig builder with application/json body
+func NewPostTenantsNsIdPreviewConfigRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdPreviewConfigJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostTenantsNsIdPrivatelinksRequestWithBody(server, nsId, "application/json", bodyReader)
+	return NewPostTenantsNsIdPreviewConfigRequestWithBody(server, nsId, "application/json", bodyReader)
 }
 
-// NewPostTenantsNsIdPrivatelinksRequestWithBody generates requests for PostTenantsNsIdPrivatelinks with any type of body
-func NewPostTenantsNsIdPrivatelinksRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostTenantsNsIdPreviewConfigRequestWithBody generates requests for PostTenantsNsIdPreviewConfig with any type of body
+func NewPostTenantsNsIdPreviewConfigRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/previewConfig", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdPrivateLinksRequest calls the generic PostTenantsNsIdPrivateLinks builder with application/json body
+func NewPostTenantsNsIdPrivateLinksRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdPrivateLinksJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdPrivateLinksRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdPrivateLinksRequestWithBody generates requests for PostTenantsNsIdPrivateLinks with any type of body
+func NewPostTenantsNsIdPrivateLinksRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/privateLinks", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteTenantsNsIdPrivateLinksPrivateLinkIdRequest generates requests for DeleteTenantsNsIdPrivateLinksPrivateLinkId
+func NewDeleteTenantsNsIdPrivateLinksPrivateLinkIdRequest(server string, nsId openapi_types.UUID, privateLinkId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "privateLinkId", runtime.ParamLocationPath, privateLinkId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/privateLinks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdPrivateLinksPrivateLinkIdRequest generates requests for GetTenantsNsIdPrivateLinksPrivateLinkId
+func NewGetTenantsNsIdPrivateLinksPrivateLinkIdRequest(server string, nsId openapi_types.UUID, privateLinkId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "privateLinkId", runtime.ParamLocationPath, privateLinkId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/privateLinks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdPrivatelinksDeprecatedRequest calls the generic PostTenantsNsIdPrivatelinksDeprecated builder with application/json body
+func NewPostTenantsNsIdPrivatelinksDeprecatedRequest(server string, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdPrivatelinksDeprecatedRequestWithBody(server, nsId, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdPrivatelinksDeprecatedRequestWithBody generates requests for PostTenantsNsIdPrivatelinksDeprecated with any type of body
+func NewPostTenantsNsIdPrivatelinksDeprecatedRequestWithBody(server string, nsId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10472,8 +16343,8 @@ func NewPostTenantsNsIdPrivatelinksRequestWithBody(server string, nsId openapi_t
 	return req, nil
 }
 
-// NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdRequest generates requests for DeleteTenantsNsIdPrivatelinksPrivateLinkId
-func NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdRequest(server string, nsId openapi_types.UUID, privateLinkId openapi_types.UUID) (*http.Request, error) {
+// NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedRequest generates requests for DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecated
+func NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedRequest(server string, nsId openapi_types.UUID, privateLinkId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10513,8 +16384,8 @@ func NewDeleteTenantsNsIdPrivatelinksPrivateLinkIdRequest(server string, nsId op
 	return req, nil
 }
 
-// NewGetTenantsNsIdPrivatelinksPrivateLinkIdRequest generates requests for GetTenantsNsIdPrivatelinksPrivateLinkId
-func NewGetTenantsNsIdPrivatelinksPrivateLinkIdRequest(server string, nsId openapi_types.UUID, privateLinkId openapi_types.UUID) (*http.Request, error) {
+// NewGetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedRequest generates requests for GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecated
+func NewGetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedRequest(server string, nsId openapi_types.UUID, privateLinkId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11487,6 +17358,224 @@ func NewPostTenantsNsIdResourceGroupsResourceGroupRequestWithBody(server string,
 	return req, nil
 }
 
+// NewDeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest generates requests for DeleteTenantsNsIdResourceGroupsResourceGroupAutoscaling
+func NewDeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest(server string, nsId openapi_types.UUID, resourceGroup string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "resourceGroup", runtime.ParamLocationPath, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/resourceGroups/%s/autoscaling", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest generates requests for GetTenantsNsIdResourceGroupsResourceGroupAutoscaling
+func NewGetTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest(server string, nsId openapi_types.UUID, resourceGroup string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "resourceGroup", runtime.ParamLocationPath, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/resourceGroups/%s/autoscaling", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest calls the generic PostTenantsNsIdResourceGroupsResourceGroupAutoscaling builder with application/json body
+func NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequest(server string, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequestWithBody(server, nsId, resourceGroup, "application/json", bodyReader)
+}
+
+// NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequestWithBody generates requests for PostTenantsNsIdResourceGroupsResourceGroupAutoscaling with any type of body
+func NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingRequestWithBody(server string, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "resourceGroup", runtime.ParamLocationPath, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/resourceGroups/%s/autoscaling", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableRequest generates requests for PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisable
+func NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableRequest(server string, nsId openapi_types.UUID, resourceGroup string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "resourceGroup", runtime.ParamLocationPath, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/resourceGroups/%s/autoscaling/disable", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableRequest generates requests for PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnable
+func NewPostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableRequest(server string, nsId openapi_types.UUID, resourceGroup string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nsId", runtime.ParamLocationPath, nsId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "resourceGroup", runtime.ParamLocationPath, resourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tenants/%s/resourceGroups/%s/autoscaling/enable", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostTenantsNsIdRestartRequest generates requests for PostTenantsNsIdRestart
 func NewPostTenantsNsIdRestartRequest(server string, nsId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -12230,6 +18319,38 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetByocClustersDeprecatedWithResponse request
+	GetByocClustersDeprecatedWithResponse(ctx context.Context, params *GetByocClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*GetByocClustersDeprecatedResponse, error)
+
+	// PostByocClustersDeprecatedWithBodyWithResponse request with any body
+	PostByocClustersDeprecatedWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersDeprecatedResponse, error)
+
+	PostByocClustersDeprecatedWithResponse(ctx context.Context, body PostByocClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersDeprecatedResponse, error)
+
+	// DeleteByocClustersNameDeprecatedWithResponse request
+	DeleteByocClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByocClustersNameDeprecatedResponse, error)
+
+	// GetByocClustersNameDeprecatedWithResponse request
+	GetByocClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByocClustersNameDeprecatedResponse, error)
+
+	// PutByocClustersNameDeprecatedWithBodyWithResponse request with any body
+	PutByocClustersNameDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByocClustersNameDeprecatedResponse, error)
+
+	PutByocClustersNameDeprecatedWithResponse(ctx context.Context, name string, body PutByocClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByocClustersNameDeprecatedResponse, error)
+
+	// PostByocClustersNameManualUpdateDeprecatedWithBodyWithResponse request with any body
+	PostByocClustersNameManualUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateDeprecatedResponse, error)
+
+	PostByocClustersNameManualUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByocClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateDeprecatedResponse, error)
+
+	// PostByocClustersNameTerminateDeprecatedWithResponse request
+	PostByocClustersNameTerminateDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByocClustersNameTerminateDeprecatedResponse, error)
+
+	// PostByocClustersNameUpdateDeprecatedWithBodyWithResponse request with any body
+	PostByocClustersNameUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateDeprecatedResponse, error)
+
+	PostByocClustersNameUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByocClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateDeprecatedResponse, error)
+
 	// GetByocClustersWithResponse request
 	GetByocClustersWithResponse(ctx context.Context, params *GetByocClustersParams, reqEditors ...RequestEditorFn) (*GetByocClustersResponse, error)
 
@@ -12238,29 +18359,71 @@ type ClientWithResponsesInterface interface {
 
 	PostByocClustersWithResponse(ctx context.Context, body PostByocClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersResponse, error)
 
-	// DeleteByocClustersNameWithResponse request
-	DeleteByocClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByocClustersNameResponse, error)
+	// DeleteByocClustersClusterNameWithResponse request
+	DeleteByocClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*DeleteByocClustersClusterNameResponse, error)
 
-	// GetByocClustersNameWithResponse request
-	GetByocClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByocClustersNameResponse, error)
+	// GetByocClustersClusterNameWithResponse request
+	GetByocClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*GetByocClustersClusterNameResponse, error)
 
-	// PutByocClustersNameWithBodyWithResponse request with any body
-	PutByocClustersNameWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByocClustersNameResponse, error)
+	// PutByocClustersClusterNameWithBodyWithResponse request with any body
+	PutByocClustersClusterNameWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByocClustersClusterNameResponse, error)
 
-	PutByocClustersNameWithResponse(ctx context.Context, name string, body PutByocClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByocClustersNameResponse, error)
+	PutByocClustersClusterNameWithResponse(ctx context.Context, clusterName string, body PutByocClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByocClustersClusterNameResponse, error)
 
-	// PostByocClustersNameManualUpdateWithBodyWithResponse request with any body
-	PostByocClustersNameManualUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateResponse, error)
+	// PostByocClustersClusterNameApplyUpgradeWithBodyWithResponse request with any body
+	PostByocClustersClusterNameApplyUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameApplyUpgradeResponse, error)
 
-	PostByocClustersNameManualUpdateWithResponse(ctx context.Context, name string, body PostByocClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateResponse, error)
+	PostByocClustersClusterNameApplyUpgradeWithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameApplyUpgradeResponse, error)
 
-	// PostByocClustersNameTerminateWithResponse request
-	PostByocClustersNameTerminateWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByocClustersNameTerminateResponse, error)
+	// PostByocClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse request with any body
+	PostByocClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameManualUpdateDeprecatedV2Response, error)
 
-	// PostByocClustersNameUpdateWithBodyWithResponse request with any body
-	PostByocClustersNameUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateResponse, error)
+	PostByocClustersClusterNameManualUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameManualUpdateDeprecatedV2Response, error)
 
-	PostByocClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByocClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateResponse, error)
+	// PostByocClustersClusterNameTerminateWithResponse request
+	PostByocClustersClusterNameTerminateWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameTerminateResponse, error)
+
+	// PostByocClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse request with any body
+	PostByocClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpdateDeprecatedV2Response, error)
+
+	PostByocClustersClusterNameUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpdateDeprecatedV2Response, error)
+
+	// PostByocClustersClusterNameUpgradeWithBodyWithResponse request with any body
+	PostByocClustersClusterNameUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpgradeResponse, error)
+
+	PostByocClustersClusterNameUpgradeWithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpgradeResponse, error)
+
+	// GetByokClustersDeprecatedWithResponse request
+	GetByokClustersDeprecatedWithResponse(ctx context.Context, params *GetByokClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*GetByokClustersDeprecatedResponse, error)
+
+	// PostByokClustersDeprecatedWithBodyWithResponse request with any body
+	PostByokClustersDeprecatedWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersDeprecatedResponse, error)
+
+	PostByokClustersDeprecatedWithResponse(ctx context.Context, body PostByokClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersDeprecatedResponse, error)
+
+	// DeleteByokClustersNameDeprecatedWithResponse request
+	DeleteByokClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByokClustersNameDeprecatedResponse, error)
+
+	// GetByokClustersNameDeprecatedWithResponse request
+	GetByokClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByokClustersNameDeprecatedResponse, error)
+
+	// PutByokClustersNameDeprecatedWithBodyWithResponse request with any body
+	PutByokClustersNameDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersNameDeprecatedResponse, error)
+
+	PutByokClustersNameDeprecatedWithResponse(ctx context.Context, name string, body PutByokClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersNameDeprecatedResponse, error)
+
+	// PostByokClustersNameManualUpdateDeprecatedWithBodyWithResponse request with any body
+	PostByokClustersNameManualUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateDeprecatedResponse, error)
+
+	PostByokClustersNameManualUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByokClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateDeprecatedResponse, error)
+
+	// PostByokClustersNameTerminateDeprecatedWithResponse request
+	PostByokClustersNameTerminateDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByokClustersNameTerminateDeprecatedResponse, error)
+
+	// PostByokClustersNameUpdateDeprecatedWithBodyWithResponse request with any body
+	PostByokClustersNameUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateDeprecatedResponse, error)
+
+	PostByokClustersNameUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByokClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateDeprecatedResponse, error)
 
 	// GetByokClustersWithResponse request
 	GetByokClustersWithResponse(ctx context.Context, params *GetByokClustersParams, reqEditors ...RequestEditorFn) (*GetByokClustersResponse, error)
@@ -12270,29 +18433,39 @@ type ClientWithResponsesInterface interface {
 
 	PostByokClustersWithResponse(ctx context.Context, body PostByokClustersJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersResponse, error)
 
-	// DeleteByokClustersNameWithResponse request
-	DeleteByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByokClustersNameResponse, error)
+	// DeleteByokClustersClusterNameWithResponse request
+	DeleteByokClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*DeleteByokClustersClusterNameResponse, error)
 
-	// GetByokClustersNameWithResponse request
-	GetByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByokClustersNameResponse, error)
+	// GetByokClustersClusterNameWithResponse request
+	GetByokClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*GetByokClustersClusterNameResponse, error)
 
-	// PutByokClustersNameWithBodyWithResponse request with any body
-	PutByokClustersNameWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error)
+	// PutByokClustersClusterNameWithBodyWithResponse request with any body
+	PutByokClustersClusterNameWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersClusterNameResponse, error)
 
-	PutByokClustersNameWithResponse(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error)
+	PutByokClustersClusterNameWithResponse(ctx context.Context, clusterName string, body PutByokClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersClusterNameResponse, error)
 
-	// PostByokClustersNameManualUpdateWithBodyWithResponse request with any body
-	PostByokClustersNameManualUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error)
+	// PostByokClustersClusterNameApplyUpgradeWithBodyWithResponse request with any body
+	PostByokClustersClusterNameApplyUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameApplyUpgradeResponse, error)
 
-	PostByokClustersNameManualUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error)
+	PostByokClustersClusterNameApplyUpgradeWithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameApplyUpgradeResponse, error)
 
-	// PostByokClustersNameTerminateWithResponse request
-	PostByokClustersNameTerminateWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByokClustersNameTerminateResponse, error)
+	// PostByokClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse request with any body
+	PostByokClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameManualUpdateDeprecatedV2Response, error)
 
-	// PostByokClustersNameUpdateWithBodyWithResponse request with any body
-	PostByokClustersNameUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error)
+	PostByokClustersClusterNameManualUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameManualUpdateDeprecatedV2Response, error)
 
-	PostByokClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error)
+	// PostByokClustersClusterNameTerminateWithResponse request
+	PostByokClustersClusterNameTerminateWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameTerminateResponse, error)
+
+	// PostByokClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse request with any body
+	PostByokClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpdateDeprecatedV2Response, error)
+
+	PostByokClustersClusterNameUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpdateDeprecatedV2Response, error)
+
+	// PostByokClustersClusterNameUpgradeWithBodyWithResponse request with any body
+	PostByokClustersClusterNameUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpgradeResponse, error)
+
+	PostByokClustersClusterNameUpgradeWithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpgradeResponse, error)
 
 	// GetTenantsWithResponse request
 	GetTenantsWithResponse(ctx context.Context, params *GetTenantsParams, reqEditors ...RequestEditorFn) (*GetTenantsResponse, error)
@@ -12307,6 +18480,44 @@ type ClientWithResponsesInterface interface {
 
 	// GetTenantsNsIdWithResponse request
 	GetTenantsNsIdWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdResponse, error)
+
+	// GetTenantsNsIdAlertIncidentsWithResponse request
+	GetTenantsNsIdAlertIncidentsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertIncidentsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertIncidentsResponse, error)
+
+	// GetTenantsNsIdAlertIncidentsIncidentIdWithResponse request
+	GetTenantsNsIdAlertIncidentsIncidentIdWithResponse(ctx context.Context, nsId openapi_types.UUID, incidentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertIncidentsIncidentIdResponse, error)
+
+	// GetTenantsNsIdAlertRulesWithResponse request
+	GetTenantsNsIdAlertRulesWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertRulesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertRulesResponse, error)
+
+	// PatchTenantsNsIdAlertRulesAlertRuleKeyWithBodyWithResponse request with any body
+	PatchTenantsNsIdAlertRulesAlertRuleKeyWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyResponse, error)
+
+	PatchTenantsNsIdAlertRulesAlertRuleKeyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyResponse, error)
+
+	// DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse request
+	DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error)
+
+	// PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBodyWithResponse request with any body
+	PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error)
+
+	PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error)
+
+	// GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse request
+	GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error)
+
+	// PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBodyWithResponse request with any body
+	PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error)
+
+	PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error)
+
+	// DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdWithResponse request
+	DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, recipientId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse, error)
+
+	// PostTenantsNsIdAliasWithBodyWithResponse request with any body
+	PostTenantsNsIdAliasWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAliasResponse, error)
+
+	PostTenantsNsIdAliasWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAliasJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAliasResponse, error)
 
 	// DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse request with any body
 	DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAllowedIamRolesResponse, error)
@@ -12333,6 +18544,9 @@ type ClientWithResponsesInterface interface {
 	// DeleteTenantsNsIdBackupsSnapshotIdWithResponse request
 	DeleteTenantsNsIdBackupsSnapshotIdWithResponse(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdBackupsSnapshotIdResponse, error)
 
+	// PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedWithResponse request
+	PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse, error)
+
 	// PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreWithResponse request
 	PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreWithResponse(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse, error)
 
@@ -12352,6 +18566,23 @@ type ClientWithResponsesInterface interface {
 	// GetTenantsNsIdCloudMetaWithResponse request
 	GetTenantsNsIdCloudMetaWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdCloudMetaResponse, error)
 
+	// DeleteTenantsNsIdComputeAutoscalingWithResponse request
+	DeleteTenantsNsIdComputeAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdComputeAutoscalingResponse, error)
+
+	// GetTenantsNsIdComputeAutoscalingWithResponse request
+	GetTenantsNsIdComputeAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeAutoscalingResponse, error)
+
+	// PostTenantsNsIdComputeAutoscalingWithBodyWithResponse request with any body
+	PostTenantsNsIdComputeAutoscalingWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingResponse, error)
+
+	PostTenantsNsIdComputeAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingResponse, error)
+
+	// PostTenantsNsIdComputeAutoscalingDisableWithResponse request
+	PostTenantsNsIdComputeAutoscalingDisableWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingDisableResponse, error)
+
+	// PostTenantsNsIdComputeAutoscalingEnableWithResponse request
+	PostTenantsNsIdComputeAutoscalingEnableWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingEnableResponse, error)
+
 	// GetTenantsNsIdComputeCacheWithResponse request
 	GetTenantsNsIdComputeCacheWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheResponse, error)
 
@@ -12365,6 +18596,14 @@ type ClientWithResponsesInterface interface {
 
 	// GetTenantsNsIdComputeCacheRecommendationWithResponse request
 	GetTenantsNsIdComputeCacheRecommendationWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdComputeCacheRecommendationParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheRecommendationResponse, error)
+
+	// GetTenantsNsIdConfigWithResponse request
+	GetTenantsNsIdConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdConfigResponse, error)
+
+	// PostTenantsNsIdConfigWithBodyWithResponse request with any body
+	PostTenantsNsIdConfigWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdConfigResponse, error)
+
+	PostTenantsNsIdConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdConfigResponse, error)
 
 	// GetTenantsNsIdDatabaseUsersWithResponse request
 	GetTenantsNsIdDatabaseUsersWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdDatabaseUsersParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabaseUsersResponse, error)
@@ -12402,6 +18641,15 @@ type ClientWithResponsesInterface interface {
 	PostTenantsNsIdDatabasesDatabaseNameExecuteSQLWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdDatabasesDatabaseNameExecuteSQLResponse, error)
 
 	PostTenantsNsIdDatabasesDatabaseNameExecuteSQLWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, body PostTenantsNsIdDatabasesDatabaseNameExecuteSQLJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdDatabasesDatabaseNameExecuteSQLResponse, error)
+
+	// GetTenantsNsIdDatabasesDatabaseNameIndexesWithResponse request
+	GetTenantsNsIdDatabasesDatabaseNameIndexesWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameIndexesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameIndexesResponse, error)
+
+	// DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse request
+	DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse, error)
+
+	// GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse request
+	GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse, error)
 
 	// GetTenantsNsIdDatabasesDatabaseNameMatviewsWithResponse request
 	GetTenantsNsIdDatabasesDatabaseNameMatviewsWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameMatviewsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameMatviewsResponse, error)
@@ -12527,8 +18775,23 @@ type ClientWithResponsesInterface interface {
 	// GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputWithResponse request
 	GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, tableName string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputResponse, error)
 
+	// GetTenantsNsIdDatabasesDatabaseNameViewsWithResponse request
+	GetTenantsNsIdDatabasesDatabaseNameViewsWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameViewsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameViewsResponse, error)
+
+	// DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse request
+	DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse, error)
+
+	// GetTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse request
+	GetTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse, error)
+
 	// GetTenantsNsIdEndpointWithResponse request
 	GetTenantsNsIdEndpointWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdEndpointResponse, error)
+
+	// GetTenantsNsIdErrorLogsWithResponse request
+	GetTenantsNsIdErrorLogsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdErrorLogsResponse, error)
+
+	// GetTenantsNsIdErrorLogsCountWithResponse request
+	GetTenantsNsIdErrorLogsCountWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsCountParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdErrorLogsCountResponse, error)
 
 	// DeleteTenantsNsIdExtensionsCompactionWithResponse request
 	DeleteTenantsNsIdExtensionsCompactionWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsCompactionResponse, error)
@@ -12546,6 +18809,22 @@ type ClientWithResponsesInterface interface {
 
 	PutTenantsNsIdExtensionsCompactionWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsCompactionJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsCompactionResponse, error)
 
+	// DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse request
+	DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error)
+
+	// GetTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse request
+	GetTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error)
+
+	// PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse request with any body
+	PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error)
+
+	PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error)
+
+	// PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse request with any body
+	PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error)
+
+	PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error)
+
 	// DeleteTenantsNsIdExtensionsIcebergCompactionWithResponse request
 	DeleteTenantsNsIdExtensionsIcebergCompactionWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsIcebergCompactionResponse, error)
 
@@ -12562,6 +18841,22 @@ type ClientWithResponsesInterface interface {
 
 	PutTenantsNsIdExtensionsIcebergCompactionWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsIcebergCompactionResponse, error)
 
+	// DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse request
+	DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error)
+
+	// GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse request
+	GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error)
+
+	// PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse request with any body
+	PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error)
+
+	PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error)
+
+	// PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse request with any body
+	PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error)
+
+	PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error)
+
 	// DeleteTenantsNsIdExtensionsServerlessBackfillingWithResponse request
 	DeleteTenantsNsIdExtensionsServerlessBackfillingWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsServerlessBackfillingResponse, error)
 
@@ -12577,6 +18872,46 @@ type ClientWithResponsesInterface interface {
 	PutTenantsNsIdExtensionsServerlessBackfillingWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsServerlessBackfillingResponse, error)
 
 	PutTenantsNsIdExtensionsServerlessBackfillingWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsServerlessBackfillingResponse, error)
+
+	// GetTenantsNsIdLokiApiV1LabelLabelNameValuesWithResponse request
+	GetTenantsNsIdLokiApiV1LabelLabelNameValuesWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error)
+
+	// PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBodyWithResponse request with any body
+	PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error)
+
+	PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, body PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error)
+
+	// GetTenantsNsIdLokiApiV1LabelsWithResponse request
+	GetTenantsNsIdLokiApiV1LabelsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1LabelsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1LabelsResponse, error)
+
+	// PostTenantsNsIdLokiApiV1LabelsWithBodyWithResponse request with any body
+	PostTenantsNsIdLokiApiV1LabelsWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelsResponse, error)
+
+	PostTenantsNsIdLokiApiV1LabelsWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelsResponse, error)
+
+	// GetTenantsNsIdLokiApiV1QueryWithResponse request
+	GetTenantsNsIdLokiApiV1QueryWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1QueryResponse, error)
+
+	// PostTenantsNsIdLokiApiV1QueryWithBodyWithResponse request with any body
+	PostTenantsNsIdLokiApiV1QueryWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryResponse, error)
+
+	PostTenantsNsIdLokiApiV1QueryWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryResponse, error)
+
+	// GetTenantsNsIdLokiApiV1QueryRangeWithResponse request
+	GetTenantsNsIdLokiApiV1QueryRangeWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryRangeParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1QueryRangeResponse, error)
+
+	// PostTenantsNsIdLokiApiV1QueryRangeWithBodyWithResponse request with any body
+	PostTenantsNsIdLokiApiV1QueryRangeWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryRangeResponse, error)
+
+	PostTenantsNsIdLokiApiV1QueryRangeWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryRangeResponse, error)
+
+	// GetTenantsNsIdLokiApiV1SeriesWithResponse request
+	GetTenantsNsIdLokiApiV1SeriesWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1SeriesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1SeriesResponse, error)
+
+	// PostTenantsNsIdLokiApiV1SeriesWithBodyWithResponse request with any body
+	PostTenantsNsIdLokiApiV1SeriesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1SeriesResponse, error)
+
+	PostTenantsNsIdLokiApiV1SeriesWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1SeriesResponse, error)
 
 	// GetTenantsNsIdMaintenanceDetailsWithResponse request
 	GetTenantsNsIdMaintenanceDetailsWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdMaintenanceDetailsResponse, error)
@@ -12598,16 +18933,32 @@ type ClientWithResponsesInterface interface {
 	// PostTenantsNsIdOauthTokenWithResponse request
 	PostTenantsNsIdOauthTokenWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdOauthTokenResponse, error)
 
-	// PostTenantsNsIdPrivatelinksWithBodyWithResponse request with any body
-	PostTenantsNsIdPrivatelinksWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksResponse, error)
+	// PostTenantsNsIdPreviewConfigWithBodyWithResponse request with any body
+	PostTenantsNsIdPreviewConfigWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPreviewConfigResponse, error)
 
-	PostTenantsNsIdPrivatelinksWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksResponse, error)
+	PostTenantsNsIdPreviewConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPreviewConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPreviewConfigResponse, error)
 
-	// DeleteTenantsNsIdPrivatelinksPrivateLinkIdWithResponse request
-	DeleteTenantsNsIdPrivatelinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse, error)
+	// PostTenantsNsIdPrivateLinksWithBodyWithResponse request with any body
+	PostTenantsNsIdPrivateLinksWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivateLinksResponse, error)
 
-	// GetTenantsNsIdPrivatelinksPrivateLinkIdWithResponse request
-	GetTenantsNsIdPrivatelinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrivatelinksPrivateLinkIdResponse, error)
+	PostTenantsNsIdPrivateLinksWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivateLinksJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivateLinksResponse, error)
+
+	// DeleteTenantsNsIdPrivateLinksPrivateLinkIdWithResponse request
+	DeleteTenantsNsIdPrivateLinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse, error)
+
+	// GetTenantsNsIdPrivateLinksPrivateLinkIdWithResponse request
+	GetTenantsNsIdPrivateLinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrivateLinksPrivateLinkIdResponse, error)
+
+	// PostTenantsNsIdPrivatelinksDeprecatedWithBodyWithResponse request with any body
+	PostTenantsNsIdPrivatelinksDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksDeprecatedResponse, error)
+
+	PostTenantsNsIdPrivatelinksDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksDeprecatedResponse, error)
+
+	// DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse request
+	DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse, error)
+
+	// GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse request
+	GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse, error)
 
 	// GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesWithResponse request
 	GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesResponse, error)
@@ -12662,6 +19013,23 @@ type ClientWithResponsesInterface interface {
 	PostTenantsNsIdResourceGroupsResourceGroupWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupResponse, error)
 
 	PostTenantsNsIdResourceGroupsResourceGroupWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupResponse, error)
+
+	// DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse request
+	DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error)
+
+	// GetTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse request
+	GetTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error)
+
+	// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBodyWithResponse request with any body
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error)
+
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error)
+
+	// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableWithResponse request
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse, error)
+
+	// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableWithResponse request
+	PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse, error)
 
 	// PostTenantsNsIdRestartWithResponse request
 	PostTenantsNsIdRestartWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdRestartResponse, error)
@@ -12736,6 +19104,194 @@ type ClientWithResponsesInterface interface {
 	PostTenantsNsIdUpdateVersionWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdUpdateVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdUpdateVersionResponse, error)
 }
 
+type GetByocClustersDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedClustersPagination
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByocClustersDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByocClustersDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON400      *BadRequestResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteByocClustersNameDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteByocClustersNameDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteByocClustersNameDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetByocClustersNameDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByocClustersNameDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByocClustersNameDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutByocClustersNameDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PutByocClustersNameDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutByocClustersNameDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersNameManualUpdateDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersNameManualUpdateDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersNameManualUpdateDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersNameTerminateDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersNameTerminateDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersNameTerminateDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersNameUpdateDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersNameUpdateDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersNameUpdateDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetByocClustersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12782,7 +19338,7 @@ func (r PostByocClustersResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteByocClustersNameResponse struct {
+type DeleteByocClustersClusterNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DefaultResponse
@@ -12791,7 +19347,7 @@ type DeleteByocClustersNameResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteByocClustersNameResponse) Status() string {
+func (r DeleteByocClustersClusterNameResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12799,14 +19355,14 @@ func (r DeleteByocClustersNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteByocClustersNameResponse) StatusCode() int {
+func (r DeleteByocClustersClusterNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetByocClustersNameResponse struct {
+type GetByocClustersClusterNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ManagedCluster
@@ -12814,7 +19370,7 @@ type GetByocClustersNameResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetByocClustersNameResponse) Status() string {
+func (r GetByocClustersClusterNameResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12822,14 +19378,14 @@ func (r GetByocClustersNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetByocClustersNameResponse) StatusCode() int {
+func (r GetByocClustersClusterNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PutByocClustersNameResponse struct {
+type PutByocClustersClusterNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DefaultResponse
@@ -12838,7 +19394,7 @@ type PutByocClustersNameResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PutByocClustersNameResponse) Status() string {
+func (r PutByocClustersClusterNameResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12846,14 +19402,14 @@ func (r PutByocClustersNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutByocClustersNameResponse) StatusCode() int {
+func (r PutByocClustersClusterNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostByocClustersNameManualUpdateResponse struct {
+type PostByocClustersClusterNameApplyUpgradeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DefaultResponse
@@ -12862,7 +19418,7 @@ type PostByocClustersNameManualUpdateResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostByocClustersNameManualUpdateResponse) Status() string {
+func (r PostByocClustersClusterNameApplyUpgradeResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12870,37 +19426,14 @@ func (r PostByocClustersNameManualUpdateResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostByocClustersNameManualUpdateResponse) StatusCode() int {
+func (r PostByocClustersClusterNameApplyUpgradeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostByocClustersNameTerminateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON202      *DefaultResponse
-	JSON404      *NotFoundResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostByocClustersNameTerminateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostByocClustersNameTerminateResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostByocClustersNameUpdateResponse struct {
+type PostByocClustersClusterNameManualUpdateDeprecatedV2Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DefaultResponse
@@ -12909,7 +19442,7 @@ type PostByocClustersNameUpdateResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostByocClustersNameUpdateResponse) Status() string {
+func (r PostByocClustersClusterNameManualUpdateDeprecatedV2Response) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12917,7 +19450,266 @@ func (r PostByocClustersNameUpdateResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostByocClustersNameUpdateResponse) StatusCode() int {
+func (r PostByocClustersClusterNameManualUpdateDeprecatedV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersClusterNameTerminateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersClusterNameTerminateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersClusterNameTerminateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersClusterNameUpdateDeprecatedV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersClusterNameUpdateDeprecatedV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersClusterNameUpdateDeprecatedV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByocClustersClusterNameUpgradeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByocClustersClusterNameUpgradeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByocClustersClusterNameUpgradeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetByokClustersDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedClustersPagination
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByokClustersDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByokClustersDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON400      *BadRequestResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteByokClustersNameDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteByokClustersNameDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteByokClustersNameDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetByokClustersNameDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ManagedCluster
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetByokClustersNameDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetByokClustersNameDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutByokClustersNameDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PutByokClustersNameDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutByokClustersNameDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersNameManualUpdateDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersNameManualUpdateDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersNameManualUpdateDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersNameTerminateDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersNameTerminateDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersNameTerminateDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersNameUpdateDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersNameUpdateDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersNameUpdateDeprecatedResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12970,7 +19762,7 @@ func (r PostByokClustersResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteByokClustersNameResponse struct {
+type DeleteByokClustersClusterNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DefaultResponse
@@ -12979,7 +19771,7 @@ type DeleteByokClustersNameResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteByokClustersNameResponse) Status() string {
+func (r DeleteByokClustersClusterNameResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -12987,14 +19779,14 @@ func (r DeleteByokClustersNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteByokClustersNameResponse) StatusCode() int {
+func (r DeleteByokClustersClusterNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetByokClustersNameResponse struct {
+type GetByokClustersClusterNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ManagedCluster
@@ -13002,7 +19794,7 @@ type GetByokClustersNameResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetByokClustersNameResponse) Status() string {
+func (r GetByokClustersClusterNameResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13010,14 +19802,14 @@ func (r GetByokClustersNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetByokClustersNameResponse) StatusCode() int {
+func (r GetByokClustersClusterNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PutByokClustersNameResponse struct {
+type PutByokClustersClusterNameResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *DefaultResponse
@@ -13026,7 +19818,7 @@ type PutByokClustersNameResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PutByokClustersNameResponse) Status() string {
+func (r PutByokClustersClusterNameResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13034,14 +19826,14 @@ func (r PutByokClustersNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutByokClustersNameResponse) StatusCode() int {
+func (r PutByokClustersClusterNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostByokClustersNameManualUpdateResponse struct {
+type PostByokClustersClusterNameApplyUpgradeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DefaultResponse
@@ -13050,7 +19842,7 @@ type PostByokClustersNameManualUpdateResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostByokClustersNameManualUpdateResponse) Status() string {
+func (r PostByokClustersClusterNameApplyUpgradeResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13058,37 +19850,14 @@ func (r PostByokClustersNameManualUpdateResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostByokClustersNameManualUpdateResponse) StatusCode() int {
+func (r PostByokClustersClusterNameApplyUpgradeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostByokClustersNameTerminateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON202      *DefaultResponse
-	JSON404      *NotFoundResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostByokClustersNameTerminateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostByokClustersNameTerminateResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostByokClustersNameUpdateResponse struct {
+type PostByokClustersClusterNameManualUpdateDeprecatedV2Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DefaultResponse
@@ -13097,7 +19866,7 @@ type PostByokClustersNameUpdateResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostByokClustersNameUpdateResponse) Status() string {
+func (r PostByokClustersClusterNameManualUpdateDeprecatedV2Response) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -13105,7 +19874,78 @@ func (r PostByokClustersNameUpdateResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostByokClustersNameUpdateResponse) StatusCode() int {
+func (r PostByokClustersClusterNameManualUpdateDeprecatedV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersClusterNameTerminateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersClusterNameTerminateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersClusterNameTerminateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersClusterNameUpdateDeprecatedV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersClusterNameUpdateDeprecatedV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersClusterNameUpdateDeprecatedV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostByokClustersClusterNameUpgradeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostByokClustersClusterNameUpgradeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostByokClustersClusterNameUpgradeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13199,6 +20039,243 @@ func (r GetTenantsNsIdResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantsNsIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdAlertIncidentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertIncidentPagination
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdAlertIncidentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdAlertIncidentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdAlertIncidentsIncidentIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertIncident
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdAlertIncidentsIncidentIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdAlertIncidentsIncidentIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdAlertRulesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRulePagination
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdAlertRulesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdAlertRulesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PatchTenantsNsIdAlertRulesAlertRuleKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRule
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchTenantsNsIdAlertRulesAlertRuleKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchTenantsNsIdAlertRulesAlertRuleKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRule
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRule
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRuleRecipientBindingPagination
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRuleRecipientBinding
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdAliasResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Tenant
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdAliasResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdAliasResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13365,6 +20442,27 @@ func (r DeleteTenantsNsIdBackupsSnapshotIdResponse) StatusCode() int {
 	return 0
 }
 
+type PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13477,6 +20575,125 @@ func (r GetTenantsNsIdCloudMetaResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteTenantsNsIdComputeAutoscalingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdComputeAutoscalingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdComputeAutoscalingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdComputeAutoscalingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AutoscalingConfig
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdComputeAutoscalingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdComputeAutoscalingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdComputeAutoscalingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdComputeAutoscalingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdComputeAutoscalingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdComputeAutoscalingDisableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdComputeAutoscalingDisableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdComputeAutoscalingDisableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdComputeAutoscalingEnableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdComputeAutoscalingEnableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdComputeAutoscalingEnableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTenantsNsIdComputeCacheResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13566,6 +20783,54 @@ func (r GetTenantsNsIdComputeCacheRecommendationResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantsNsIdComputeCacheRecommendationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ConfigSet
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *WorkflowIdResponseBody
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+	JSON409      *AlreadyExistsResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdConfigResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13775,6 +21040,75 @@ func (r PostTenantsNsIdDatabasesDatabaseNameExecuteSQLResponse) Status() string 
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostTenantsNsIdDatabasesDatabaseNameExecuteSQLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdDatabasesDatabaseNameIndexesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *IndexesPagination
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdDatabasesDatabaseNameIndexesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdDatabasesDatabaseNameIndexesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Index
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14721,6 +22055,75 @@ func (r GetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputResponse) St
 	return 0
 }
 
+type GetTenantsNsIdDatabasesDatabaseNameViewsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ViewsPagination
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdDatabasesDatabaseNameViewsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdDatabasesDatabaseNameViewsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *View
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetTenantsNsIdEndpointResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14738,6 +22141,57 @@ func (r GetTenantsNsIdEndpointResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetTenantsNsIdEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdErrorLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrLogQueryResult
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+	JSON504      *struct {
+		Msg string `json:"msg"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdErrorLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdErrorLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdErrorLogsCountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrLogCountResult
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdErrorLogsCountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdErrorLogsCountResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14839,6 +22293,101 @@ func (r PutTenantsNsIdExtensionsCompactionResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *IcebergCompaction
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type DeleteTenantsNsIdExtensionsIcebergCompactionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14934,6 +22483,101 @@ func (r PutTenantsNsIdExtensionsIcebergCompactionResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTenantExtensionServerlessBackfillResponseBody
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type DeleteTenantsNsIdExtensionsServerlessBackfillingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15023,6 +22667,226 @@ func (r PutTenantsNsIdExtensionsServerlessBackfillingResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PutTenantsNsIdExtensionsServerlessBackfillingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdLokiApiV1LabelsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdLokiApiV1LabelsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdLokiApiV1LabelsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdLokiApiV1LabelsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdLokiApiV1LabelsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdLokiApiV1LabelsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdLokiApiV1QueryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdLokiApiV1QueryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdLokiApiV1QueryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdLokiApiV1QueryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdLokiApiV1QueryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdLokiApiV1QueryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdLokiApiV1QueryRangeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdLokiApiV1QueryRangeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdLokiApiV1QueryRangeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdLokiApiV1QueryRangeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdLokiApiV1QueryRangeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdLokiApiV1QueryRangeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdLokiApiV1SeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdLokiApiV1SeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdLokiApiV1SeriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdLokiApiV1SeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LokiAPIResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdLokiApiV1SeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdLokiApiV1SeriesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15164,7 +23028,31 @@ func (r PostTenantsNsIdOauthTokenResponse) StatusCode() int {
 	return 0
 }
 
-type PostTenantsNsIdPrivatelinksResponse struct {
+type PostTenantsNsIdPreviewConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PostTenantConfigPreviewResponseBody
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdPreviewConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdPreviewConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdPrivateLinksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *PostPrivateLinkResponseBody
@@ -15173,7 +23061,7 @@ type PostTenantsNsIdPrivatelinksResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostTenantsNsIdPrivatelinksResponse) Status() string {
+func (r PostTenantsNsIdPrivateLinksResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -15181,14 +23069,14 @@ func (r PostTenantsNsIdPrivatelinksResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostTenantsNsIdPrivatelinksResponse) StatusCode() int {
+func (r PostTenantsNsIdPrivateLinksResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse struct {
+type DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON202      *DefaultResponse
@@ -15197,7 +23085,7 @@ type DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse) Status() string {
+func (r DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -15205,14 +23093,14 @@ func (r DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse) StatusCode() int {
+func (r DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetTenantsNsIdPrivatelinksPrivateLinkIdResponse struct {
+type GetTenantsNsIdPrivateLinksPrivateLinkIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PrivateLink
@@ -15220,7 +23108,7 @@ type GetTenantsNsIdPrivatelinksPrivateLinkIdResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetTenantsNsIdPrivatelinksPrivateLinkIdResponse) Status() string {
+func (r GetTenantsNsIdPrivateLinksPrivateLinkIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -15228,7 +23116,78 @@ func (r GetTenantsNsIdPrivatelinksPrivateLinkIdResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetTenantsNsIdPrivatelinksPrivateLinkIdResponse) StatusCode() int {
+func (r GetTenantsNsIdPrivateLinksPrivateLinkIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdPrivatelinksDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *PostPrivateLinkResponseBody
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdPrivatelinksDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdPrivatelinksDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *DefaultResponse
+	JSON400      *BadRequestResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PrivateLink
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15554,6 +23513,125 @@ func (r PostTenantsNsIdResourceGroupsResourceGroupResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostTenantsNsIdResourceGroupsResourceGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AutoscalingConfig
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DefaultResponse
+	JSON400      *FailedPreconditionResponse
+	JSON404      *NotFoundResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15926,6 +24004,110 @@ func (r PostTenantsNsIdUpdateVersionResponse) StatusCode() int {
 	return 0
 }
 
+// GetByocClustersDeprecatedWithResponse request returning *GetByocClustersDeprecatedResponse
+func (c *ClientWithResponses) GetByocClustersDeprecatedWithResponse(ctx context.Context, params *GetByocClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*GetByocClustersDeprecatedResponse, error) {
+	rsp, err := c.GetByocClustersDeprecated(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByocClustersDeprecatedResponse(rsp)
+}
+
+// PostByocClustersDeprecatedWithBodyWithResponse request with arbitrary body returning *PostByocClustersDeprecatedResponse
+func (c *ClientWithResponses) PostByocClustersDeprecatedWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersDeprecatedWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByocClustersDeprecatedWithResponse(ctx context.Context, body PostByocClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersDeprecated(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersDeprecatedResponse(rsp)
+}
+
+// DeleteByocClustersNameDeprecatedWithResponse request returning *DeleteByocClustersNameDeprecatedResponse
+func (c *ClientWithResponses) DeleteByocClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByocClustersNameDeprecatedResponse, error) {
+	rsp, err := c.DeleteByocClustersNameDeprecated(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteByocClustersNameDeprecatedResponse(rsp)
+}
+
+// GetByocClustersNameDeprecatedWithResponse request returning *GetByocClustersNameDeprecatedResponse
+func (c *ClientWithResponses) GetByocClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByocClustersNameDeprecatedResponse, error) {
+	rsp, err := c.GetByocClustersNameDeprecated(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByocClustersNameDeprecatedResponse(rsp)
+}
+
+// PutByocClustersNameDeprecatedWithBodyWithResponse request with arbitrary body returning *PutByocClustersNameDeprecatedResponse
+func (c *ClientWithResponses) PutByocClustersNameDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByocClustersNameDeprecatedResponse, error) {
+	rsp, err := c.PutByocClustersNameDeprecatedWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutByocClustersNameDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutByocClustersNameDeprecatedWithResponse(ctx context.Context, name string, body PutByocClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByocClustersNameDeprecatedResponse, error) {
+	rsp, err := c.PutByocClustersNameDeprecated(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutByocClustersNameDeprecatedResponse(rsp)
+}
+
+// PostByocClustersNameManualUpdateDeprecatedWithBodyWithResponse request with arbitrary body returning *PostByocClustersNameManualUpdateDeprecatedResponse
+func (c *ClientWithResponses) PostByocClustersNameManualUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersNameManualUpdateDeprecatedWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersNameManualUpdateDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByocClustersNameManualUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByocClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersNameManualUpdateDeprecated(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersNameManualUpdateDeprecatedResponse(rsp)
+}
+
+// PostByocClustersNameTerminateDeprecatedWithResponse request returning *PostByocClustersNameTerminateDeprecatedResponse
+func (c *ClientWithResponses) PostByocClustersNameTerminateDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByocClustersNameTerminateDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersNameTerminateDeprecated(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersNameTerminateDeprecatedResponse(rsp)
+}
+
+// PostByocClustersNameUpdateDeprecatedWithBodyWithResponse request with arbitrary body returning *PostByocClustersNameUpdateDeprecatedResponse
+func (c *ClientWithResponses) PostByocClustersNameUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersNameUpdateDeprecatedWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersNameUpdateDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByocClustersNameUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByocClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByocClustersNameUpdateDeprecated(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersNameUpdateDeprecatedResponse(rsp)
+}
+
 // GetByocClustersWithResponse request returning *GetByocClustersResponse
 func (c *ClientWithResponses) GetByocClustersWithResponse(ctx context.Context, params *GetByocClustersParams, reqEditors ...RequestEditorFn) (*GetByocClustersResponse, error) {
 	rsp, err := c.GetByocClusters(ctx, params, reqEditors...)
@@ -15952,82 +24134,220 @@ func (c *ClientWithResponses) PostByocClustersWithResponse(ctx context.Context, 
 	return ParsePostByocClustersResponse(rsp)
 }
 
-// DeleteByocClustersNameWithResponse request returning *DeleteByocClustersNameResponse
-func (c *ClientWithResponses) DeleteByocClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByocClustersNameResponse, error) {
-	rsp, err := c.DeleteByocClustersName(ctx, name, reqEditors...)
+// DeleteByocClustersClusterNameWithResponse request returning *DeleteByocClustersClusterNameResponse
+func (c *ClientWithResponses) DeleteByocClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*DeleteByocClustersClusterNameResponse, error) {
+	rsp, err := c.DeleteByocClustersClusterName(ctx, clusterName, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteByocClustersNameResponse(rsp)
+	return ParseDeleteByocClustersClusterNameResponse(rsp)
 }
 
-// GetByocClustersNameWithResponse request returning *GetByocClustersNameResponse
-func (c *ClientWithResponses) GetByocClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByocClustersNameResponse, error) {
-	rsp, err := c.GetByocClustersName(ctx, name, reqEditors...)
+// GetByocClustersClusterNameWithResponse request returning *GetByocClustersClusterNameResponse
+func (c *ClientWithResponses) GetByocClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*GetByocClustersClusterNameResponse, error) {
+	rsp, err := c.GetByocClustersClusterName(ctx, clusterName, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetByocClustersNameResponse(rsp)
+	return ParseGetByocClustersClusterNameResponse(rsp)
 }
 
-// PutByocClustersNameWithBodyWithResponse request with arbitrary body returning *PutByocClustersNameResponse
-func (c *ClientWithResponses) PutByocClustersNameWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByocClustersNameResponse, error) {
-	rsp, err := c.PutByocClustersNameWithBody(ctx, name, contentType, body, reqEditors...)
+// PutByocClustersClusterNameWithBodyWithResponse request with arbitrary body returning *PutByocClustersClusterNameResponse
+func (c *ClientWithResponses) PutByocClustersClusterNameWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByocClustersClusterNameResponse, error) {
+	rsp, err := c.PutByocClustersClusterNameWithBody(ctx, clusterName, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutByocClustersNameResponse(rsp)
+	return ParsePutByocClustersClusterNameResponse(rsp)
 }
 
-func (c *ClientWithResponses) PutByocClustersNameWithResponse(ctx context.Context, name string, body PutByocClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByocClustersNameResponse, error) {
-	rsp, err := c.PutByocClustersName(ctx, name, body, reqEditors...)
+func (c *ClientWithResponses) PutByocClustersClusterNameWithResponse(ctx context.Context, clusterName string, body PutByocClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByocClustersClusterNameResponse, error) {
+	rsp, err := c.PutByocClustersClusterName(ctx, clusterName, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutByocClustersNameResponse(rsp)
+	return ParsePutByocClustersClusterNameResponse(rsp)
 }
 
-// PostByocClustersNameManualUpdateWithBodyWithResponse request with arbitrary body returning *PostByocClustersNameManualUpdateResponse
-func (c *ClientWithResponses) PostByocClustersNameManualUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateResponse, error) {
-	rsp, err := c.PostByocClustersNameManualUpdateWithBody(ctx, name, contentType, body, reqEditors...)
+// PostByocClustersClusterNameApplyUpgradeWithBodyWithResponse request with arbitrary body returning *PostByocClustersClusterNameApplyUpgradeResponse
+func (c *ClientWithResponses) PostByocClustersClusterNameApplyUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameApplyUpgradeResponse, error) {
+	rsp, err := c.PostByocClustersClusterNameApplyUpgradeWithBody(ctx, clusterName, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByocClustersNameManualUpdateResponse(rsp)
+	return ParsePostByocClustersClusterNameApplyUpgradeResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostByocClustersNameManualUpdateWithResponse(ctx context.Context, name string, body PostByocClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameManualUpdateResponse, error) {
-	rsp, err := c.PostByocClustersNameManualUpdate(ctx, name, body, reqEditors...)
+func (c *ClientWithResponses) PostByocClustersClusterNameApplyUpgradeWithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameApplyUpgradeResponse, error) {
+	rsp, err := c.PostByocClustersClusterNameApplyUpgrade(ctx, clusterName, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByocClustersNameManualUpdateResponse(rsp)
+	return ParsePostByocClustersClusterNameApplyUpgradeResponse(rsp)
 }
 
-// PostByocClustersNameTerminateWithResponse request returning *PostByocClustersNameTerminateResponse
-func (c *ClientWithResponses) PostByocClustersNameTerminateWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByocClustersNameTerminateResponse, error) {
-	rsp, err := c.PostByocClustersNameTerminate(ctx, name, reqEditors...)
+// PostByocClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse request with arbitrary body returning *PostByocClustersClusterNameManualUpdateDeprecatedV2Response
+func (c *ClientWithResponses) PostByocClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameManualUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByocClustersClusterNameManualUpdateDeprecatedV2WithBody(ctx, clusterName, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByocClustersNameTerminateResponse(rsp)
+	return ParsePostByocClustersClusterNameManualUpdateDeprecatedV2Response(rsp)
 }
 
-// PostByocClustersNameUpdateWithBodyWithResponse request with arbitrary body returning *PostByocClustersNameUpdateResponse
-func (c *ClientWithResponses) PostByocClustersNameUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateResponse, error) {
-	rsp, err := c.PostByocClustersNameUpdateWithBody(ctx, name, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostByocClustersClusterNameManualUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameManualUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByocClustersClusterNameManualUpdateDeprecatedV2(ctx, clusterName, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByocClustersNameUpdateResponse(rsp)
+	return ParsePostByocClustersClusterNameManualUpdateDeprecatedV2Response(rsp)
 }
 
-func (c *ClientWithResponses) PostByocClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByocClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersNameUpdateResponse, error) {
-	rsp, err := c.PostByocClustersNameUpdate(ctx, name, body, reqEditors...)
+// PostByocClustersClusterNameTerminateWithResponse request returning *PostByocClustersClusterNameTerminateResponse
+func (c *ClientWithResponses) PostByocClustersClusterNameTerminateWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameTerminateResponse, error) {
+	rsp, err := c.PostByocClustersClusterNameTerminate(ctx, clusterName, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByocClustersNameUpdateResponse(rsp)
+	return ParsePostByocClustersClusterNameTerminateResponse(rsp)
+}
+
+// PostByocClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse request with arbitrary body returning *PostByocClustersClusterNameUpdateDeprecatedV2Response
+func (c *ClientWithResponses) PostByocClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByocClustersClusterNameUpdateDeprecatedV2WithBody(ctx, clusterName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersClusterNameUpdateDeprecatedV2Response(rsp)
+}
+
+func (c *ClientWithResponses) PostByocClustersClusterNameUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByocClustersClusterNameUpdateDeprecatedV2(ctx, clusterName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersClusterNameUpdateDeprecatedV2Response(rsp)
+}
+
+// PostByocClustersClusterNameUpgradeWithBodyWithResponse request with arbitrary body returning *PostByocClustersClusterNameUpgradeResponse
+func (c *ClientWithResponses) PostByocClustersClusterNameUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpgradeResponse, error) {
+	rsp, err := c.PostByocClustersClusterNameUpgradeWithBody(ctx, clusterName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersClusterNameUpgradeResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByocClustersClusterNameUpgradeWithResponse(ctx context.Context, clusterName string, body PostByocClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByocClustersClusterNameUpgradeResponse, error) {
+	rsp, err := c.PostByocClustersClusterNameUpgrade(ctx, clusterName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByocClustersClusterNameUpgradeResponse(rsp)
+}
+
+// GetByokClustersDeprecatedWithResponse request returning *GetByokClustersDeprecatedResponse
+func (c *ClientWithResponses) GetByokClustersDeprecatedWithResponse(ctx context.Context, params *GetByokClustersDeprecatedParams, reqEditors ...RequestEditorFn) (*GetByokClustersDeprecatedResponse, error) {
+	rsp, err := c.GetByokClustersDeprecated(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByokClustersDeprecatedResponse(rsp)
+}
+
+// PostByokClustersDeprecatedWithBodyWithResponse request with arbitrary body returning *PostByokClustersDeprecatedResponse
+func (c *ClientWithResponses) PostByokClustersDeprecatedWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersDeprecatedWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersDeprecatedWithResponse(ctx context.Context, body PostByokClustersDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersDeprecated(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersDeprecatedResponse(rsp)
+}
+
+// DeleteByokClustersNameDeprecatedWithResponse request returning *DeleteByokClustersNameDeprecatedResponse
+func (c *ClientWithResponses) DeleteByokClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByokClustersNameDeprecatedResponse, error) {
+	rsp, err := c.DeleteByokClustersNameDeprecated(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteByokClustersNameDeprecatedResponse(rsp)
+}
+
+// GetByokClustersNameDeprecatedWithResponse request returning *GetByokClustersNameDeprecatedResponse
+func (c *ClientWithResponses) GetByokClustersNameDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByokClustersNameDeprecatedResponse, error) {
+	rsp, err := c.GetByokClustersNameDeprecated(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetByokClustersNameDeprecatedResponse(rsp)
+}
+
+// PutByokClustersNameDeprecatedWithBodyWithResponse request with arbitrary body returning *PutByokClustersNameDeprecatedResponse
+func (c *ClientWithResponses) PutByokClustersNameDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersNameDeprecatedResponse, error) {
+	rsp, err := c.PutByokClustersNameDeprecatedWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutByokClustersNameDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutByokClustersNameDeprecatedWithResponse(ctx context.Context, name string, body PutByokClustersNameDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersNameDeprecatedResponse, error) {
+	rsp, err := c.PutByokClustersNameDeprecated(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutByokClustersNameDeprecatedResponse(rsp)
+}
+
+// PostByokClustersNameManualUpdateDeprecatedWithBodyWithResponse request with arbitrary body returning *PostByokClustersNameManualUpdateDeprecatedResponse
+func (c *ClientWithResponses) PostByokClustersNameManualUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersNameManualUpdateDeprecatedWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameManualUpdateDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersNameManualUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByokClustersNameManualUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersNameManualUpdateDeprecated(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameManualUpdateDeprecatedResponse(rsp)
+}
+
+// PostByokClustersNameTerminateDeprecatedWithResponse request returning *PostByokClustersNameTerminateDeprecatedResponse
+func (c *ClientWithResponses) PostByokClustersNameTerminateDeprecatedWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByokClustersNameTerminateDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersNameTerminateDeprecated(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameTerminateDeprecatedResponse(rsp)
+}
+
+// PostByokClustersNameUpdateDeprecatedWithBodyWithResponse request with arbitrary body returning *PostByokClustersNameUpdateDeprecatedResponse
+func (c *ClientWithResponses) PostByokClustersNameUpdateDeprecatedWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersNameUpdateDeprecatedWithBody(ctx, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameUpdateDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersNameUpdateDeprecatedWithResponse(ctx context.Context, name string, body PostByokClustersNameUpdateDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateDeprecatedResponse, error) {
+	rsp, err := c.PostByokClustersNameUpdateDeprecated(ctx, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersNameUpdateDeprecatedResponse(rsp)
 }
 
 // GetByokClustersWithResponse request returning *GetByokClustersResponse
@@ -16056,82 +24376,116 @@ func (c *ClientWithResponses) PostByokClustersWithResponse(ctx context.Context, 
 	return ParsePostByokClustersResponse(rsp)
 }
 
-// DeleteByokClustersNameWithResponse request returning *DeleteByokClustersNameResponse
-func (c *ClientWithResponses) DeleteByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteByokClustersNameResponse, error) {
-	rsp, err := c.DeleteByokClustersName(ctx, name, reqEditors...)
+// DeleteByokClustersClusterNameWithResponse request returning *DeleteByokClustersClusterNameResponse
+func (c *ClientWithResponses) DeleteByokClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*DeleteByokClustersClusterNameResponse, error) {
+	rsp, err := c.DeleteByokClustersClusterName(ctx, clusterName, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteByokClustersNameResponse(rsp)
+	return ParseDeleteByokClustersClusterNameResponse(rsp)
 }
 
-// GetByokClustersNameWithResponse request returning *GetByokClustersNameResponse
-func (c *ClientWithResponses) GetByokClustersNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetByokClustersNameResponse, error) {
-	rsp, err := c.GetByokClustersName(ctx, name, reqEditors...)
+// GetByokClustersClusterNameWithResponse request returning *GetByokClustersClusterNameResponse
+func (c *ClientWithResponses) GetByokClustersClusterNameWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*GetByokClustersClusterNameResponse, error) {
+	rsp, err := c.GetByokClustersClusterName(ctx, clusterName, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetByokClustersNameResponse(rsp)
+	return ParseGetByokClustersClusterNameResponse(rsp)
 }
 
-// PutByokClustersNameWithBodyWithResponse request with arbitrary body returning *PutByokClustersNameResponse
-func (c *ClientWithResponses) PutByokClustersNameWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error) {
-	rsp, err := c.PutByokClustersNameWithBody(ctx, name, contentType, body, reqEditors...)
+// PutByokClustersClusterNameWithBodyWithResponse request with arbitrary body returning *PutByokClustersClusterNameResponse
+func (c *ClientWithResponses) PutByokClustersClusterNameWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutByokClustersClusterNameResponse, error) {
+	rsp, err := c.PutByokClustersClusterNameWithBody(ctx, clusterName, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutByokClustersNameResponse(rsp)
+	return ParsePutByokClustersClusterNameResponse(rsp)
 }
 
-func (c *ClientWithResponses) PutByokClustersNameWithResponse(ctx context.Context, name string, body PutByokClustersNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersNameResponse, error) {
-	rsp, err := c.PutByokClustersName(ctx, name, body, reqEditors...)
+func (c *ClientWithResponses) PutByokClustersClusterNameWithResponse(ctx context.Context, clusterName string, body PutByokClustersClusterNameJSONRequestBody, reqEditors ...RequestEditorFn) (*PutByokClustersClusterNameResponse, error) {
+	rsp, err := c.PutByokClustersClusterName(ctx, clusterName, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutByokClustersNameResponse(rsp)
+	return ParsePutByokClustersClusterNameResponse(rsp)
 }
 
-// PostByokClustersNameManualUpdateWithBodyWithResponse request with arbitrary body returning *PostByokClustersNameManualUpdateResponse
-func (c *ClientWithResponses) PostByokClustersNameManualUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error) {
-	rsp, err := c.PostByokClustersNameManualUpdateWithBody(ctx, name, contentType, body, reqEditors...)
+// PostByokClustersClusterNameApplyUpgradeWithBodyWithResponse request with arbitrary body returning *PostByokClustersClusterNameApplyUpgradeResponse
+func (c *ClientWithResponses) PostByokClustersClusterNameApplyUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameApplyUpgradeResponse, error) {
+	rsp, err := c.PostByokClustersClusterNameApplyUpgradeWithBody(ctx, clusterName, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByokClustersNameManualUpdateResponse(rsp)
+	return ParsePostByokClustersClusterNameApplyUpgradeResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostByokClustersNameManualUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameManualUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameManualUpdateResponse, error) {
-	rsp, err := c.PostByokClustersNameManualUpdate(ctx, name, body, reqEditors...)
+func (c *ClientWithResponses) PostByokClustersClusterNameApplyUpgradeWithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameApplyUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameApplyUpgradeResponse, error) {
+	rsp, err := c.PostByokClustersClusterNameApplyUpgrade(ctx, clusterName, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByokClustersNameManualUpdateResponse(rsp)
+	return ParsePostByokClustersClusterNameApplyUpgradeResponse(rsp)
 }
 
-// PostByokClustersNameTerminateWithResponse request returning *PostByokClustersNameTerminateResponse
-func (c *ClientWithResponses) PostByokClustersNameTerminateWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*PostByokClustersNameTerminateResponse, error) {
-	rsp, err := c.PostByokClustersNameTerminate(ctx, name, reqEditors...)
+// PostByokClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse request with arbitrary body returning *PostByokClustersClusterNameManualUpdateDeprecatedV2Response
+func (c *ClientWithResponses) PostByokClustersClusterNameManualUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameManualUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByokClustersClusterNameManualUpdateDeprecatedV2WithBody(ctx, clusterName, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByokClustersNameTerminateResponse(rsp)
+	return ParsePostByokClustersClusterNameManualUpdateDeprecatedV2Response(rsp)
 }
 
-// PostByokClustersNameUpdateWithBodyWithResponse request with arbitrary body returning *PostByokClustersNameUpdateResponse
-func (c *ClientWithResponses) PostByokClustersNameUpdateWithBodyWithResponse(ctx context.Context, name string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error) {
-	rsp, err := c.PostByokClustersNameUpdateWithBody(ctx, name, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostByokClustersClusterNameManualUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameManualUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameManualUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByokClustersClusterNameManualUpdateDeprecatedV2(ctx, clusterName, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByokClustersNameUpdateResponse(rsp)
+	return ParsePostByokClustersClusterNameManualUpdateDeprecatedV2Response(rsp)
 }
 
-func (c *ClientWithResponses) PostByokClustersNameUpdateWithResponse(ctx context.Context, name string, body PostByokClustersNameUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersNameUpdateResponse, error) {
-	rsp, err := c.PostByokClustersNameUpdate(ctx, name, body, reqEditors...)
+// PostByokClustersClusterNameTerminateWithResponse request returning *PostByokClustersClusterNameTerminateResponse
+func (c *ClientWithResponses) PostByokClustersClusterNameTerminateWithResponse(ctx context.Context, clusterName string, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameTerminateResponse, error) {
+	rsp, err := c.PostByokClustersClusterNameTerminate(ctx, clusterName, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostByokClustersNameUpdateResponse(rsp)
+	return ParsePostByokClustersClusterNameTerminateResponse(rsp)
+}
+
+// PostByokClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse request with arbitrary body returning *PostByokClustersClusterNameUpdateDeprecatedV2Response
+func (c *ClientWithResponses) PostByokClustersClusterNameUpdateDeprecatedV2WithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByokClustersClusterNameUpdateDeprecatedV2WithBody(ctx, clusterName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersClusterNameUpdateDeprecatedV2Response(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersClusterNameUpdateDeprecatedV2WithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpdateDeprecatedV2JSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpdateDeprecatedV2Response, error) {
+	rsp, err := c.PostByokClustersClusterNameUpdateDeprecatedV2(ctx, clusterName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersClusterNameUpdateDeprecatedV2Response(rsp)
+}
+
+// PostByokClustersClusterNameUpgradeWithBodyWithResponse request with arbitrary body returning *PostByokClustersClusterNameUpgradeResponse
+func (c *ClientWithResponses) PostByokClustersClusterNameUpgradeWithBodyWithResponse(ctx context.Context, clusterName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpgradeResponse, error) {
+	rsp, err := c.PostByokClustersClusterNameUpgradeWithBody(ctx, clusterName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersClusterNameUpgradeResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostByokClustersClusterNameUpgradeWithResponse(ctx context.Context, clusterName string, body PostByokClustersClusterNameUpgradeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostByokClustersClusterNameUpgradeResponse, error) {
+	rsp, err := c.PostByokClustersClusterNameUpgrade(ctx, clusterName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostByokClustersClusterNameUpgradeResponse(rsp)
 }
 
 // GetTenantsWithResponse request returning *GetTenantsResponse
@@ -16176,6 +24530,128 @@ func (c *ClientWithResponses) GetTenantsNsIdWithResponse(ctx context.Context, ns
 		return nil, err
 	}
 	return ParseGetTenantsNsIdResponse(rsp)
+}
+
+// GetTenantsNsIdAlertIncidentsWithResponse request returning *GetTenantsNsIdAlertIncidentsResponse
+func (c *ClientWithResponses) GetTenantsNsIdAlertIncidentsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertIncidentsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertIncidentsResponse, error) {
+	rsp, err := c.GetTenantsNsIdAlertIncidents(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdAlertIncidentsResponse(rsp)
+}
+
+// GetTenantsNsIdAlertIncidentsIncidentIdWithResponse request returning *GetTenantsNsIdAlertIncidentsIncidentIdResponse
+func (c *ClientWithResponses) GetTenantsNsIdAlertIncidentsIncidentIdWithResponse(ctx context.Context, nsId openapi_types.UUID, incidentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertIncidentsIncidentIdResponse, error) {
+	rsp, err := c.GetTenantsNsIdAlertIncidentsIncidentId(ctx, nsId, incidentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdAlertIncidentsIncidentIdResponse(rsp)
+}
+
+// GetTenantsNsIdAlertRulesWithResponse request returning *GetTenantsNsIdAlertRulesResponse
+func (c *ClientWithResponses) GetTenantsNsIdAlertRulesWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdAlertRulesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertRulesResponse, error) {
+	rsp, err := c.GetTenantsNsIdAlertRules(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdAlertRulesResponse(rsp)
+}
+
+// PatchTenantsNsIdAlertRulesAlertRuleKeyWithBodyWithResponse request with arbitrary body returning *PatchTenantsNsIdAlertRulesAlertRuleKeyResponse
+func (c *ClientWithResponses) PatchTenantsNsIdAlertRulesAlertRuleKeyWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyResponse, error) {
+	rsp, err := c.PatchTenantsNsIdAlertRulesAlertRuleKeyWithBody(ctx, nsId, alertRuleKey, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchTenantsNsIdAlertRulesAlertRuleKeyResponse(rsp)
+}
+
+func (c *ClientWithResponses) PatchTenantsNsIdAlertRulesAlertRuleKeyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyResponse, error) {
+	rsp, err := c.PatchTenantsNsIdAlertRulesAlertRuleKey(ctx, nsId, alertRuleKey, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchTenantsNsIdAlertRulesAlertRuleKeyResponse(rsp)
+}
+
+// DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse request returning *DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesParams, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides(ctx, nsId, alertRuleKey, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse(rsp)
+}
+
+// PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBodyWithResponse request with arbitrary body returning *PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse
+func (c *ClientWithResponses) PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error) {
+	rsp, err := c.PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithBody(ctx, nsId, alertRuleKey, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse(rsp)
+}
+
+func (c *ClientWithResponses) PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error) {
+	rsp, err := c.PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverrides(ctx, nsId, alertRuleKey, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse(rsp)
+}
+
+// GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse request returning *GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse
+func (c *ClientWithResponses) GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, params *GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error) {
+	rsp, err := c.GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings(ctx, nsId, alertRuleKey, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse(rsp)
+}
+
+// PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse
+func (c *ClientWithResponses) PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error) {
+	rsp, err := c.PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithBody(ctx, nsId, alertRuleKey, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, body PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error) {
+	rsp, err := c.PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindings(ctx, nsId, alertRuleKey, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse(rsp)
+}
+
+// DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdWithResponse request returning *DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdWithResponse(ctx context.Context, nsId openapi_types.UUID, alertRuleKey string, recipientId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientId(ctx, nsId, alertRuleKey, recipientId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse(rsp)
+}
+
+// PostTenantsNsIdAliasWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdAliasResponse
+func (c *ClientWithResponses) PostTenantsNsIdAliasWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAliasResponse, error) {
+	rsp, err := c.PostTenantsNsIdAliasWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdAliasResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdAliasWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdAliasJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdAliasResponse, error) {
+	rsp, err := c.PostTenantsNsIdAlias(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdAliasResponse(rsp)
 }
 
 // DeleteTenantsNsIdAllowedIamRolesWithBodyWithResponse request with arbitrary body returning *DeleteTenantsNsIdAllowedIamRolesResponse
@@ -16257,6 +24733,15 @@ func (c *ClientWithResponses) DeleteTenantsNsIdBackupsSnapshotIdWithResponse(ctx
 	return ParseDeleteTenantsNsIdBackupsSnapshotIdResponse(rsp)
 }
 
+// PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedWithResponse request returning *PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse
+func (c *ClientWithResponses) PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecated(ctx, nsId, snapshotId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse(rsp)
+}
+
 // PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreWithResponse request returning *PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse
 func (c *ClientWithResponses) PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreWithResponse(ctx context.Context, nsId openapi_types.UUID, snapshotId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse, error) {
 	rsp, err := c.PostTenantsNsIdBackupsSnapshotIdInPlaceRestore(ctx, nsId, snapshotId, reqEditors...)
@@ -16318,6 +24803,59 @@ func (c *ClientWithResponses) GetTenantsNsIdCloudMetaWithResponse(ctx context.Co
 	return ParseGetTenantsNsIdCloudMetaResponse(rsp)
 }
 
+// DeleteTenantsNsIdComputeAutoscalingWithResponse request returning *DeleteTenantsNsIdComputeAutoscalingResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdComputeAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdComputeAutoscalingResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdComputeAutoscaling(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdComputeAutoscalingResponse(rsp)
+}
+
+// GetTenantsNsIdComputeAutoscalingWithResponse request returning *GetTenantsNsIdComputeAutoscalingResponse
+func (c *ClientWithResponses) GetTenantsNsIdComputeAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeAutoscalingResponse, error) {
+	rsp, err := c.GetTenantsNsIdComputeAutoscaling(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdComputeAutoscalingResponse(rsp)
+}
+
+// PostTenantsNsIdComputeAutoscalingWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdComputeAutoscalingResponse
+func (c *ClientWithResponses) PostTenantsNsIdComputeAutoscalingWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingResponse, error) {
+	rsp, err := c.PostTenantsNsIdComputeAutoscalingWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdComputeAutoscalingResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdComputeAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdComputeAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingResponse, error) {
+	rsp, err := c.PostTenantsNsIdComputeAutoscaling(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdComputeAutoscalingResponse(rsp)
+}
+
+// PostTenantsNsIdComputeAutoscalingDisableWithResponse request returning *PostTenantsNsIdComputeAutoscalingDisableResponse
+func (c *ClientWithResponses) PostTenantsNsIdComputeAutoscalingDisableWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingDisableResponse, error) {
+	rsp, err := c.PostTenantsNsIdComputeAutoscalingDisable(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdComputeAutoscalingDisableResponse(rsp)
+}
+
+// PostTenantsNsIdComputeAutoscalingEnableWithResponse request returning *PostTenantsNsIdComputeAutoscalingEnableResponse
+func (c *ClientWithResponses) PostTenantsNsIdComputeAutoscalingEnableWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PostTenantsNsIdComputeAutoscalingEnableResponse, error) {
+	rsp, err := c.PostTenantsNsIdComputeAutoscalingEnable(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdComputeAutoscalingEnableResponse(rsp)
+}
+
 // GetTenantsNsIdComputeCacheWithResponse request returning *GetTenantsNsIdComputeCacheResponse
 func (c *ClientWithResponses) GetTenantsNsIdComputeCacheWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdComputeCacheResponse, error) {
 	rsp, err := c.GetTenantsNsIdComputeCache(ctx, nsId, reqEditors...)
@@ -16360,6 +24898,32 @@ func (c *ClientWithResponses) GetTenantsNsIdComputeCacheRecommendationWithRespon
 		return nil, err
 	}
 	return ParseGetTenantsNsIdComputeCacheRecommendationResponse(rsp)
+}
+
+// GetTenantsNsIdConfigWithResponse request returning *GetTenantsNsIdConfigResponse
+func (c *ClientWithResponses) GetTenantsNsIdConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdConfigResponse, error) {
+	rsp, err := c.GetTenantsNsIdConfig(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdConfigResponse(rsp)
+}
+
+// PostTenantsNsIdConfigWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdConfigResponse
+func (c *ClientWithResponses) PostTenantsNsIdConfigWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdConfigResponse, error) {
+	rsp, err := c.PostTenantsNsIdConfigWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdConfigResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdConfigResponse, error) {
+	rsp, err := c.PostTenantsNsIdConfig(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdConfigResponse(rsp)
 }
 
 // GetTenantsNsIdDatabaseUsersWithResponse request returning *GetTenantsNsIdDatabaseUsersResponse
@@ -16481,6 +25045,33 @@ func (c *ClientWithResponses) PostTenantsNsIdDatabasesDatabaseNameExecuteSQLWith
 		return nil, err
 	}
 	return ParsePostTenantsNsIdDatabasesDatabaseNameExecuteSQLResponse(rsp)
+}
+
+// GetTenantsNsIdDatabasesDatabaseNameIndexesWithResponse request returning *GetTenantsNsIdDatabasesDatabaseNameIndexesResponse
+func (c *ClientWithResponses) GetTenantsNsIdDatabasesDatabaseNameIndexesWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameIndexesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameIndexesResponse, error) {
+	rsp, err := c.GetTenantsNsIdDatabasesDatabaseNameIndexes(ctx, nsId, databaseName, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdDatabasesDatabaseNameIndexesResponse(rsp)
+}
+
+// DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse request returning *DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexName(ctx, nsId, databaseName, indexName, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse(rsp)
+}
+
+// GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse request returning *GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse
+func (c *ClientWithResponses) GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, indexName string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse, error) {
+	rsp, err := c.GetTenantsNsIdDatabasesDatabaseNameIndexesIndexName(ctx, nsId, databaseName, indexName, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse(rsp)
 }
 
 // GetTenantsNsIdDatabasesDatabaseNameMatviewsWithResponse request returning *GetTenantsNsIdDatabasesDatabaseNameMatviewsResponse
@@ -16859,6 +25450,33 @@ func (c *ClientWithResponses) GetTenantsNsIdDatabasesDatabaseNameTablesTableName
 	return ParseGetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputResponse(rsp)
 }
 
+// GetTenantsNsIdDatabasesDatabaseNameViewsWithResponse request returning *GetTenantsNsIdDatabasesDatabaseNameViewsResponse
+func (c *ClientWithResponses) GetTenantsNsIdDatabasesDatabaseNameViewsWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, params *GetTenantsNsIdDatabasesDatabaseNameViewsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameViewsResponse, error) {
+	rsp, err := c.GetTenantsNsIdDatabasesDatabaseNameViews(ctx, nsId, databaseName, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdDatabasesDatabaseNameViewsResponse(rsp)
+}
+
+// DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse request returning *DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdDatabasesDatabaseNameViewsViewName(ctx, nsId, databaseName, viewName, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse(rsp)
+}
+
+// GetTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse request returning *GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse
+func (c *ClientWithResponses) GetTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse(ctx context.Context, nsId openapi_types.UUID, databaseName string, viewName string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse, error) {
+	rsp, err := c.GetTenantsNsIdDatabasesDatabaseNameViewsViewName(ctx, nsId, databaseName, viewName, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse(rsp)
+}
+
 // GetTenantsNsIdEndpointWithResponse request returning *GetTenantsNsIdEndpointResponse
 func (c *ClientWithResponses) GetTenantsNsIdEndpointWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdEndpointResponse, error) {
 	rsp, err := c.GetTenantsNsIdEndpoint(ctx, nsId, reqEditors...)
@@ -16866,6 +25484,24 @@ func (c *ClientWithResponses) GetTenantsNsIdEndpointWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetTenantsNsIdEndpointResponse(rsp)
+}
+
+// GetTenantsNsIdErrorLogsWithResponse request returning *GetTenantsNsIdErrorLogsResponse
+func (c *ClientWithResponses) GetTenantsNsIdErrorLogsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdErrorLogsResponse, error) {
+	rsp, err := c.GetTenantsNsIdErrorLogs(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdErrorLogsResponse(rsp)
+}
+
+// GetTenantsNsIdErrorLogsCountWithResponse request returning *GetTenantsNsIdErrorLogsCountResponse
+func (c *ClientWithResponses) GetTenantsNsIdErrorLogsCountWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdErrorLogsCountParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdErrorLogsCountResponse, error) {
+	rsp, err := c.GetTenantsNsIdErrorLogsCount(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdErrorLogsCountResponse(rsp)
 }
 
 // DeleteTenantsNsIdExtensionsCompactionWithResponse request returning *DeleteTenantsNsIdExtensionsCompactionResponse
@@ -16920,6 +25556,58 @@ func (c *ClientWithResponses) PutTenantsNsIdExtensionsCompactionWithResponse(ctx
 	return ParsePutTenantsNsIdExtensionsCompactionResponse(rsp)
 }
 
+// DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse request returning *DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp)
+}
+
+// GetTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse request returning *GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse
+func (c *ClientWithResponses) GetTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	rsp, err := c.GetTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp)
+}
+
+// PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse
+func (c *ClientWithResponses) PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp)
+}
+
+// PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse request with arbitrary body returning *PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse
+func (c *ClientWithResponses) PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	rsp, err := c.PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsIcebergCompactionDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	rsp, err := c.PutTenantsNsIdExtensionsIcebergCompactionDeprecated(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp)
+}
+
 // DeleteTenantsNsIdExtensionsIcebergCompactionWithResponse request returning *DeleteTenantsNsIdExtensionsIcebergCompactionResponse
 func (c *ClientWithResponses) DeleteTenantsNsIdExtensionsIcebergCompactionWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsIcebergCompactionResponse, error) {
 	rsp, err := c.DeleteTenantsNsIdExtensionsIcebergCompaction(ctx, nsId, reqEditors...)
@@ -16972,6 +25660,58 @@ func (c *ClientWithResponses) PutTenantsNsIdExtensionsIcebergCompactionWithRespo
 	return ParsePutTenantsNsIdExtensionsIcebergCompactionResponse(rsp)
 }
 
+// DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse request returning *DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp)
+}
+
+// GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse request returning *GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse
+func (c *ClientWithResponses) GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	rsp, err := c.GetTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx, nsId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp)
+}
+
+// PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse
+func (c *ClientWithResponses) PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp)
+}
+
+// PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse request with arbitrary body returning *PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse
+func (c *ClientWithResponses) PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	rsp, err := c.PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	rsp, err := c.PutTenantsNsIdExtensionsServerlessBackfillingDeprecated(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp)
+}
+
 // DeleteTenantsNsIdExtensionsServerlessBackfillingWithResponse request returning *DeleteTenantsNsIdExtensionsServerlessBackfillingResponse
 func (c *ClientWithResponses) DeleteTenantsNsIdExtensionsServerlessBackfillingWithResponse(ctx context.Context, nsId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdExtensionsServerlessBackfillingResponse, error) {
 	rsp, err := c.DeleteTenantsNsIdExtensionsServerlessBackfilling(ctx, nsId, reqEditors...)
@@ -17022,6 +25762,136 @@ func (c *ClientWithResponses) PutTenantsNsIdExtensionsServerlessBackfillingWithR
 		return nil, err
 	}
 	return ParsePutTenantsNsIdExtensionsServerlessBackfillingResponse(rsp)
+}
+
+// GetTenantsNsIdLokiApiV1LabelLabelNameValuesWithResponse request returning *GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse
+func (c *ClientWithResponses) GetTenantsNsIdLokiApiV1LabelLabelNameValuesWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, params *GetTenantsNsIdLokiApiV1LabelLabelNameValuesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error) {
+	rsp, err := c.GetTenantsNsIdLokiApiV1LabelLabelNameValues(ctx, nsId, labelName, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse(rsp)
+}
+
+// PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithBody(ctx, nsId, labelName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, labelName string, body PostTenantsNsIdLokiApiV1LabelLabelNameValuesFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithFormdataBody(ctx, nsId, labelName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse(rsp)
+}
+
+// GetTenantsNsIdLokiApiV1LabelsWithResponse request returning *GetTenantsNsIdLokiApiV1LabelsResponse
+func (c *ClientWithResponses) GetTenantsNsIdLokiApiV1LabelsWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1LabelsParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1LabelsResponse, error) {
+	rsp, err := c.GetTenantsNsIdLokiApiV1Labels(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdLokiApiV1LabelsResponse(rsp)
+}
+
+// PostTenantsNsIdLokiApiV1LabelsWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdLokiApiV1LabelsResponse
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1LabelsWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelsResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1LabelsWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1LabelsResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1LabelsWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1LabelsFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1LabelsResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1LabelsWithFormdataBody(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1LabelsResponse(rsp)
+}
+
+// GetTenantsNsIdLokiApiV1QueryWithResponse request returning *GetTenantsNsIdLokiApiV1QueryResponse
+func (c *ClientWithResponses) GetTenantsNsIdLokiApiV1QueryWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1QueryResponse, error) {
+	rsp, err := c.GetTenantsNsIdLokiApiV1Query(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdLokiApiV1QueryResponse(rsp)
+}
+
+// PostTenantsNsIdLokiApiV1QueryWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdLokiApiV1QueryResponse
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1QueryWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1QueryWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1QueryResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1QueryWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1QueryWithFormdataBody(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1QueryResponse(rsp)
+}
+
+// GetTenantsNsIdLokiApiV1QueryRangeWithResponse request returning *GetTenantsNsIdLokiApiV1QueryRangeResponse
+func (c *ClientWithResponses) GetTenantsNsIdLokiApiV1QueryRangeWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1QueryRangeParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1QueryRangeResponse, error) {
+	rsp, err := c.GetTenantsNsIdLokiApiV1QueryRange(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdLokiApiV1QueryRangeResponse(rsp)
+}
+
+// PostTenantsNsIdLokiApiV1QueryRangeWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdLokiApiV1QueryRangeResponse
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1QueryRangeWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryRangeResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1QueryRangeWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1QueryRangeResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1QueryRangeWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1QueryRangeFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1QueryRangeResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1QueryRangeWithFormdataBody(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1QueryRangeResponse(rsp)
+}
+
+// GetTenantsNsIdLokiApiV1SeriesWithResponse request returning *GetTenantsNsIdLokiApiV1SeriesResponse
+func (c *ClientWithResponses) GetTenantsNsIdLokiApiV1SeriesWithResponse(ctx context.Context, nsId openapi_types.UUID, params *GetTenantsNsIdLokiApiV1SeriesParams, reqEditors ...RequestEditorFn) (*GetTenantsNsIdLokiApiV1SeriesResponse, error) {
+	rsp, err := c.GetTenantsNsIdLokiApiV1Series(ctx, nsId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdLokiApiV1SeriesResponse(rsp)
+}
+
+// PostTenantsNsIdLokiApiV1SeriesWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdLokiApiV1SeriesResponse
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1SeriesWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1SeriesResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1SeriesWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1SeriesResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdLokiApiV1SeriesWithFormdataBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdLokiApiV1SeriesFormdataRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdLokiApiV1SeriesResponse, error) {
+	rsp, err := c.PostTenantsNsIdLokiApiV1SeriesWithFormdataBody(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdLokiApiV1SeriesResponse(rsp)
 }
 
 // GetTenantsNsIdMaintenanceDetailsWithResponse request returning *GetTenantsNsIdMaintenanceDetailsResponse
@@ -17086,39 +25956,91 @@ func (c *ClientWithResponses) PostTenantsNsIdOauthTokenWithResponse(ctx context.
 	return ParsePostTenantsNsIdOauthTokenResponse(rsp)
 }
 
-// PostTenantsNsIdPrivatelinksWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdPrivatelinksResponse
-func (c *ClientWithResponses) PostTenantsNsIdPrivatelinksWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksResponse, error) {
-	rsp, err := c.PostTenantsNsIdPrivatelinksWithBody(ctx, nsId, contentType, body, reqEditors...)
+// PostTenantsNsIdPreviewConfigWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdPreviewConfigResponse
+func (c *ClientWithResponses) PostTenantsNsIdPreviewConfigWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPreviewConfigResponse, error) {
+	rsp, err := c.PostTenantsNsIdPreviewConfigWithBody(ctx, nsId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostTenantsNsIdPrivatelinksResponse(rsp)
+	return ParsePostTenantsNsIdPreviewConfigResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostTenantsNsIdPrivatelinksWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksResponse, error) {
-	rsp, err := c.PostTenantsNsIdPrivatelinks(ctx, nsId, body, reqEditors...)
+func (c *ClientWithResponses) PostTenantsNsIdPreviewConfigWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPreviewConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPreviewConfigResponse, error) {
+	rsp, err := c.PostTenantsNsIdPreviewConfig(ctx, nsId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostTenantsNsIdPrivatelinksResponse(rsp)
+	return ParsePostTenantsNsIdPreviewConfigResponse(rsp)
 }
 
-// DeleteTenantsNsIdPrivatelinksPrivateLinkIdWithResponse request returning *DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse
-func (c *ClientWithResponses) DeleteTenantsNsIdPrivatelinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse, error) {
-	rsp, err := c.DeleteTenantsNsIdPrivatelinksPrivateLinkId(ctx, nsId, privateLinkId, reqEditors...)
+// PostTenantsNsIdPrivateLinksWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdPrivateLinksResponse
+func (c *ClientWithResponses) PostTenantsNsIdPrivateLinksWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivateLinksResponse, error) {
+	rsp, err := c.PostTenantsNsIdPrivateLinksWithBody(ctx, nsId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse(rsp)
+	return ParsePostTenantsNsIdPrivateLinksResponse(rsp)
 }
 
-// GetTenantsNsIdPrivatelinksPrivateLinkIdWithResponse request returning *GetTenantsNsIdPrivatelinksPrivateLinkIdResponse
-func (c *ClientWithResponses) GetTenantsNsIdPrivatelinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrivatelinksPrivateLinkIdResponse, error) {
-	rsp, err := c.GetTenantsNsIdPrivatelinksPrivateLinkId(ctx, nsId, privateLinkId, reqEditors...)
+func (c *ClientWithResponses) PostTenantsNsIdPrivateLinksWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivateLinksJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivateLinksResponse, error) {
+	rsp, err := c.PostTenantsNsIdPrivateLinks(ctx, nsId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetTenantsNsIdPrivatelinksPrivateLinkIdResponse(rsp)
+	return ParsePostTenantsNsIdPrivateLinksResponse(rsp)
+}
+
+// DeleteTenantsNsIdPrivateLinksPrivateLinkIdWithResponse request returning *DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdPrivateLinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdPrivateLinksPrivateLinkId(ctx, nsId, privateLinkId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse(rsp)
+}
+
+// GetTenantsNsIdPrivateLinksPrivateLinkIdWithResponse request returning *GetTenantsNsIdPrivateLinksPrivateLinkIdResponse
+func (c *ClientWithResponses) GetTenantsNsIdPrivateLinksPrivateLinkIdWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrivateLinksPrivateLinkIdResponse, error) {
+	rsp, err := c.GetTenantsNsIdPrivateLinksPrivateLinkId(ctx, nsId, privateLinkId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdPrivateLinksPrivateLinkIdResponse(rsp)
+}
+
+// PostTenantsNsIdPrivatelinksDeprecatedWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdPrivatelinksDeprecatedResponse
+func (c *ClientWithResponses) PostTenantsNsIdPrivatelinksDeprecatedWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdPrivatelinksDeprecatedWithBody(ctx, nsId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdPrivatelinksDeprecatedResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdPrivatelinksDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, body PostTenantsNsIdPrivatelinksDeprecatedJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdPrivatelinksDeprecatedResponse, error) {
+	rsp, err := c.PostTenantsNsIdPrivatelinksDeprecated(ctx, nsId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdPrivatelinksDeprecatedResponse(rsp)
+}
+
+// DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse request returning *DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecated(ctx, nsId, privateLinkId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse(rsp)
+}
+
+// GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse request returning *GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse
+func (c *ClientWithResponses) GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse(ctx context.Context, nsId openapi_types.UUID, privateLinkId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse, error) {
+	rsp, err := c.GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecated(ctx, nsId, privateLinkId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse(rsp)
 }
 
 // GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesWithResponse request returning *GetTenantsNsIdPrometheusApiV1LabelLabelNameValuesResponse
@@ -17293,6 +26215,59 @@ func (c *ClientWithResponses) PostTenantsNsIdResourceGroupsResourceGroupWithResp
 		return nil, err
 	}
 	return ParsePostTenantsNsIdResourceGroupsResourceGroupResponse(rsp)
+}
+
+// DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse request returning *DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse
+func (c *ClientWithResponses) DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	rsp, err := c.DeleteTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx, nsId, resourceGroup, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp)
+}
+
+// GetTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse request returning *GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse
+func (c *ClientWithResponses) GetTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	rsp, err := c.GetTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx, nsId, resourceGroup, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp)
+}
+
+// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBodyWithResponse request with arbitrary body returning *PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse
+func (c *ClientWithResponses) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBodyWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	rsp, err := c.PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithBody(ctx, nsId, resourceGroup, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, body PostTenantsNsIdResourceGroupsResourceGroupAutoscalingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	rsp, err := c.PostTenantsNsIdResourceGroupsResourceGroupAutoscaling(ctx, nsId, resourceGroup, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp)
+}
+
+// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableWithResponse request returning *PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse
+func (c *ClientWithResponses) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse, error) {
+	rsp, err := c.PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisable(ctx, nsId, resourceGroup, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse(rsp)
+}
+
+// PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableWithResponse request returning *PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse
+func (c *ClientWithResponses) PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableWithResponse(ctx context.Context, nsId openapi_types.UUID, resourceGroup string, reqEditors ...RequestEditorFn) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse, error) {
+	rsp, err := c.PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnable(ctx, nsId, resourceGroup, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse(rsp)
 }
 
 // PostTenantsNsIdRestartWithResponse request returning *PostTenantsNsIdRestartResponse
@@ -17535,6 +26510,298 @@ func (c *ClientWithResponses) PostTenantsNsIdUpdateVersionWithResponse(ctx conte
 	return ParsePostTenantsNsIdUpdateVersionResponse(rsp)
 }
 
+// ParseGetByocClustersDeprecatedResponse parses an HTTP response from a GetByocClustersDeprecatedWithResponse call
+func ParseGetByocClustersDeprecatedResponse(rsp *http.Response) (*GetByocClustersDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByocClustersDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedClustersPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByocClustersDeprecatedResponse parses an HTTP response from a PostByocClustersDeprecatedWithResponse call
+func ParsePostByocClustersDeprecatedResponse(rsp *http.Response) (*PostByocClustersDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByocClustersDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteByocClustersNameDeprecatedResponse parses an HTTP response from a DeleteByocClustersNameDeprecatedWithResponse call
+func ParseDeleteByocClustersNameDeprecatedResponse(rsp *http.Response) (*DeleteByocClustersNameDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteByocClustersNameDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetByocClustersNameDeprecatedResponse parses an HTTP response from a GetByocClustersNameDeprecatedWithResponse call
+func ParseGetByocClustersNameDeprecatedResponse(rsp *http.Response) (*GetByocClustersNameDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByocClustersNameDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutByocClustersNameDeprecatedResponse parses an HTTP response from a PutByocClustersNameDeprecatedWithResponse call
+func ParsePutByocClustersNameDeprecatedResponse(rsp *http.Response) (*PutByocClustersNameDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutByocClustersNameDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByocClustersNameManualUpdateDeprecatedResponse parses an HTTP response from a PostByocClustersNameManualUpdateDeprecatedWithResponse call
+func ParsePostByocClustersNameManualUpdateDeprecatedResponse(rsp *http.Response) (*PostByocClustersNameManualUpdateDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByocClustersNameManualUpdateDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByocClustersNameTerminateDeprecatedResponse parses an HTTP response from a PostByocClustersNameTerminateDeprecatedWithResponse call
+func ParsePostByocClustersNameTerminateDeprecatedResponse(rsp *http.Response) (*PostByocClustersNameTerminateDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByocClustersNameTerminateDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByocClustersNameUpdateDeprecatedResponse parses an HTTP response from a PostByocClustersNameUpdateDeprecatedWithResponse call
+func ParsePostByocClustersNameUpdateDeprecatedResponse(rsp *http.Response) (*PostByocClustersNameUpdateDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByocClustersNameUpdateDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetByocClustersResponse parses an HTTP response from a GetByocClustersWithResponse call
 func ParseGetByocClustersResponse(rsp *http.Response) (*GetByocClustersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -17601,15 +26868,15 @@ func ParsePostByocClustersResponse(rsp *http.Response) (*PostByocClustersRespons
 	return response, nil
 }
 
-// ParseDeleteByocClustersNameResponse parses an HTTP response from a DeleteByocClustersNameWithResponse call
-func ParseDeleteByocClustersNameResponse(rsp *http.Response) (*DeleteByocClustersNameResponse, error) {
+// ParseDeleteByocClustersClusterNameResponse parses an HTTP response from a DeleteByocClustersClusterNameWithResponse call
+func ParseDeleteByocClustersClusterNameResponse(rsp *http.Response) (*DeleteByocClustersClusterNameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteByocClustersNameResponse{
+	response := &DeleteByocClustersClusterNameResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17641,15 +26908,15 @@ func ParseDeleteByocClustersNameResponse(rsp *http.Response) (*DeleteByocCluster
 	return response, nil
 }
 
-// ParseGetByocClustersNameResponse parses an HTTP response from a GetByocClustersNameWithResponse call
-func ParseGetByocClustersNameResponse(rsp *http.Response) (*GetByocClustersNameResponse, error) {
+// ParseGetByocClustersClusterNameResponse parses an HTTP response from a GetByocClustersClusterNameWithResponse call
+func ParseGetByocClustersClusterNameResponse(rsp *http.Response) (*GetByocClustersClusterNameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetByocClustersNameResponse{
+	response := &GetByocClustersClusterNameResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17674,15 +26941,15 @@ func ParseGetByocClustersNameResponse(rsp *http.Response) (*GetByocClustersNameR
 	return response, nil
 }
 
-// ParsePutByocClustersNameResponse parses an HTTP response from a PutByocClustersNameWithResponse call
-func ParsePutByocClustersNameResponse(rsp *http.Response) (*PutByocClustersNameResponse, error) {
+// ParsePutByocClustersClusterNameResponse parses an HTTP response from a PutByocClustersClusterNameWithResponse call
+func ParsePutByocClustersClusterNameResponse(rsp *http.Response) (*PutByocClustersClusterNameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutByocClustersNameResponse{
+	response := &PutByocClustersClusterNameResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17714,15 +26981,15 @@ func ParsePutByocClustersNameResponse(rsp *http.Response) (*PutByocClustersNameR
 	return response, nil
 }
 
-// ParsePostByocClustersNameManualUpdateResponse parses an HTTP response from a PostByocClustersNameManualUpdateWithResponse call
-func ParsePostByocClustersNameManualUpdateResponse(rsp *http.Response) (*PostByocClustersNameManualUpdateResponse, error) {
+// ParsePostByocClustersClusterNameApplyUpgradeResponse parses an HTTP response from a PostByocClustersClusterNameApplyUpgradeWithResponse call
+func ParsePostByocClustersClusterNameApplyUpgradeResponse(rsp *http.Response) (*PostByocClustersClusterNameApplyUpgradeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostByocClustersNameManualUpdateResponse{
+	response := &PostByocClustersClusterNameApplyUpgradeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17754,15 +27021,55 @@ func ParsePostByocClustersNameManualUpdateResponse(rsp *http.Response) (*PostByo
 	return response, nil
 }
 
-// ParsePostByocClustersNameTerminateResponse parses an HTTP response from a PostByocClustersNameTerminateWithResponse call
-func ParsePostByocClustersNameTerminateResponse(rsp *http.Response) (*PostByocClustersNameTerminateResponse, error) {
+// ParsePostByocClustersClusterNameManualUpdateDeprecatedV2Response parses an HTTP response from a PostByocClustersClusterNameManualUpdateDeprecatedV2WithResponse call
+func ParsePostByocClustersClusterNameManualUpdateDeprecatedV2Response(rsp *http.Response) (*PostByocClustersClusterNameManualUpdateDeprecatedV2Response, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostByocClustersNameTerminateResponse{
+	response := &PostByocClustersClusterNameManualUpdateDeprecatedV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByocClustersClusterNameTerminateResponse parses an HTTP response from a PostByocClustersClusterNameTerminateWithResponse call
+func ParsePostByocClustersClusterNameTerminateResponse(rsp *http.Response) (*PostByocClustersClusterNameTerminateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByocClustersClusterNameTerminateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17787,15 +27094,347 @@ func ParsePostByocClustersNameTerminateResponse(rsp *http.Response) (*PostByocCl
 	return response, nil
 }
 
-// ParsePostByocClustersNameUpdateResponse parses an HTTP response from a PostByocClustersNameUpdateWithResponse call
-func ParsePostByocClustersNameUpdateResponse(rsp *http.Response) (*PostByocClustersNameUpdateResponse, error) {
+// ParsePostByocClustersClusterNameUpdateDeprecatedV2Response parses an HTTP response from a PostByocClustersClusterNameUpdateDeprecatedV2WithResponse call
+func ParsePostByocClustersClusterNameUpdateDeprecatedV2Response(rsp *http.Response) (*PostByocClustersClusterNameUpdateDeprecatedV2Response, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostByocClustersNameUpdateResponse{
+	response := &PostByocClustersClusterNameUpdateDeprecatedV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByocClustersClusterNameUpgradeResponse parses an HTTP response from a PostByocClustersClusterNameUpgradeWithResponse call
+func ParsePostByocClustersClusterNameUpgradeResponse(rsp *http.Response) (*PostByocClustersClusterNameUpgradeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByocClustersClusterNameUpgradeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetByokClustersDeprecatedResponse parses an HTTP response from a GetByokClustersDeprecatedWithResponse call
+func ParseGetByokClustersDeprecatedResponse(rsp *http.Response) (*GetByokClustersDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByokClustersDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedClustersPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersDeprecatedResponse parses an HTTP response from a PostByokClustersDeprecatedWithResponse call
+func ParsePostByokClustersDeprecatedResponse(rsp *http.Response) (*PostByokClustersDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteByokClustersNameDeprecatedResponse parses an HTTP response from a DeleteByokClustersNameDeprecatedWithResponse call
+func ParseDeleteByokClustersNameDeprecatedResponse(rsp *http.Response) (*DeleteByokClustersNameDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteByokClustersNameDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetByokClustersNameDeprecatedResponse parses an HTTP response from a GetByokClustersNameDeprecatedWithResponse call
+func ParseGetByokClustersNameDeprecatedResponse(rsp *http.Response) (*GetByokClustersNameDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetByokClustersNameDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ManagedCluster
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutByokClustersNameDeprecatedResponse parses an HTTP response from a PutByokClustersNameDeprecatedWithResponse call
+func ParsePutByokClustersNameDeprecatedResponse(rsp *http.Response) (*PutByokClustersNameDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutByokClustersNameDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersNameManualUpdateDeprecatedResponse parses an HTTP response from a PostByokClustersNameManualUpdateDeprecatedWithResponse call
+func ParsePostByokClustersNameManualUpdateDeprecatedResponse(rsp *http.Response) (*PostByokClustersNameManualUpdateDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersNameManualUpdateDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersNameTerminateDeprecatedResponse parses an HTTP response from a PostByokClustersNameTerminateDeprecatedWithResponse call
+func ParsePostByokClustersNameTerminateDeprecatedResponse(rsp *http.Response) (*PostByokClustersNameTerminateDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersNameTerminateDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersNameUpdateDeprecatedResponse parses an HTTP response from a PostByokClustersNameUpdateDeprecatedWithResponse call
+func ParsePostByokClustersNameUpdateDeprecatedResponse(rsp *http.Response) (*PostByokClustersNameUpdateDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersNameUpdateDeprecatedResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17893,15 +27532,15 @@ func ParsePostByokClustersResponse(rsp *http.Response) (*PostByokClustersRespons
 	return response, nil
 }
 
-// ParseDeleteByokClustersNameResponse parses an HTTP response from a DeleteByokClustersNameWithResponse call
-func ParseDeleteByokClustersNameResponse(rsp *http.Response) (*DeleteByokClustersNameResponse, error) {
+// ParseDeleteByokClustersClusterNameResponse parses an HTTP response from a DeleteByokClustersClusterNameWithResponse call
+func ParseDeleteByokClustersClusterNameResponse(rsp *http.Response) (*DeleteByokClustersClusterNameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteByokClustersNameResponse{
+	response := &DeleteByokClustersClusterNameResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17933,15 +27572,15 @@ func ParseDeleteByokClustersNameResponse(rsp *http.Response) (*DeleteByokCluster
 	return response, nil
 }
 
-// ParseGetByokClustersNameResponse parses an HTTP response from a GetByokClustersNameWithResponse call
-func ParseGetByokClustersNameResponse(rsp *http.Response) (*GetByokClustersNameResponse, error) {
+// ParseGetByokClustersClusterNameResponse parses an HTTP response from a GetByokClustersClusterNameWithResponse call
+func ParseGetByokClustersClusterNameResponse(rsp *http.Response) (*GetByokClustersClusterNameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetByokClustersNameResponse{
+	response := &GetByokClustersClusterNameResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -17966,15 +27605,15 @@ func ParseGetByokClustersNameResponse(rsp *http.Response) (*GetByokClustersNameR
 	return response, nil
 }
 
-// ParsePutByokClustersNameResponse parses an HTTP response from a PutByokClustersNameWithResponse call
-func ParsePutByokClustersNameResponse(rsp *http.Response) (*PutByokClustersNameResponse, error) {
+// ParsePutByokClustersClusterNameResponse parses an HTTP response from a PutByokClustersClusterNameWithResponse call
+func ParsePutByokClustersClusterNameResponse(rsp *http.Response) (*PutByokClustersClusterNameResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutByokClustersNameResponse{
+	response := &PutByokClustersClusterNameResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -18006,15 +27645,15 @@ func ParsePutByokClustersNameResponse(rsp *http.Response) (*PutByokClustersNameR
 	return response, nil
 }
 
-// ParsePostByokClustersNameManualUpdateResponse parses an HTTP response from a PostByokClustersNameManualUpdateWithResponse call
-func ParsePostByokClustersNameManualUpdateResponse(rsp *http.Response) (*PostByokClustersNameManualUpdateResponse, error) {
+// ParsePostByokClustersClusterNameApplyUpgradeResponse parses an HTTP response from a PostByokClustersClusterNameApplyUpgradeWithResponse call
+func ParsePostByokClustersClusterNameApplyUpgradeResponse(rsp *http.Response) (*PostByokClustersClusterNameApplyUpgradeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostByokClustersNameManualUpdateResponse{
+	response := &PostByokClustersClusterNameApplyUpgradeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -18046,15 +27685,55 @@ func ParsePostByokClustersNameManualUpdateResponse(rsp *http.Response) (*PostByo
 	return response, nil
 }
 
-// ParsePostByokClustersNameTerminateResponse parses an HTTP response from a PostByokClustersNameTerminateWithResponse call
-func ParsePostByokClustersNameTerminateResponse(rsp *http.Response) (*PostByokClustersNameTerminateResponse, error) {
+// ParsePostByokClustersClusterNameManualUpdateDeprecatedV2Response parses an HTTP response from a PostByokClustersClusterNameManualUpdateDeprecatedV2WithResponse call
+func ParsePostByokClustersClusterNameManualUpdateDeprecatedV2Response(rsp *http.Response) (*PostByokClustersClusterNameManualUpdateDeprecatedV2Response, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostByokClustersNameTerminateResponse{
+	response := &PostByokClustersClusterNameManualUpdateDeprecatedV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersClusterNameTerminateResponse parses an HTTP response from a PostByokClustersClusterNameTerminateWithResponse call
+func ParsePostByokClustersClusterNameTerminateResponse(rsp *http.Response) (*PostByokClustersClusterNameTerminateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersClusterNameTerminateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -18079,15 +27758,55 @@ func ParsePostByokClustersNameTerminateResponse(rsp *http.Response) (*PostByokCl
 	return response, nil
 }
 
-// ParsePostByokClustersNameUpdateResponse parses an HTTP response from a PostByokClustersNameUpdateWithResponse call
-func ParsePostByokClustersNameUpdateResponse(rsp *http.Response) (*PostByokClustersNameUpdateResponse, error) {
+// ParsePostByokClustersClusterNameUpdateDeprecatedV2Response parses an HTTP response from a PostByokClustersClusterNameUpdateDeprecatedV2WithResponse call
+func ParsePostByokClustersClusterNameUpdateDeprecatedV2Response(rsp *http.Response) (*PostByokClustersClusterNameUpdateDeprecatedV2Response, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostByokClustersNameUpdateResponse{
+	response := &PostByokClustersClusterNameUpdateDeprecatedV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostByokClustersClusterNameUpgradeResponse parses an HTTP response from a PostByokClustersClusterNameUpgradeWithResponse call
+func ParsePostByokClustersClusterNameUpgradeResponse(rsp *http.Response) (*PostByokClustersClusterNameUpgradeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostByokClustersClusterNameUpgradeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -18245,6 +27964,385 @@ func ParseGetTenantsNsIdResponse(rsp *http.Response) (*GetTenantsNsIdResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdAlertIncidentsResponse parses an HTTP response from a GetTenantsNsIdAlertIncidentsWithResponse call
+func ParseGetTenantsNsIdAlertIncidentsResponse(rsp *http.Response) (*GetTenantsNsIdAlertIncidentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdAlertIncidentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertIncidentPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdAlertIncidentsIncidentIdResponse parses an HTTP response from a GetTenantsNsIdAlertIncidentsIncidentIdWithResponse call
+func ParseGetTenantsNsIdAlertIncidentsIncidentIdResponse(rsp *http.Response) (*GetTenantsNsIdAlertIncidentsIncidentIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdAlertIncidentsIncidentIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertIncident
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdAlertRulesResponse parses an HTTP response from a GetTenantsNsIdAlertRulesWithResponse call
+func ParseGetTenantsNsIdAlertRulesResponse(rsp *http.Response) (*GetTenantsNsIdAlertRulesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdAlertRulesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRulePagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchTenantsNsIdAlertRulesAlertRuleKeyResponse parses an HTTP response from a PatchTenantsNsIdAlertRulesAlertRuleKeyWithResponse call
+func ParsePatchTenantsNsIdAlertRulesAlertRuleKeyResponse(rsp *http.Response) (*PatchTenantsNsIdAlertRulesAlertRuleKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchTenantsNsIdAlertRulesAlertRuleKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRule
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse parses an HTTP response from a DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse call
+func ParseDeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse(rsp *http.Response) (*DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRule
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse parses an HTTP response from a PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesWithResponse call
+func ParsePatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse(rsp *http.Response) (*PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchTenantsNsIdAlertRulesAlertRuleKeyParameterOverridesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRule
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse parses an HTTP response from a GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse call
+func ParseGetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse(rsp *http.Response) (*GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRuleRecipientBindingPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse parses an HTTP response from a PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsWithResponse call
+func ParsePostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse(rsp *http.Response) (*PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRuleRecipientBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse parses an HTTP response from a DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdWithResponse call
+func ParseDeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse(rsp *http.Response) (*DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdAlertRulesAlertRuleKeyRecipientBindingsRecipientIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdAliasResponse parses an HTTP response from a PostTenantsNsIdAliasWithResponse call
+func ParsePostTenantsNsIdAliasResponse(rsp *http.Response) (*PostTenantsNsIdAliasResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdAliasResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tenant
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
@@ -18482,6 +28580,22 @@ func ParseDeleteTenantsNsIdBackupsSnapshotIdResponse(rsp *http.Response) (*Delet
 	return response, nil
 }
 
+// ParsePostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse parses an HTTP response from a PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedWithResponse call
+func ParsePostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse(rsp *http.Response) (*PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParsePostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse parses an HTTP response from a PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreWithResponse call
 func ParsePostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse(rsp *http.Response) (*PostTenantsNsIdBackupsSnapshotIdInPlaceRestoreResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -18607,6 +28721,199 @@ func ParseGetTenantsNsIdCloudMetaResponse(rsp *http.Response) (*GetTenantsNsIdCl
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdComputeAutoscalingResponse parses an HTTP response from a DeleteTenantsNsIdComputeAutoscalingWithResponse call
+func ParseDeleteTenantsNsIdComputeAutoscalingResponse(rsp *http.Response) (*DeleteTenantsNsIdComputeAutoscalingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdComputeAutoscalingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdComputeAutoscalingResponse parses an HTTP response from a GetTenantsNsIdComputeAutoscalingWithResponse call
+func ParseGetTenantsNsIdComputeAutoscalingResponse(rsp *http.Response) (*GetTenantsNsIdComputeAutoscalingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdComputeAutoscalingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AutoscalingConfig
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdComputeAutoscalingResponse parses an HTTP response from a PostTenantsNsIdComputeAutoscalingWithResponse call
+func ParsePostTenantsNsIdComputeAutoscalingResponse(rsp *http.Response) (*PostTenantsNsIdComputeAutoscalingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdComputeAutoscalingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdComputeAutoscalingDisableResponse parses an HTTP response from a PostTenantsNsIdComputeAutoscalingDisableWithResponse call
+func ParsePostTenantsNsIdComputeAutoscalingDisableResponse(rsp *http.Response) (*PostTenantsNsIdComputeAutoscalingDisableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdComputeAutoscalingDisableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdComputeAutoscalingEnableResponse parses an HTTP response from a PostTenantsNsIdComputeAutoscalingEnableWithResponse call
+func ParsePostTenantsNsIdComputeAutoscalingEnableResponse(rsp *http.Response) (*PostTenantsNsIdComputeAutoscalingEnableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdComputeAutoscalingEnableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
@@ -18767,6 +29074,86 @@ func ParseGetTenantsNsIdComputeCacheRecommendationResponse(rsp *http.Response) (
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdConfigResponse parses an HTTP response from a GetTenantsNsIdConfigWithResponse call
+func ParseGetTenantsNsIdConfigResponse(rsp *http.Response) (*GetTenantsNsIdConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ConfigSet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdConfigResponse parses an HTTP response from a PostTenantsNsIdConfigWithResponse call
+func ParsePostTenantsNsIdConfigResponse(rsp *http.Response) (*PostTenantsNsIdConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WorkflowIdResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest AlreadyExistsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -19071,6 +29458,105 @@ func ParsePostTenantsNsIdDatabasesDatabaseNameExecuteSQLResponse(rsp *http.Respo
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdDatabasesDatabaseNameIndexesResponse parses an HTTP response from a GetTenantsNsIdDatabasesDatabaseNameIndexesWithResponse call
+func ParseGetTenantsNsIdDatabasesDatabaseNameIndexesResponse(rsp *http.Response) (*GetTenantsNsIdDatabasesDatabaseNameIndexesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdDatabasesDatabaseNameIndexesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IndexesPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse parses an HTTP response from a DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse call
+func ParseDeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse(rsp *http.Response) (*DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse parses an HTTP response from a GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameWithResponse call
+func ParseGetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse(rsp *http.Response) (*GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdDatabasesDatabaseNameIndexesIndexNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Index
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
@@ -20544,6 +31030,105 @@ func ParseGetTenantsNsIdDatabasesDatabaseNameTablesTableNameThroughputResponse(r
 	return response, nil
 }
 
+// ParseGetTenantsNsIdDatabasesDatabaseNameViewsResponse parses an HTTP response from a GetTenantsNsIdDatabasesDatabaseNameViewsWithResponse call
+func ParseGetTenantsNsIdDatabasesDatabaseNameViewsResponse(rsp *http.Response) (*GetTenantsNsIdDatabasesDatabaseNameViewsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdDatabasesDatabaseNameViewsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ViewsPagination
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse parses an HTTP response from a DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse call
+func ParseDeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse(rsp *http.Response) (*DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse parses an HTTP response from a GetTenantsNsIdDatabasesDatabaseNameViewsViewNameWithResponse call
+func ParseGetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse(rsp *http.Response) (*GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdDatabasesDatabaseNameViewsViewNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest View
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetTenantsNsIdEndpointResponse parses an HTTP response from a GetTenantsNsIdEndpointWithResponse call
 func ParseGetTenantsNsIdEndpointResponse(rsp *http.Response) (*GetTenantsNsIdEndpointResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -20564,6 +31149,95 @@ func ParseGetTenantsNsIdEndpointResponse(rsp *http.Response) (*GetTenantsNsIdEnd
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdErrorLogsResponse parses an HTTP response from a GetTenantsNsIdErrorLogsWithResponse call
+func ParseGetTenantsNsIdErrorLogsResponse(rsp *http.Response) (*GetTenantsNsIdErrorLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdErrorLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrLogQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest struct {
+			Msg string `json:"msg"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON504 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdErrorLogsCountResponse parses an HTTP response from a GetTenantsNsIdErrorLogsCountWithResponse call
+func ParseGetTenantsNsIdErrorLogsCountResponse(rsp *http.Response) (*GetTenantsNsIdErrorLogsCountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdErrorLogsCountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrLogCountResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFoundResponse
@@ -20699,6 +31373,159 @@ func ParsePutTenantsNsIdExtensionsCompactionResponse(rsp *http.Response) (*PutTe
 	}
 
 	response := &PutTenantsNsIdExtensionsCompactionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse parses an HTTP response from a DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse call
+func ParseDeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp *http.Response) (*DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse parses an HTTP response from a GetTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse call
+func ParseGetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp *http.Response) (*GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IcebergCompaction
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse parses an HTTP response from a PostTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse call
+func ParsePostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp *http.Response) (*PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse parses an HTTP response from a PutTenantsNsIdExtensionsIcebergCompactionDeprecatedWithResponse call
+func ParsePutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse(rsp *http.Response) (*PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutTenantsNsIdExtensionsIcebergCompactionDeprecatedResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -20883,6 +31710,159 @@ func ParsePutTenantsNsIdExtensionsIcebergCompactionResponse(rsp *http.Response) 
 	return response, nil
 }
 
+// ParseDeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse parses an HTTP response from a DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse call
+func ParseDeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp *http.Response) (*DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse parses an HTTP response from a GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse call
+func ParseGetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp *http.Response) (*GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTenantExtensionServerlessBackfillResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse parses an HTTP response from a PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse call
+func ParsePostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp *http.Response) (*PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse parses an HTTP response from a PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedWithResponse call
+func ParsePutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse(rsp *http.Response) (*PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutTenantsNsIdExtensionsServerlessBackfillingDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDeleteTenantsNsIdExtensionsServerlessBackfillingResponse parses an HTTP response from a DeleteTenantsNsIdExtensionsServerlessBackfillingWithResponse call
 func ParseDeleteTenantsNsIdExtensionsServerlessBackfillingResponse(rsp *http.Response) (*DeleteTenantsNsIdExtensionsServerlessBackfillingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -21030,6 +32010,266 @@ func ParsePutTenantsNsIdExtensionsServerlessBackfillingResponse(rsp *http.Respon
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse parses an HTTP response from a GetTenantsNsIdLokiApiV1LabelLabelNameValuesWithResponse call
+func ParseGetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse(rsp *http.Response) (*GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdLokiApiV1LabelLabelNameValuesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse parses an HTTP response from a PostTenantsNsIdLokiApiV1LabelLabelNameValuesWithResponse call
+func ParsePostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse(rsp *http.Response) (*PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdLokiApiV1LabelLabelNameValuesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdLokiApiV1LabelsResponse parses an HTTP response from a GetTenantsNsIdLokiApiV1LabelsWithResponse call
+func ParseGetTenantsNsIdLokiApiV1LabelsResponse(rsp *http.Response) (*GetTenantsNsIdLokiApiV1LabelsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdLokiApiV1LabelsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdLokiApiV1LabelsResponse parses an HTTP response from a PostTenantsNsIdLokiApiV1LabelsWithResponse call
+func ParsePostTenantsNsIdLokiApiV1LabelsResponse(rsp *http.Response) (*PostTenantsNsIdLokiApiV1LabelsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdLokiApiV1LabelsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdLokiApiV1QueryResponse parses an HTTP response from a GetTenantsNsIdLokiApiV1QueryWithResponse call
+func ParseGetTenantsNsIdLokiApiV1QueryResponse(rsp *http.Response) (*GetTenantsNsIdLokiApiV1QueryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdLokiApiV1QueryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdLokiApiV1QueryResponse parses an HTTP response from a PostTenantsNsIdLokiApiV1QueryWithResponse call
+func ParsePostTenantsNsIdLokiApiV1QueryResponse(rsp *http.Response) (*PostTenantsNsIdLokiApiV1QueryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdLokiApiV1QueryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdLokiApiV1QueryRangeResponse parses an HTTP response from a GetTenantsNsIdLokiApiV1QueryRangeWithResponse call
+func ParseGetTenantsNsIdLokiApiV1QueryRangeResponse(rsp *http.Response) (*GetTenantsNsIdLokiApiV1QueryRangeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdLokiApiV1QueryRangeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdLokiApiV1QueryRangeResponse parses an HTTP response from a PostTenantsNsIdLokiApiV1QueryRangeWithResponse call
+func ParsePostTenantsNsIdLokiApiV1QueryRangeResponse(rsp *http.Response) (*PostTenantsNsIdLokiApiV1QueryRangeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdLokiApiV1QueryRangeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdLokiApiV1SeriesResponse parses an HTTP response from a GetTenantsNsIdLokiApiV1SeriesWithResponse call
+func ParseGetTenantsNsIdLokiApiV1SeriesResponse(rsp *http.Response) (*GetTenantsNsIdLokiApiV1SeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdLokiApiV1SeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdLokiApiV1SeriesResponse parses an HTTP response from a PostTenantsNsIdLokiApiV1SeriesWithResponse call
+func ParsePostTenantsNsIdLokiApiV1SeriesResponse(rsp *http.Response) (*PostTenantsNsIdLokiApiV1SeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdLokiApiV1SeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LokiAPIResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
@@ -21210,15 +32450,55 @@ func ParsePostTenantsNsIdOauthTokenResponse(rsp *http.Response) (*PostTenantsNsI
 	return response, nil
 }
 
-// ParsePostTenantsNsIdPrivatelinksResponse parses an HTTP response from a PostTenantsNsIdPrivatelinksWithResponse call
-func ParsePostTenantsNsIdPrivatelinksResponse(rsp *http.Response) (*PostTenantsNsIdPrivatelinksResponse, error) {
+// ParsePostTenantsNsIdPreviewConfigResponse parses an HTTP response from a PostTenantsNsIdPreviewConfigWithResponse call
+func ParsePostTenantsNsIdPreviewConfigResponse(rsp *http.Response) (*PostTenantsNsIdPreviewConfigResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostTenantsNsIdPrivatelinksResponse{
+	response := &PostTenantsNsIdPreviewConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PostTenantConfigPreviewResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdPrivateLinksResponse parses an HTTP response from a PostTenantsNsIdPrivateLinksWithResponse call
+func ParsePostTenantsNsIdPrivateLinksResponse(rsp *http.Response) (*PostTenantsNsIdPrivateLinksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdPrivateLinksResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -21250,15 +32530,15 @@ func ParsePostTenantsNsIdPrivatelinksResponse(rsp *http.Response) (*PostTenantsN
 	return response, nil
 }
 
-// ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse parses an HTTP response from a DeleteTenantsNsIdPrivatelinksPrivateLinkIdWithResponse call
-func ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse(rsp *http.Response) (*DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse, error) {
+// ParseDeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse parses an HTTP response from a DeleteTenantsNsIdPrivateLinksPrivateLinkIdWithResponse call
+func ParseDeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse(rsp *http.Response) (*DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse{
+	response := &DeleteTenantsNsIdPrivateLinksPrivateLinkIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -21290,15 +32570,128 @@ func ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdResponse(rsp *http.Response)
 	return response, nil
 }
 
-// ParseGetTenantsNsIdPrivatelinksPrivateLinkIdResponse parses an HTTP response from a GetTenantsNsIdPrivatelinksPrivateLinkIdWithResponse call
-func ParseGetTenantsNsIdPrivatelinksPrivateLinkIdResponse(rsp *http.Response) (*GetTenantsNsIdPrivatelinksPrivateLinkIdResponse, error) {
+// ParseGetTenantsNsIdPrivateLinksPrivateLinkIdResponse parses an HTTP response from a GetTenantsNsIdPrivateLinksPrivateLinkIdWithResponse call
+func ParseGetTenantsNsIdPrivateLinksPrivateLinkIdResponse(rsp *http.Response) (*GetTenantsNsIdPrivateLinksPrivateLinkIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetTenantsNsIdPrivatelinksPrivateLinkIdResponse{
+	response := &GetTenantsNsIdPrivateLinksPrivateLinkIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PrivateLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdPrivatelinksDeprecatedResponse parses an HTTP response from a PostTenantsNsIdPrivatelinksDeprecatedWithResponse call
+func ParsePostTenantsNsIdPrivatelinksDeprecatedResponse(rsp *http.Response) (*PostTenantsNsIdPrivatelinksDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdPrivatelinksDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest PostPrivateLinkResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse parses an HTTP response from a DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse call
+func ParseDeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse(rsp *http.Response) (*DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse parses an HTTP response from a GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedWithResponse call
+func ParseGetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse(rsp *http.Response) (*GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdPrivatelinksPrivateLinkIdDeprecatedResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -21786,6 +33179,199 @@ func ParsePostTenantsNsIdResourceGroupsResourceGroupResponse(rsp *http.Response)
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse parses an HTTP response from a DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse call
+func ParseDeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp *http.Response) (*DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse parses an HTTP response from a GetTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse call
+func ParseGetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp *http.Response) (*GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AutoscalingConfig
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse parses an HTTP response from a PostTenantsNsIdResourceGroupsResourceGroupAutoscalingWithResponse call
+func ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse(rsp *http.Response) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdResourceGroupsResourceGroupAutoscalingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse parses an HTTP response from a PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableWithResponse call
+func ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse(rsp *http.Response) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdResourceGroupsResourceGroupAutoscalingDisableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest FailedPreconditionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse parses an HTTP response from a PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableWithResponse call
+func ParsePostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse(rsp *http.Response) (*PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTenantsNsIdResourceGroupsResourceGroupAutoscalingEnableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DefaultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest FailedPreconditionResponse
