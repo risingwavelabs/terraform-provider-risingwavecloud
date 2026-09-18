@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/risingwavelabs/terraform-provider-risingwavecloud/internal/cloudsdk"
+	"github.com/stretchr/testify/require"
 )
 
 // testExtensionComponentType is the size the extensions' nodes run on. Like the rest of the
@@ -22,7 +24,17 @@ const testExtensionComponentType = "p-1c4g"
 // step asserts it is still one, and the framework's check that each step's plan is empty is
 // what proves the two stay decoupled.
 func TestClusterExtensionsResource(t *testing.T) {
+	t.Parallel()
+
 	clusterName := fmt.Sprintf("tf%sext", getTestNamespace(t))
+	spec := testClusterSpec(t, initCloudSDK(t))
+
+	// Extensions run their own nodes, which a standalone cluster has no compute component for;
+	// the platform refuses every one of them there.
+	if spec.IsStandalone() {
+		t.Skipf("tier %s in %s runs a standalone cluster, which cannot have extensions",
+			testTier(), testRegion())
+	}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -30,7 +42,7 @@ func TestClusterExtensionsResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create with no extensions, so the compactor is the cluster's own
 			{
-				Config: testClusterWithExtensions(clusterName, ""),
+				Config: testClusterWithExtensions(spec, clusterName, ""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// defaulted by the provider when the configuration leaves it out
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test", "spec.compactor.default_node_group.replica", "1"),
@@ -42,7 +54,7 @@ func TestClusterExtensionsResource(t *testing.T) {
 			// extension early and the explicit enable that followed was refused with
 			// `Illegal status: Running, cannot enable extensions compaction`.
 			{
-				Config: testClusterWithExtensions(clusterName, testExtensionsBlock(2, 1), withComputeReplica(2)),
+				Config: testClusterWithExtensions(spec, clusterName, testExtensionsBlock(2, 1), withComputeReplica(2)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test",
 						"extensions.serverless_compaction.maximum_compaction_concurrency", "2"),
@@ -71,12 +83,12 @@ func TestClusterExtensionsResource(t *testing.T) {
 			// the extension is enabled and will not revise it, so either would be kept by
 			// terraform and ignored by the platform.
 			{
-				Config:      testClusterWithExtensions(clusterName, testExtensionsBlock(2, 1), withCompactorReplica(2)),
+				Config:      testClusterWithExtensions(spec, clusterName, testExtensionsBlock(2, 1), withCompactorReplica(2)),
 				ExpectError: regexp.MustCompile("cannot be changed while serverless compaction is enabled"),
 				PlanOnly:    true,
 			},
 			{
-				Config:      testClusterWithExtensions(clusterName, testExtensionsBlock(2, 1), withCompactorSize("2", "8 GB")),
+				Config:      testClusterWithExtensions(spec, clusterName, testExtensionsBlock(2, 1), withCompactorSize("2", "8 GB")),
 				ExpectError: regexp.MustCompile("cannot be changed while serverless compaction is enabled"),
 				PlanOnly:    true,
 			},
@@ -84,7 +96,7 @@ func TestClusterExtensionsResource(t *testing.T) {
 			// replicas here, and restating it would be refused, so this only passes if the
 			// provider sends the components that actually changed.
 			{
-				Config: testClusterWithExtensions(clusterName, testExtensionsBlock(2, 1), withComputeReplica(2)),
+				Config: testClusterWithExtensions(spec, clusterName, testExtensionsBlock(2, 1), withComputeReplica(2)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test",
 						"spec.compute.default_node_group.replica", "2"),
@@ -96,7 +108,7 @@ func TestClusterExtensionsResource(t *testing.T) {
 			// parses it as TOML and stores the string; if it rewrote it instead, the plan check
 			// after this step would catch the difference.
 			{
-				Config: testClusterWithExtensions(clusterName,
+				Config: testClusterWithExtensions(spec, clusterName,
 					testExtensionsBlock(4, 2, withIcebergConfig("max_task_parallelism = 1\n")),
 					withComputeReplica(2)),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -110,7 +122,7 @@ func TestClusterExtensionsResource(t *testing.T) {
 			// empty string for both, so this and the step above -- which omits the config
 			// entirely -- have to end differently: `""` here, null there.
 			{
-				Config: testClusterWithExtensions(clusterName,
+				Config: testClusterWithExtensions(spec, clusterName,
 					testExtensionsBlock(4, 2, withIcebergConfig("")), withComputeReplica(2)),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("risingwavecloud_cluster.test",
@@ -121,11 +133,11 @@ func TestClusterExtensionsResource(t *testing.T) {
 			// tells a known object with null children apart from no object at all, and an apply
 			// has to end with the shape the plan had, so this is not the same as the step below.
 			{
-				Config: testClusterWithExtensions(clusterName, "\textensions = {}\n", withComputeReplica(2)),
+				Config: testClusterWithExtensions(spec, clusterName, "\textensions = {}\n", withComputeReplica(2)),
 			},
 			// Remove them: the cluster stays and the platform gives the compactor back
 			{
-				Config: testClusterWithExtensions(clusterName, "", withComputeReplica(2)),
+				Config: testClusterWithExtensions(spec, clusterName, "", withComputeReplica(2)),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
@@ -191,7 +203,8 @@ func withCompactorSize(cpu, memory string) func(*clusterShape) {
 	return func(c *clusterShape) { c.compactorCPU, c.compactorMemory = cpu, memory }
 }
 
-// clusterShape is what the rendered cluster asks for, beyond the extensions.
+// clusterShape is what the rendered cluster asks for, beyond the extensions. An empty size
+// means the tier's own, which is what every step but the one about resizing wants.
 type clusterShape struct {
 	compute         int
 	compactor       int
@@ -199,52 +212,25 @@ type clusterShape struct {
 	compactorMemory string
 }
 
-func testClusterWithExtensions(name, extensions string, opts ...func(*clusterShape)) string {
-	shape := clusterShape{compute: 1, compactor: 1, compactorCPU: "1", compactorMemory: "4 GB"}
+func testClusterWithExtensions(spec clusterSpec, name, extensions string, opts ...func(*clusterShape)) string {
+	shape := clusterShape{compute: 1, compactor: 1}
 	for _, o := range opts {
 		o(&shape)
 	}
+
 	// The compactor is declared like any other component. Serverless compaction takes it away
 	// while it runs and the platform gives it back, which is the extension's business rather
 	// than a change to what the cluster was asked for.
-	return fmt.Sprintf(`
-resource "risingwavecloud_cluster" "test" {
-	region   = "%s"
-	name     = "%s"
-	version  = "%s"
-	tier     = "Invited"
-	spec     = {
-		compute = {
-			default_node_group = {
-				cpu     = "1"
-				memory  = "4 GB"
-				replica = %d
-			}
-		}
-		compactor = {
-			default_node_group = {
-				cpu     = %q
-				memory  = %q
-				replica = %d
-			}
-		}
-		frontend = {
-			default_node_group = {
-				cpu     = "1"
-				memory  = "4 GB"
-				replica = 1
-			}
-		}
-		meta = {
-			default_node_group = {
-				cpu     = "1"
-				memory  = "4 GB"
-				replica = 1
-			}
-		}
+	options := clusterOptions{
+		Name:             name,
+		ComputeReplica:   shape.compute,
+		CompactorReplica: shape.compactor,
+		Extensions:       extensions,
 	}
-%s}
-`, testResourceGroupRegion, name, testResourceGroupVersion, shape.compute, shape.compactorCPU, shape.compactorMemory, shape.compactor, extensions)
+	if shape.compactorCPU != "" {
+		options.CompactorNode = &nodeSpec{CPU: shape.compactorCPU, Memory: shape.compactorMemory}
+	}
+	return spec.render(options)
 }
 
 // TestClusterStandaloneIgnoresExtensions covers the clusters that have nothing to do with this
@@ -256,16 +242,17 @@ resource "risingwavecloud_cluster" "test" {
 // The second step is the point: it is a plan, not an apply, and it has to be empty.
 func TestClusterStandaloneIgnoresExtensions(t *testing.T) {
 	clusterName := fmt.Sprintf("tf%ssa", getTestNamespace(t))
+	spec := standaloneSpec(t, initCloudSDK(t))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testStandaloneCluster(clusterName),
+				Config: spec.render(clusterOptions{Name: clusterName}),
 			},
 			{
-				Config:   testStandaloneCluster(clusterName),
+				Config:   spec.render(clusterOptions{Name: clusterName}),
 				PlanOnly: true,
 			},
 		},
@@ -277,13 +264,18 @@ func TestClusterStandaloneIgnoresExtensions(t *testing.T) {
 // halfway through an apply with the platform's status code.
 func TestClusterStandaloneRejectsExtensions(t *testing.T) {
 	clusterName := fmt.Sprintf("tf%ssax", getTestNamespace(t))
+	spec := standaloneSpec(t, initCloudSDK(t))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testStandaloneClusterWithExtension(clusterName),
+				Config: spec.render(clusterOptions{
+					Name: clusterName,
+					Extensions: "\textensions = {\n\t\tserverless_compaction = {\n" +
+						"\t\t\tmaximum_compaction_concurrency = 2\n\t\t}\n\t}\n",
+				}),
 				ExpectError: regexp.MustCompile("not available on a standalone cluster"),
 				PlanOnly:    true,
 			},
@@ -291,35 +283,22 @@ func TestClusterStandaloneRejectsExtensions(t *testing.T) {
 	})
 }
 
-// testStandaloneClusterWithExtension is the combination the platform cannot honour.
-func testStandaloneClusterWithExtension(name string) string {
-	cluster := testStandaloneCluster(name)
-	closing := "}\n"
-	return cluster[:len(cluster)-len(closing)] + `
-	extensions = {
-		serverless_compaction = {
-			maximum_compaction_concurrency = 2
-		}
+// standaloneSpec reads the sizes of a tier that runs a standalone cluster. These two tests are
+// about that shape rather than about the configured tier, so they ask for it by name; a tier
+// that turns out not to be standalone in the target environment makes them skip rather than
+// assert something else.
+func standaloneSpec(t *testing.T, cloud cloudsdk.CloudClientInterface) clusterSpec {
+	t.Helper()
+
+	spec, summary, err := resolveClusterSpecOfTier(cloud, standaloneTestTier)
+	require.NoErrorf(t, err, "cannot read the shape of tier %s in %s", standaloneTestTier, testRegion())
+	t.Log(summary)
+
+	if !spec.IsStandalone() {
+		t.Skipf("tier %s in %s does not run a standalone cluster", standaloneTestTier, testRegion())
 	}
-` + closing
+	return spec
 }
 
-func testStandaloneCluster(name string) string {
-	return fmt.Sprintf(`
-resource "risingwavecloud_cluster" "test" {
-	region  = "%s"
-	name    = "%s"
-	version = "%s"
-	tier    = "Standard"
-	spec = {
-		standalone = {
-			default_node_group = {
-				cpu     = "2"
-				memory  = "8 GB"
-				replica = 1
-			}
-		}
-	}
-}
-`, testResourceGroupRegion, name, testResourceGroupVersion)
-}
+// standaloneTestTier is the tier these tests expect to be standalone.
+const standaloneTestTier = "Standard"
