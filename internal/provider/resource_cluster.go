@@ -462,7 +462,9 @@ func clusterToDataModel(cluster *apigen_mgmtv2.Tenant, byocCluster *apigen_mgmtv
 		})
 	}
 
+	//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 	risingwaveConfigValue := types.StringValue(cluster.RwConfig)
+	//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 	if cluster.RwConfig == "" && !data.Spec.IsNull() {
 		var currentSpec ClusterSpecModel
 		if diags := data.Spec.As(context.Background(), &currentSpec, basetypes.ObjectAsOptions{}); !diags.HasError() {
@@ -547,6 +549,7 @@ func (r *ClusterResource) dataModelToCluster(ctx context.Context, data *ClusterM
 	cluster.ImageTag = data.Version.ValueString()
 	cluster.Tier = apigen_mgmtv2.TierId(data.Tier.ValueString())
 
+	//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 	cluster.RwConfig = spec.RisingWaveConfig.ValueString()
 	cluster.Region = data.Region.ValueString()
 
@@ -683,6 +686,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tenantReq.TenantName = cluster.TenantName
 	tenantReq.ImageTag = &cluster.ImageTag
 	tenantReq.Tier = &cluster.Tier
+	//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 	tenantReq.RwConfig = &cluster.RwConfig
 	componentToReq := func(comp *apigen_mgmtv2.ComponentResource) *apigen_mgmtv2.ComponentResourceRequest {
 		if comp == nil {
@@ -1051,8 +1055,10 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// update rwconfig
+	//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 	if previous.RwConfig != updated.RwConfig {
 		tflog.Info(ctx, fmt.Sprintf("updating risingwave configuration, cluster: %s", previous.TenantName))
+		//nolint:staticcheck // RwConfig is deprecated; see CLOUD-5401
 		if err := r.client.UpdateRisingWaveConfigByNsIDAwait(ctx, nsID, updated.RwConfig); err != nil {
 			if errors.Is(err, wait.ErrWaitTimeout) {
 				resp.Diagnostics.AddError(

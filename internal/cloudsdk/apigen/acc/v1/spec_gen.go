@@ -24,6 +24,7 @@ const (
 
 // Defines values for ControlClaimsClaimsType.
 const (
+	Agent          ControlClaimsClaimsType = "Agent"
 	ServiceAccount ControlClaimsClaimsType = "ServiceAccount"
 	User           ControlClaimsClaimsType = "User"
 )
@@ -37,6 +38,12 @@ const (
 	Standard  TierId = "Standard"
 	Test      TierId = "Test"
 )
+
+// AgentControlClaims defines model for AgentControlClaims.
+type AgentControlClaims struct {
+	OrgId          openapi_types.UUID `json:"orgId"`
+	UserResourceId openapi_types.UUID `json:"userResourceId"`
+}
 
 // ControlClaims defines model for ControlClaims.
 type ControlClaims struct {
@@ -204,6 +211,32 @@ func (t *ControlClaims_Claims) FromServiceAccountClaims(v ServiceAccountClaims) 
 
 // MergeServiceAccountClaims performs a merge with any union data inside the ControlClaims_Claims, using the provided ServiceAccountClaims
 func (t *ControlClaims_Claims) MergeServiceAccountClaims(v ServiceAccountClaims) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAgentControlClaims returns the union data inside the ControlClaims_Claims as a AgentControlClaims
+func (t ControlClaims_Claims) AsAgentControlClaims() (AgentControlClaims, error) {
+	var body AgentControlClaims
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAgentControlClaims overwrites any union data inside the ControlClaims_Claims as the provided AgentControlClaims
+func (t *ControlClaims_Claims) FromAgentControlClaims(v AgentControlClaims) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAgentControlClaims performs a merge with any union data inside the ControlClaims_Claims, using the provided AgentControlClaims
+func (t *ControlClaims_Claims) MergeAgentControlClaims(v AgentControlClaims) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

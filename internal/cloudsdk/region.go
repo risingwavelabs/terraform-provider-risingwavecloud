@@ -492,7 +492,7 @@ func (c *RegionServiceClient) DeleteClusterUser(ctx context.Context, nsID uuid.U
 }
 
 func (c *RegionServiceClient) GetPrivateLink(ctx context.Context, nsID, privateLinkID uuid.UUID) (*apigen_mgmtv2.PrivateLink, error) {
-	res, err := c.mgmtV2Client.GetTenantsNsIdPrivatelinksPrivateLinkIdWithResponse(ctx, nsID, privateLinkID)
+	res, err := c.mgmtV2Client.GetTenantsNsIdPrivateLinksPrivateLinkIdWithResponse(ctx, nsID, privateLinkID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to call API to get private link %s", privateLinkID)
 	}
@@ -506,7 +506,7 @@ func (c *RegionServiceClient) GetPrivateLink(ctx context.Context, nsID, privateL
 }
 
 func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, nsID uuid.UUID, req apigen_mgmtv2.PostPrivateLinkRequestBody) (*apigen_mgmtv2.PrivateLink, error) {
-	res, err := c.mgmtV2Client.PostTenantsNsIdPrivatelinksWithResponse(ctx, nsID, req)
+	res, err := c.mgmtV2Client.PostTenantsNsIdPrivateLinksWithResponse(ctx, nsID, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call API to create private link")
 	}
@@ -541,7 +541,7 @@ func (c *RegionServiceClient) CreatePrivateLinkAwait(ctx context.Context, nsID u
 }
 
 func (c *RegionServiceClient) DeletePrivateLinkAwait(ctx context.Context, nsID, privateLinkID uuid.UUID) error {
-	res, err := c.mgmtV2Client.DeleteTenantsNsIdPrivatelinksPrivateLinkIdWithResponse(ctx, nsID, privateLinkID)
+	res, err := c.mgmtV2Client.DeleteTenantsNsIdPrivateLinksPrivateLinkIdWithResponse(ctx, nsID, privateLinkID)
 	if err != nil {
 		return errors.Wrap(err, "failed to call API to delete private link")
 	}
@@ -564,7 +564,9 @@ func (c *RegionServiceClient) DeletePrivateLinkAwait(ctx context.Context, nsID, 
 }
 
 func (c *RegionServiceClient) GetBYOCCluster(ctx context.Context, name string) (*apigen_mgmtv2.ManagedCluster, error) {
-	res, err := c.mgmtV2Client.GetByocClustersNameWithResponse(ctx, name)
+	// The path this used to take is still served, but the spec now marks it deprecated in
+	// favour of one that names its parameter; both answer with the same ManagedCluster.
+	res, err := c.mgmtV2Client.GetByocClustersClusterNameWithResponse(ctx, name)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to call API to get BYOC cluster")
 	}
